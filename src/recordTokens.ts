@@ -12,6 +12,7 @@
 import { basename, resolve } from "node:path";
 import { KIT_VERSION } from "./kitVersion.ts";
 import { readUsageSince } from "./transcript.ts";
+import { writeSessionState } from "./sessionState.ts";
 import {
   appendEvent,
   currentWorkItem,
@@ -54,6 +55,11 @@ export function record(input: HookInput, root: string, now = new Date()): Record
   const item = currentWorkItem(root);
   const path = telemetryPath(root, item);
   const ts = now.toISOString();
+
+  // 記録の語彙は model を呼び出し側から受け取らない。ランタイム由来の値であり
+  // アダプタが付けるものなので（定義§16の補足）、ここで見た値を残して渡す。
+  const latest = byModel.reduce((a, b) => (b.responses > a.responses ? b : a));
+  writeSessionState(root, { session_id: sessionId, last_model: latest.model, updated: ts });
 
   for (const usage of byModel) {
     appendEvent(path, {
