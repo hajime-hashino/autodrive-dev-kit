@@ -251,3 +251,47 @@ test("必須属性が空文字の記録も通さない", async () => {
   const r = await check("telemetry_recorded").run(input({ events: [event({ model: "  " })] }));
   assert.equal(r.state, UNSUBSTITUTED);
 });
+
+test("発効境界より前の直書きは、判定の対象から外れる", async () => {
+  const events = [
+    event({ ts: "2026-01-01T00:00:00Z", emitter: "manual" }),
+    event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
+    event({ ts: "2026-03-01T00:00:00Z" }),
+  ];
+  const r = await check("telemetry_recorded").run(input({ events }));
+  assert.ok(r.observations.some((o) => o.includes("発効境界")));
+  assert.equal(r.observations.some((o) => o.includes("emitter=manual")), false);
+});
+
+test("発効境界より後の直書きは、判定の対象に入る", async () => {
+  const events = [
+    event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
+    event({ ts: "2026-03-01T00:00:00Z", emitter: "manual" }),
+    event({
+      ts: "2026-03-01T00:00:00Z",
+      type: "substitution",
+      invariant: "telemetry_recorded",
+      detail: "アダプタが壊れている",
+    }),
+  ];
+  const r = await check("telemetry_recorded").run(input({ events }));
+  assert.equal(r.state, SUBSTITUTED);
+  assert.deepEqual(r.substitutions, ["アダプタが壊れている"]);
+});
+
+test("境界を動かした回数を隠さない", async () => {
+  const mark = (ts: string) => event({ ts, type: "enactment", invariant: "telemetry_recorded" });
+  const events = [mark("2026-02-01T00:00:00Z"), mark("2026-03-01T00:00:00Z"), event({ ts: "2026-04-01T00:00:00Z" })];
+  const r = await check("telemetry_recorded").run(input({ events }));
+  assert.ok(r.observations.some((o) => o.includes("2 回動いている")));
+});
+
+test("境界より前でも、必須属性の欠けは見逃さない", async () => {
+  const events = [
+    event({ ts: "2026-01-01T00:00:00Z", work_item_id: null }),
+    event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
+    event({ ts: "2026-03-01T00:00:00Z" }),
+  ];
+  const r = await check("telemetry_recorded").run(input({ events }));
+  assert.equal(r.state, UNSUBSTITUTED);
+});

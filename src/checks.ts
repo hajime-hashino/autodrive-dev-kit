@@ -6,11 +6,14 @@
  * 名乗れる構造では、接続されないまま運用が続く事故を防げないため。
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Repo } from "./repos.ts";
 import { ACTIVE, INVARIANTS, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail } from "./telemetry.ts";
 import type { TelemetryEvent } from "./telemetry.ts";
+import { boundaryFor, eventsAfter } from "./enactment.ts";
 import { isPlanLimited } from "./repoApi.ts";
 import type { RepoApi } from "./repoApi.ts";
 
@@ -30,6 +33,28 @@ function resultFor(key: string): Result {
   return new Result(invariant.key, invariant.label);
 }
 
+/**
+ * 記録を自動で残す仕掛けが、実行基盤に登録されているか。
+ *
+ * 登録はリポジトリの中（`.claude/settings.json`）にある。リポジトリの外に置くと
+ * ここから読めず、外されても気づけない。読める場所にあることが、検出で代替する
+ * という方針（BOOTSTRAP）の前提になっている。
+ */
+export function hookRegistered(repos: Repo[]): string | null {
+  for (const repo of repos) {
+    const path = join(repo.path, ".claude", "settings.json");
+    if (!existsSync(path)) continue;
+    let settings: { hooks?: Record<string, unknown> };
+    try {
+      settings = JSON.parse(readFileSync(path, "utf8")) as typeof settings;
+    } catch {
+      continue;
+    }
+    if (JSON.stringify(settings.hooks ?? {}).includes("record-tokens")) return repo.name;
+  }
+  return null;
+}
+
 /** 代替の記録があれば添える。無ければ conclude が UNSUBSTITUTED へ落とす。 */
 function attachSubstitution(r: Result, events: TelemetryEvent[]): void {
   const detail = firstSubstitutionDetail(events, r.key);
@@ -45,24 +70,41 @@ function attachSubstitution(r: Result, events: TelemetryEvent[]): void {
  * 「ハーネスの既定動作として組み込む」を満たさない。したがって発効の条件は、
  * 記録がアダプタ（ポート語彙）経由で書かれていることとする。
  */
-const checkTelemetryRecorded: Check = async ({ repos, events, broken, scope }) => {
+const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken, scope }) => {
   const r = resultFor("telemetry_recorded");
 
-  if (events.length === 0) {
+  if (allEvents.length === 0) {
     r.observe("テレメトリのイベントが1件も無い");
     return r.conclude(UNSUBSTITUTED);
   }
-  r.observe(`${events.length} 件のイベントを ${repos.length} リポジトリから読んだ`);
 
   if (broken.length > 0) {
     for (const b of broken) r.observe(`読めない行: ${b}`);
     return r.conclude(UNSUBSTITUTED);
   }
 
+  // 必須属性の妥当性は全期間を対象にする。遡って付与できない属性であり、
+  // 境界より前だからといって欠けていてよい理由にはならない。
+  // 一方、書き込み経路が自動かどうかは「いまどうなっているか」の問いなので、
+  // 境界以降だけを見る。
+  const boundary = boundaryFor(allEvents, "telemetry_recorded");
+  const events = eventsAfter(allEvents, boundary);
+
+  r.observe(`${allEvents.length} 件のイベントを ${repos.length} リポジトリから読んだ`);
+  if (boundary.since === null) {
+    r.observe("発効境界が置かれていない。全期間の記録を判定の対象にする");
+  } else {
+    r.observe(`発効境界: ${boundary.since} 以降の ${events.length} 件を判定の対象にする`);
+    if (boundary.moves > 1) {
+      // 何回で異常とみなすかは定めない。回数を出し、判断は人に残す。
+      r.observe(`発効境界はこれまでに ${boundary.moves} 回動いている（直書きへ戻った回数）`);
+    }
+  }
+
   // 属性の存在だけでなく値も見る。アダプタは作業単位を解決できなかった場合に
   // work_item_id へ null を書く。存在確認だけでは、その記録を通してしまう。
   const missing: string[] = [];
-  for (const event of events) {
+  for (const event of allEvents) {
     for (const attr of REQUIRED_EVENT_ATTRS) {
       const value = event[attr];
       if (typeof value !== "string" || value.trim() === "") {
@@ -79,7 +121,7 @@ const checkTelemetryRecorded: Check = async ({ repos, events, broken, scope }) =
   r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} は全イベントが持つ`);
 
   const known = new Set<unknown>(EMITTERS);
-  const unknownEmitters = [...new Set(events.map((e) => e.emitter))].filter((v) => !known.has(v));
+  const unknownEmitters = [...new Set(allEvents.map((e) => e.emitter))].filter((v) => !known.has(v));
   if (unknownEmitters.length > 0) {
     r.observe(`emitter に未定義の値がある: ${JSON.stringify(unknownEmitters)}`);
     return r.conclude(UNSUBSTITUTED);
@@ -93,12 +135,24 @@ const checkTelemetryRecorded: Check = async ({ repos, events, broken, scope }) =
     r.notImplemented("横断での網羅は cross でのみ判定する");
   }
 
+  if (scope === "cross") {
+    // 登録は起点のリポジトリに1つ置かれる。self では見えないので判定しない。
+    const registeredIn = hookRegistered(repos);
+    if (registeredIn === null) {
+      r.observe("記録を自動で残す仕掛けが .claude/settings.json に登録されていない");
+      // 登録が無ければ、いま自動で書けていても続く保証が無い。発効とは呼べない。
+      r.notImplemented("記録の自動化が登録されていないため、発効の条件を満たさない");
+    } else {
+      r.observe(`記録を自動で残す仕掛けは ${registeredIn} に登録されている`);
+    }
+  }
+
   const manual = events.filter((e) => e.emitter === "manual");
   if (manual.length > 0) {
     const sources = [...new Set(manual.map((e) => e.source))].sort();
     r.observe(`${manual.length} 件が emitter=manual（アダプタを経由せずファイルへ直書き）`);
     r.observe(`直書きのあるファイル: ${sources.join(", ")}`);
-    attachSubstitution(r, events);
+    attachSubstitution(r, allEvents);
     return r.conclude(SUBSTITUTED);
   }
 
