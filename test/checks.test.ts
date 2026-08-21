@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CHECKS } from "../src/checks.ts";
 import type { CheckInput } from "../src/checks.ts";
 import type { Repo } from "../src/repos.ts";
 import type { ApiResponse, RepoApi } from "../src/repoApi.ts";
+import type { TrackerPort, WorkItemView } from "../src/ports/tracker.ts";
 import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.ts";
 import type { TelemetryEvent } from "../src/telemetry.ts";
 
@@ -26,6 +30,18 @@ function fakeRepo(name: string, slug: string | null = `owner/${name}`): Repo {
   } as unknown as Repo;
 }
 
+/** 記録を自動で残す仕掛けが登録されているリポジトリ。発効の条件のひとつ。 */
+function repoWithHook(name: string): Repo {
+  const path = mkdtempSync(join(tmpdir(), "autodrive-repo-"));
+  mkdirSync(join(path, ".claude"), { recursive: true });
+  writeFileSync(
+    join(path, ".claude", "settings.json"),
+    JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "k/hooks/record-tokens" }] }] } }),
+    "utf8",
+  );
+  return { ...fakeRepo(name), path } as unknown as Repo;
+}
+
 function fakeApi(responder: (slug: string) => ApiResponse, available = true): RepoApi {
   return { available, rulesets: async (slug) => responder(slug) };
 }
@@ -41,12 +57,28 @@ function event(over: Record<string, unknown> = {}): TelemetryEvent {
   } as TelemetryEvent;
 }
 
+/** 記録が指す作業単位はすべて実在する、という前提の Tracker。 */
+function fakeTrackerFor(events: { work_item_id?: unknown }[] = []): TrackerPort {
+  const ids = [...new Set(events.map((e) => e.work_item_id).filter((v) => typeof v === "string"))];
+  const items = (ids.length > 0 ? ids : ["AUT-1"]).map(
+    (id) => ({ id, title: "題", url: "", body: "", state: "started" }) as WorkItemView,
+  );
+  return {
+    async get() { return items[0] ?? null; },
+    async list() { return items; },
+    async create() { return items[0]; },
+    async advance() { return items[0]; },
+    async note() {},
+  };
+}
+
 function input(over: Partial<CheckInput> = {}): CheckInput {
   return {
     repos: [fakeRepo("r")],
     events: [],
     broken: [],
     api: fakeApi(() => ({ status: 200, body: [] })),
+    tracker: fakeTrackerFor(over.events ?? []),
     scope: "cross",
     ...over,
   };
@@ -101,14 +133,47 @@ test("直書きがあるのに代替の記録が無ければ失敗", async () =>
   assert.equal(r.state, UNSUBSTITUTED);
 });
 
-test("全件アダプタ経由でも、網羅率が未実装のうちは発効にしない", async () => {
-  const events = [
-    event(),
-    event({ type: "substitution", invariant: "telemetry_recorded", detail: "—" }),
-  ];
-  const r = await check("telemetry_recorded").run(input({ events }));
-  assert.notEqual(r.state, ACTIVE);
-  assert.ok(r.unimplemented.some((u) => u.includes("網羅率")));
+test("記録が存在しない作業単位を指していれば失敗する", async () => {
+  const events = [event({ work_item_id: "AUT-999" })];
+  const tracker = fakeTrackerFor([{ work_item_id: "AUT-1" }]);
+  const r = await check("telemetry_recorded").run(input({ events, tracker }));
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("AUT-999")));
+});
+
+test("記録の無い完了済み作業単位は観測として出すが、失敗にはしない", async () => {
+  const events = [event()];
+  const tracker: TrackerPort = {
+    async get() { return null; },
+    async list() {
+      return [
+        { id: "AUT-1", title: "", url: "", body: "", state: "started" },
+        { id: "AUT-2", title: "", url: "", body: "", state: "done" },
+      ] as WorkItemView[];
+    },
+    async create() { throw new Error("未使用"); },
+    async advance() { throw new Error("未使用"); },
+    async note() {},
+  };
+  const r = await check("telemetry_recorded").run(
+    input({ events, tracker, repos: [repoWithHook("r")] }),
+  );
+  assert.equal(r.state, ACTIVE);
+  assert.ok(r.observations.some((o) => o.includes("AUT-2")));
+});
+
+test("Tracker の資格情報が無ければ判定不能として失敗する", async () => {
+  const r = await check("telemetry_recorded").run(input({ events: [event()], tracker: null }));
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("判定できない状態")));
+});
+
+test("Tracker が読めなければ判定不能として失敗する", async () => {
+  const tracker = fakeTrackerFor();
+  tracker.list = async () => { throw new Error("接続できない"); };
+  const r = await check("telemetry_recorded").run(input({ events: [event()], tracker }));
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("接続できない")));
 });
 
 test("self では横断の網羅を判定しないことを明示する", async () => {

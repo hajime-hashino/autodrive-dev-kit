@@ -48,12 +48,16 @@ jobs:
       - name: 発効を判定する
         env:
           AUTODRIVE_CI_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
+          # 横断の判定では、記録が指す作業単位が実在するかを Tracker と突き合わせる。
+          # self では突き合わせないため、各リポジトリの CI には渡していない。
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: work/autodrive-dev-work/autodrive-dev-kit/verify --root work/autodrive-dev-work
 
       - name: 判定結果を残す
         if: always()
         env:
           AUTODRIVE_CI_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
           work/autodrive-dev-work/autodrive-dev-kit/verify \
             --root work/autodrive-dev-work --format json > verify.json || true
