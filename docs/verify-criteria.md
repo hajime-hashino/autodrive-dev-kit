@@ -77,7 +77,9 @@
 
 1. イベントが1件も無い → `UNSUBSTITUTED`
 2. 読めない行がある → `UNSUBSTITUTED`
-3. `work_item_id` / `model` / `kit_version` / `emitter` を欠くイベントがある → `UNSUBSTITUTED`。これらは遡って付与できないため、代替では埋められない
+3. `work_item_id` / `model` / `kit_version` / `emitter` を欠くイベント、または**値が空のイベント**がある → `UNSUBSTITUTED`。これらは遡って付与できないため、代替では埋められない
+
+   属性の存在だけでなく値を見る。アダプタは作業単位を解決できなかった場合に `work_item_id` へ `null` を書くため、存在確認だけではその記録を通してしまう。作業単位に紐づかない作業は起票せずに始めた作業であり、記録から消さずに検出する。
 4. `emitter` に未定義の値がある → `UNSUBSTITUTED`
 5. `emitter: manual` が1件でもある → `SUBSTITUTED`
 6. すべて満たす → `ACTIVE`
