@@ -32,6 +32,21 @@ set -a; . /path/to/autodrive-dev-work/.env; set +a
 ./verify --root /path/to/autodrive-dev-work
 ```
 
+### 発効境界を進める
+
+```sh
+./verify --enact telemetry_recorded
+```
+
+判定の起点を進める。これ以降の記録が判定の対象になる。障害で直書きへ戻ったあと、
+アダプタが直ってから復帰させるために使う。
+
+記録を自動で残す仕掛けが `.claude/settings.json` に登録されていなければ拒否する。
+印はアダプタ経由で書かれるため、**アダプタが壊れていれば進められない。**
+直書きのまま発効を名乗る経路が無い。
+
+詳細は [ADR 0003](docs/adr/0003-enactment-boundary.md)。
+
 ### 終了コード
 
 | 値 | 意味 |
