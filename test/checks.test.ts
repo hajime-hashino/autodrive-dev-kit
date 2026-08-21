@@ -8,7 +8,7 @@ import type { CheckInput } from "../src/checks.ts";
 import type { Repo } from "../src/repos.ts";
 import type { ApiResponse, RepoApi } from "../src/repoApi.ts";
 import type { TrackerPort, WorkItemView } from "../src/ports/tracker.ts";
-import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.ts";
+import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.ts";
 import type { TelemetryEvent } from "../src/telemetry.ts";
 
 function check(key: string) {
@@ -176,13 +176,26 @@ test("Tracker が読めなければ判定不能として失敗する", async () 
   assert.ok(r.observations.some((o) => o.includes("接続できない")));
 });
 
-test("self では横断の網羅を判定しないことを明示する", async () => {
-  const events = [
-    event({ emitter: "manual" }),
-    event({ type: "substitution", invariant: "telemetry_recorded", detail: "—" }),
-  ];
+test("self では発効の可否を判定しない。記録が壊れていないかだけを見る", async () => {
+  const events = [event({ emitter: "manual" }), event()];
   const r = await check("telemetry_recorded").run(input({ events, scope: "self" }));
-  assert.ok(r.unimplemented.some((u) => u.includes("cross でのみ判定する")));
+  assert.equal(r.state, NOT_IN_SCOPE);
+  assert.equal(r.failing, false);
+  assert.ok(r.observations.some((o) => o.includes("cross でのみ判定する")));
+});
+
+test("self でも壊れた記録は見落とさない", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event({ work_item_id: null })], scope: "self" }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+});
+
+test("self では直書きがあっても失敗しない。代替の記録を要求しない", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event({ emitter: "manual" })], scope: "self" }),
+  );
+  assert.equal(r.failing, false);
 });
 
 // --------------------------------------------------------- 無効化の検出
