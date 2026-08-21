@@ -1,0 +1,6 @@
+# 依存は持たない方針だが、npm が作る場合に備えて除外する。
+# 依存を足したくなったら docs/adr/0001-verify-の実装言語.md を読むこと。
+node_modules/
+package-lock.json
+
+.DS_Store
