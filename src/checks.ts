@@ -16,12 +16,15 @@ import type { TelemetryEvent } from "./telemetry.ts";
 import { boundaryFor, eventsAfter } from "./enactment.ts";
 import { isPlanLimited } from "./repoApi.ts";
 import type { RepoApi } from "./repoApi.ts";
+import type { TrackerPort } from "./ports/tracker.ts";
 
 export interface CheckInput {
   repos: Repo[];
   events: TelemetryEvent[];
   broken: string[];
   api: RepoApi;
+  /** 記録と作業単位の対応を突き合わせるために使う。資格情報が無ければ null。 */
+  tracker: TrackerPort | null;
   scope: Scope;
 }
 
@@ -55,6 +58,56 @@ export function hookRegistered(repos: Repo[]): string | null {
   return null;
 }
 
+/**
+ * 記録と作業単位の対応を突き合わせる。
+ *
+ * 当初は「完了済みの作業単位すべてに記録があること」を条件に置いていたが、
+ * そのままでは誤検出になる。作業が発生せずに閉じた作業単位（定義への差し戻しの
+ * 起票など）にも記録を要求してしまうためである。
+ *
+ * 確実に判定できるのは逆向きで、**記録が指す作業単位が実在するか**は誤検出なく
+ * 見られる。存在しないIDの記録は、綴り誤りか、作られていない作業単位への記録で
+ * あり、どちらも失敗である。
+ *
+ * 記録の無い完了済み作業単位は観測として出す。作業が無かったのか、記録が別の
+ * 作業単位へ流れたのかを、この情報だけでは区別できない。区別できないものを
+ * 失敗として扱うと、失敗の意味が薄まる。
+ */
+async function crossCheckTracker(
+  r: Result,
+  events: TelemetryEvent[],
+  tracker: TrackerPort,
+): Promise<boolean> {
+  const items = await tracker.list();
+  const known = new Set(items.map((i) => i.id));
+  const recorded = new Set(
+    events
+      .map((e) => e.work_item_id)
+      .filter((id): id is string => typeof id === "string" && id.trim() !== ""),
+  );
+
+  const orphans = [...recorded].filter((id) => !known.has(id)).sort();
+  if (orphans.length > 0) {
+    for (const id of orphans.slice(0, 10)) {
+      r.observe(`記録が存在しない作業単位を指している: ${id}`);
+    }
+    return false;
+  }
+  r.observe(`記録が指す作業単位 ${recorded.size} 件は、すべて Tracker に実在する`);
+
+  const closedWithout = items
+    .filter((i) => i.state === "done" && !recorded.has(i.id))
+    .map((i) => i.id)
+    .sort();
+  if (closedWithout.length > 0) {
+    r.observe(
+      `記録の無い完了済み作業単位: ${closedWithout.join(", ")}` +
+        "（作業が無かったか、記録が別の作業単位へ流れた可能性。区別はできない）",
+    );
+  }
+  return true;
+}
+
 /** 代替の記録があれば添える。無ければ conclude が UNSUBSTITUTED へ落とす。 */
 function attachSubstitution(r: Result, events: TelemetryEvent[]): void {
   const detail = firstSubstitutionDetail(events, r.key);
@@ -70,7 +123,7 @@ function attachSubstitution(r: Result, events: TelemetryEvent[]): void {
  * 「ハーネスの既定動作として組み込む」を満たさない。したがって発効の条件は、
  * 記録がアダプタ（ポート語彙）経由で書かれていることとする。
  */
-const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken, scope }) => {
+const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken, scope, tracker }) => {
   const r = resultFor("telemetry_recorded");
 
   if (allEvents.length === 0) {
@@ -127,8 +180,19 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     return r.conclude(UNSUBSTITUTED);
   }
 
-  // Tracker と突き合わせた網羅率の判定は Tracker アダプタが要る。段階1で実装する。
-  r.notImplemented("Tracker 上の完了済み作業単位に対する記録の網羅率（Tracker アダプタが未実装）");
+  if (scope === "cross") {
+    if (tracker === null) {
+      r.observe("Tracker の資格情報が無く、記録と作業単位の対応を確かめられない（LINEAR_API_KEY 未設定）");
+      r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+      return r.conclude(UNSUBSTITUTED);
+    }
+    try {
+      if (!(await crossCheckTracker(r, allEvents, tracker))) return r.conclude(UNSUBSTITUTED);
+    } catch (error) {
+      r.observe(`Tracker を読めない: ${error instanceof Error ? error.message : String(error)}`);
+      return r.conclude(UNSUBSTITUTED);
+    }
+  }
   if (scope === "self") {
     // 1リポジトリ分の記録だけを見て発効を名乗らせない。ここで判定できるのは
     // 構造の妥当性（読めること、必須属性が揃っていること）までである。

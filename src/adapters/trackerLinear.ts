@@ -120,6 +120,15 @@ export class LinearTracker implements TrackerPort {
     return nodes.find((n) => n.state === "todo" || n.state === "backlog") ?? null;
   }
 
+  async list(limit = 250): Promise<WorkItemView[]> {
+    const teamId = await this.#team();
+    const data = await this.#call(
+      `query($id:String!,$n:Int!){ team(id:$id){ issues(first:$n){ nodes { ${ISSUE_FIELDS} } } } }`,
+      { id: teamId, n: limit },
+    );
+    return (data.team.issues.nodes as RawIssue[]).map(toView);
+  }
+
   async create(input: CreateInput): Promise<WorkItemView> {
     const teamId = await this.#team();
     const data = await this.#call(
