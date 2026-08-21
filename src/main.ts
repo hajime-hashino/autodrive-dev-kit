@@ -13,6 +13,7 @@ import { CHECKS, hookRegistered } from "./checks.ts";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
 import { boundaryFor } from "./enactment.ts";
 import { createRepoApi } from "./repoApi.ts";
+import { LinearTracker } from "./adapters/trackerLinear.ts";
 import { discoverRepos } from "./repos.ts";
 import type { Repo } from "./repos.ts";
 import { renderJson, renderText } from "./report.ts";
@@ -101,7 +102,12 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
 
   const { events, broken } = loadEvents(repos);
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
-  const input = { repos, events, broken, api, scope };
+  const trackerToken = process.env.LINEAR_API_KEY;
+  const tracker =
+    trackerToken === undefined
+      ? null
+      : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
+  const input = { repos, events, broken, api, tracker, scope };
 
   const results: Result[] = [];
   for (const { key, label } of INVARIANTS) {
