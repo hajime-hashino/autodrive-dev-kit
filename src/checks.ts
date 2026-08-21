@@ -6,6 +6,8 @@
  * 名乗れる構造では、接続されないまま運用が続く事故を防げないため。
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Repo } from "./repos.ts";
 import { ACTIVE, INVARIANTS, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
 import type { Scope } from "./state.ts";
@@ -28,6 +30,28 @@ function resultFor(key: string): Result {
   const invariant = INVARIANTS.find((i) => i.key === key);
   if (invariant === undefined) throw new Error(`未知の不変条件: ${key}`);
   return new Result(invariant.key, invariant.label);
+}
+
+/**
+ * 記録を自動で残す仕掛けが、実行基盤に登録されているか。
+ *
+ * 登録はリポジトリの中（`.claude/settings.json`）にある。リポジトリの外に置くと
+ * ここから読めず、外されても気づけない。読める場所にあることが、検出で代替する
+ * という方針（BOOTSTRAP）の前提になっている。
+ */
+function hookRegistered(repos: Repo[]): string | null {
+  for (const repo of repos) {
+    const path = join(repo.path, ".claude", "settings.json");
+    if (!existsSync(path)) continue;
+    let settings: { hooks?: Record<string, unknown> };
+    try {
+      settings = JSON.parse(readFileSync(path, "utf8")) as typeof settings;
+    } catch {
+      continue;
+    }
+    if (JSON.stringify(settings.hooks ?? {}).includes("record-tokens")) return repo.name;
+  }
+  return null;
 }
 
 /** 代替の記録があれば添える。無ければ conclude が UNSUBSTITUTED へ落とす。 */
@@ -91,6 +115,18 @@ const checkTelemetryRecorded: Check = async ({ repos, events, broken, scope }) =
     // 1リポジトリ分の記録だけを見て発効を名乗らせない。ここで判定できるのは
     // 構造の妥当性（読めること、必須属性が揃っていること）までである。
     r.notImplemented("横断での網羅は cross でのみ判定する");
+  }
+
+  if (scope === "cross") {
+    // 登録は起点のリポジトリに1つ置かれる。self では見えないので判定しない。
+    const registeredIn = hookRegistered(repos);
+    if (registeredIn === null) {
+      r.observe("記録を自動で残す仕掛けが .claude/settings.json に登録されていない");
+      // 登録が無ければ、いま自動で書けていても続く保証が無い。発効とは呼べない。
+      r.notImplemented("記録の自動化が登録されていないため、発効の条件を満たさない");
+    } else {
+      r.observe(`記録を自動で残す仕掛けは ${registeredIn} に登録されている`);
+    }
   }
 
   const manual = events.filter((e) => e.emitter === "manual");
