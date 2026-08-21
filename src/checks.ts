@@ -59,10 +59,15 @@ const checkTelemetryRecorded: Check = async ({ repos, events, broken, scope }) =
     return r.conclude(UNSUBSTITUTED);
   }
 
+  // 属性の存在だけでなく値も見る。アダプタは作業単位を解決できなかった場合に
+  // work_item_id へ null を書く。存在確認だけでは、その記録を通してしまう。
   const missing: string[] = [];
   for (const event of events) {
     for (const attr of REQUIRED_EVENT_ATTRS) {
-      if (!(attr in event)) missing.push(`${event.source}: ${attr}`);
+      const value = event[attr];
+      if (typeof value !== "string" || value.trim() === "") {
+        missing.push(`${event.source}: ${attr}${attr in event ? "（値が空）" : "（属性が無い）"}`);
+      }
     }
   }
   if (missing.length > 0) {
