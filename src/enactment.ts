@@ -27,22 +27,65 @@ export interface Boundary {
   moves: number;
 }
 
+/**
+ * 時刻を解析する。読めない値は null を返す。
+ *
+ * **文字列のまま比べないこと。** ISO 表記はオフセットの書き方が複数あり、
+ * 辞書順と実時刻の順序が一致しない。`2026-08-22T10:00:00+09:00`（=01:00Z）は
+ * `2026-08-22T05:00:00Z` より辞書順では後、実時刻では先になる。
+ */
+export function parseTs(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * 境界を進めるときの値。
+ *
+ * 「いま」ではなく **`max(既存の記録の最大時刻, いま)`** に置く。
+ *
+ * 記録の時刻は、必ずしも時計から読まれているとは限らない。立ち上げ期の直書きには
+ * 実時刻より未来を指す値が混じっていた。「いま」を境界にすると、そうした記録が
+ * 判定の対象に残り続け、境界を進めても意味を持たない。
+ *
+ * 過去の記録を書き換えて辻褄を合わせることはしない。**境界を進めた時点で存在して
+ * いた記録は、時刻の作り方によらずすべて対象から外す**、という約束にする。
+ */
+export function boundaryValueFor(events: TelemetryEvent[], now: Date): string {
+  const times = events.map((e) => parseTs(e.ts)).filter((t): t is number => t !== null);
+  const latest = Math.max(now.getTime(), ...times);
+  return new Date(latest).toISOString();
+}
+
 export function boundaryFor(events: TelemetryEvent[], invariantKey: string): Boundary {
+  // 印は自身が覆う範囲を boundary に持つ。持たない古い印は、自身の時刻で代用する。
   const marks = events
     .filter((e) => e.type === ENACTMENT_TYPE && e.invariant === invariantKey)
-    .map((e) => (typeof e.ts === "string" ? e.ts : ""))
-    .filter((ts) => ts !== "")
-    .sort();
-  return { since: marks.at(-1) ?? null, moves: marks.length };
+    .map((e) => parseTs(e.boundary) ?? parseTs(e.ts))
+    .filter((t): t is number => t !== null)
+    .sort((a, b) => a - b);
+  const latest = marks.at(-1);
+  return {
+    since: latest === undefined ? null : new Date(latest).toISOString(),
+    moves: marks.length,
+  };
 }
 
 /**
  * 判定の対象になる記録を絞る。
  *
- * 境界そのものと、境界より後の記録を残す。境界より前の記録は消さない。
+ * 境界より後の記録と、境界そのものを残す。境界より前の記録は消さない。
  * 判定の対象から外すだけであり、履歴としては残り続ける。
+ *
+ * 時刻が読めない記録は対象に残す。判定から外すほうへ倒すと、時刻を壊すことで
+ * 記録を判定の外へ置ける経路ができる。
  */
 export function eventsAfter(events: TelemetryEvent[], boundary: Boundary): TelemetryEvent[] {
-  if (boundary.since === null) return events;
-  return events.filter((e) => typeof e.ts === "string" && e.ts >= (boundary.since as string));
+  const since = parseTs(boundary.since);
+  if (since === null) return events;
+  return events.filter((e) => {
+    const ts = parseTs(e.ts);
+    return ts === null || ts >= since;
+  });
 }
