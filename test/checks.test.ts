@@ -238,3 +238,16 @@ test("横断でしか成立しない不変条件は self の対象外", () => {
   assert.equal(check("boundary_change_logged").scopes.has("self"), true);
   assert.equal(check("telemetry_recorded").scopes.has("self"), true);
 });
+
+test("work_item_id が null の記録を通さない。属性の存在だけでは足りない", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event({ work_item_id: null, type: "tokens" })] }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("work_item_id")));
+});
+
+test("必須属性が空文字の記録も通さない", async () => {
+  const r = await check("telemetry_recorded").run(input({ events: [event({ model: "  " })] }));
+  assert.equal(r.state, UNSUBSTITUTED);
+});
