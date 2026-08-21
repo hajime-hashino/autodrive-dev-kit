@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Repo } from "./repos.ts";
-import { ACTIVE, INVARIANTS, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
+import { ACTIVE, INVARIANTS, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail } from "./telemetry.ts";
 import type { TelemetryEvent } from "./telemetry.ts";
@@ -194,9 +194,14 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     }
   }
   if (scope === "self") {
-    // 1リポジトリ分の記録だけを見て発効を名乗らせない。ここで判定できるのは
-    // 構造の妥当性（読めること、必須属性が揃っていること）までである。
-    r.notImplemented("横断での網羅は cross でのみ判定する");
+    // 1リポジトリの記録だけでは、ハーネスが記録を受け持っているかは決まらない。
+    // ここで判定できるのは構造の妥当性（読めること、必須属性が妥当なこと）までで、
+    // 発効の可否を論じること自体が誤りである。
+    //
+    // 代替の記録を無理に添えて未発効を名乗らせるより、判定しないと明示するほうが
+    // 正しい。壊れた記録はすでに上で失敗にしているため、見落としは生じない。
+    r.observe("記録の構造に問題は無い。発効の可否は cross でのみ判定する");
+    return r.conclude(NOT_IN_SCOPE);
   }
 
   if (scope === "cross") {
