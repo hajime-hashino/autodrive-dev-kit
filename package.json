@@ -1,0 +1,14 @@
+{
+  "name": "autodrive-dev-kit",
+  "version": "0.0.0-bootstrap",
+  "private": true,
+  "type": "module",
+  "description": "AIオートドライビング開発の参照実装",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "verify": "node src/main.ts",
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}
