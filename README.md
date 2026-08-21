@@ -46,6 +46,34 @@ set -a; . /path/to/autodrive-dev-work/.env; set +a
 
 `verify` は実行可能なファイルであり、スラッシュコマンドとしてのみ存在する形は取らない。エージェントに接続されないまま運用が続く事故を防げないためである。CI からの実行は [.github/workflows/verify.yml](.github/workflows/verify.yml) を参照。
 
+## トークン消費の記録
+
+実行基盤のフックから呼ばれ、セッション記録から使用量を読んで
+`<対象リポジトリ>/telemetry/<作業単位ID>.jsonl` へ追記する。
+
+```sh
+./hooks/record-tokens   # フックの入力を標準入力から受け取る
+```
+
+フックの登録は、この参照実装ではなく利用側のリポジトリの `.claude/settings.json`
+に置く。`verify` が読める場所に置くことで、外されたときに検出できる。
+
+設計と、他の経路を採らなかった理由は
+[ADR 0002](docs/adr/0002-token-usage-capture.md) にある。
+
+### 作業単位マーカー
+
+使用量を作業単位へ紐づけるため、利用側のリポジトリ直下に次を置く。追跡対象外。
+
+```
+.autodrive/current-work-item.json   {"work_item_id": "AUT-10", "repo": "autodrive-dev-kit"}
+.autodrive/cursors/<セッションID>.json
+```
+
+マーカーが無い状態で使用量が発生した場合、`work_item_id` に `null` を書いて
+`telemetry/unattributed.jsonl` へ残す。**握りつぶさない。** 起票せずに始めた作業を
+記録から消すと、違反も消えるため。`verify` がこれを検出する。
+
 ## 開発
 
 TypeScript を Node で直接実行する。ビルド手順は無い。
