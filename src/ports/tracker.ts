@@ -25,6 +25,14 @@ export interface CreateInput {
 export interface TrackerPort {
   /** 作業単位を取得する。ID を省いた場合は次に着手する対象。 */
   get(id?: string): Promise<WorkItemView | null>;
+  /**
+   * 作業単位を一覧する。
+   *
+   * **これはスキルが使う語彙ではない。** 発効を判定する側が、記録と作業単位の
+   * 対応を突き合わせるために要る。定義§17は「外側ループがテレメトリを読むための
+   * 取得系語彙」を未確定としており、そこが定まればこの操作も整理される。
+   */
+  list(limit?: number): Promise<WorkItemView[]>;
   /** 作業単位を起票する。 */
   create(input: CreateInput): Promise<WorkItemView>;
   /** 状態を進める。 */
