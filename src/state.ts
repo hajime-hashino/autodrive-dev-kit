@@ -53,6 +53,11 @@ export class Result {
   }
 
   conclude(state: State): Result {
+    // 判定しないと決めた結果は、代替の有無を問わない。
+    if (state === NOT_IN_SCOPE) {
+      this.#state = NOT_IN_SCOPE;
+      return this;
+    }
     let next = state;
     // 判定していない項目が残っている状態を、発効と呼んではいけない。
     if (next === ACTIVE && this.unimplemented.length > 0) next = SUBSTITUTED;
