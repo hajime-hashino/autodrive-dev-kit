@@ -1,0 +1,490 @@
+#!/usr/bin/env python3
+"""不変条件の発効判定器。
+
+定義§9の4つの不変条件それぞれについて、発効しているか、未発効なら何が
+手で代替しているかを判定して出力する。
+
+判定の根拠は、リポジトリの内容・git 履歴・Repo API の応答のみとする。
+「やっています」と書かれたファイルの存在は根拠にしない。宣言で発効を
+名乗れる構造にすると、接続されないまま運用が続く事故を防げないため。
+
+使い方は README.md を参照。判定基準の全文は docs/verify-criteria.md にある。
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+# ---------------------------------------------------------------- 判定の状態
+
+ACTIVE = "ACTIVE"                # 発効している
+SUBSTITUTED = "SUBSTITUTED"      # 未発効。人が代替しており、その事実が記録にある
+UNSUBSTITUTED = "UNSUBSTITUTED"  # 未発効。代替の記録が無い、または判定できない
+NOT_IN_SCOPE = "NOT_IN_SCOPE"    # この実行範囲では判定しない（横断でしか決まらない）
+
+# UNSUBSTITUTED だけが失敗である。未発効であること自体は失敗ではない（定義§9の
+# 立ち上げ期の例外）。失敗なのは、代替の記録が無いことと、判定ができないこと。
+FAILING = {UNSUBSTITUTED}
+
+INVARIANTS = [
+    ("outer_loop_running", "外側ループが起動し、継続すること"),
+    ("telemetry_recorded", "テレメトリが記録されること"),
+    ("boundary_change_logged", "境界変更が履歴に残ること"),
+    ("ai_cannot_disable", "AIがこれらを無効化できないこと"),
+]
+
+REQUIRED_EVENT_ATTRS = ("work_item_id", "model", "kit_version", "emitter")
+BOUNDARY_HISTORY_NAMES = ("boundary-changes.md", "境界変更履歴.md")
+
+
+class Result:
+    """1つの不変条件の判定結果。
+
+    observations には、何を見て何が見つかった／見つからなかったかを積む。
+    判定根拠が読めない出力は意味を持たないため、状態だけを返すことはしない。
+    """
+
+    def __init__(self, key, label):
+        self.key = key
+        self.label = label
+        self.observations = []
+        self.substitutions = []
+        self.unimplemented = []
+        self._state = None
+
+    def observe(self, text):
+        self.observations.append(text)
+
+    def substituted_by(self, text):
+        self.substitutions.append(text)
+
+    def not_implemented(self, text):
+        """まだ実装していない判定。1つでもあれば ACTIVE には到達させない。"""
+        self.unimplemented.append(text)
+
+    def conclude(self, state):
+        # 判定していない項目が残っている状態を発効と呼んではいけない。
+        if state == ACTIVE and self.unimplemented:
+            state = SUBSTITUTED
+        # 未発効なのに代替の記録が無いなら、立ち上げ期の例外の条件を満たさない。
+        if state == SUBSTITUTED and not self.substitutions:
+            state = UNSUBSTITUTED
+        self._state = state
+        return self
+
+    @property
+    def state(self):
+        return self._state
+
+
+# ---------------------------------------------------------------- リポジトリ
+
+class Repo:
+    def __init__(self, path):
+        self.path = Path(path).resolve()
+        self.name = self.path.name
+
+    def git(self, *args):
+        try:
+            out = subprocess.run(
+                ["git", "-C", str(self.path), *args],
+                capture_output=True, text=True, timeout=30,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return out.stdout if out.returncode == 0 else None
+
+    def remote_slug(self):
+        """origin の URL から owner/repo を取り出す。取れなければ None。"""
+        url = (self.git("remote", "get-url", "origin") or "").strip()
+        if not url:
+            return None
+        if url.startswith("git@"):
+            url = url.split(":", 1)[-1]
+        elif "://" in url:
+            url = url.split("://", 1)[-1].split("/", 1)[-1]
+        return url[:-4] if url.endswith(".git") else url
+
+    def telemetry_files(self):
+        return sorted((self.path / "telemetry").glob("*.jsonl"))
+
+    def boundaries_file(self):
+        p = self.path / "boundaries.yaml"
+        return p if p.exists() else None
+
+    def boundary_history_file(self):
+        for name in BOUNDARY_HISTORY_NAMES:
+            for p in (self.path / name, self.path / "docs" / name):
+                if p.exists():
+                    return p
+        return None
+
+
+def discover_repos(root, scope):
+    """判定対象のリポジトリを集める。
+
+    横断判定のため、ルート自身と直下のサブディレクトリの両方を見る。
+    リポジトリ単位で判定すると、リポジトリをまたいで成立する不変条件が抜ける。
+    """
+    root = Path(root).resolve()
+    found = []
+    if (root / ".git").exists():
+        found.append(Repo(root))
+    if scope == "cross":
+        for child in sorted(root.iterdir()):
+            if child.is_dir() and (child / ".git").exists():
+                found.append(Repo(child))
+    return found
+
+
+def load_events(repos):
+    """全リポジトリのテレメトリを読む。壊れた行は例外にせず不正として返す。"""
+    events, broken = [], []
+    for repo in repos:
+        for path in repo.telemetry_files():
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if not line.strip():
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    broken.append(f"{repo.name}/{path.name}:{lineno} JSON として読めない ({exc.msg})")
+                    continue
+                obj["_source"] = f"{repo.name}/telemetry/{path.name}"
+                events.append(obj)
+    return events, broken
+
+
+def substitution_notes(events, invariant_key):
+    """該当する不変条件について、代替を記録したイベントを新しい順に返す。"""
+    hits = [e for e in events
+            if e.get("type") == "substitution" and e.get("invariant") == invariant_key]
+    hits.sort(key=lambda e: e.get("ts", ""), reverse=True)
+    return hits
+
+
+# ---------------------------------------------------------------- 各判定
+
+def check_telemetry_recorded(repos, events, broken, _api, scope):
+    """テレメトリが記録されること。
+
+    「記録がある」では足りない。人や AI が覚えていないと残らない状態は、
+    定義§9の「ハーネスの既定動作として組み込む」を満たさない。したがって
+    発効の条件は、記録がアダプタ（ポート語彙）経由で書かれていることとする。
+    """
+    r = Result(*INVARIANTS[1])
+
+    if not events:
+        r.observe("テレメトリのイベントが1件も無い")
+        return r.conclude(UNSUBSTITUTED)
+
+    r.observe(f"{len(events)} 件のイベントを {len(repos)} リポジトリから読んだ")
+
+    if broken:
+        for b in broken:
+            r.observe(f"読めない行: {b}")
+        return r.conclude(UNSUBSTITUTED)
+
+    missing = [f"{e.get('_source')}: {a}" for e in events
+               for a in REQUIRED_EVENT_ATTRS if a not in e]
+    if missing:
+        for m in missing[:10]:
+            r.observe(f"必須属性が欠けている: {m}")
+        if len(missing) > 10:
+            r.observe(f"...ほか {len(missing) - 10} 件")
+        # 遡って付与できない属性が欠けている。代替では埋められない。
+        return r.conclude(UNSUBSTITUTED)
+    r.observe(f"必須属性 {'/'.join(REQUIRED_EVENT_ATTRS)} は全イベントが持つ")
+
+    bad_emitter = {e.get("emitter") for e in events} - {"adapter", "manual"}
+    if bad_emitter:
+        r.observe(f"emitter に未定義の値がある: {sorted(bad_emitter)}")
+        return r.conclude(UNSUBSTITUTED)
+
+    # Tracker と突き合わせた網羅率の判定は、Tracker アダプタが要る。段階1で実装する。
+    r.not_implemented("Tracker 上の完了済み作業単位に対する記録の網羅率（Tracker アダプタが未実装）")
+    if scope == "self":
+        # 1リポジトリ分の記録だけを見て発効を名乗らせない。ここで判定できるのは
+        # 構造の妥当性（読めること、必須属性が揃っていること）までである。
+        r.not_implemented("横断での網羅は cross でのみ判定する")
+
+    manual = [e for e in events if e.get("emitter") == "manual"]
+    if manual:
+        sources = sorted({e["_source"] for e in manual})
+        r.observe(f"{len(manual)} 件が emitter=manual（アダプタを経由せずファイルへ直書き）")
+        r.observe("直書きのあるファイル: " + ", ".join(sources))
+        for note in substitution_notes(events, "telemetry_recorded")[:1]:
+            r.substituted_by(note.get("detail", "（詳細の記載なし）"))
+        return r.conclude(SUBSTITUTED)
+
+    r.observe("全イベントが emitter=adapter")
+    return r.conclude(ACTIVE)
+
+
+def check_boundary_change_logged(repos, events, _broken, _api, scope):
+    """境界変更が履歴に残ること。
+
+    boundaries.yaml を動かした全コミットが、境界変更履歴から参照されているか。
+    未参照のコミットが1件でもあれば、残っていない変更があるということ。
+    """
+    r = Result(*INVARIANTS[2])
+    targets = [repo for repo in repos if repo.boundaries_file()]
+
+    if not targets:
+        r.observe("boundaries.yaml がどのリポジトリにも無い（動かす対象が存在しない）")
+        # 対象が無いことを発効と報告してはいけない。仕組みが無いだけである。
+        for note in substitution_notes(events, "boundary_change_logged")[:1]:
+            r.substituted_by(note.get("detail", "（詳細の記載なし）"))
+        return r.conclude(SUBSTITUTED)
+
+    unreferenced = []
+    for repo in targets:
+        log = repo.git("log", "--format=%H", "--", "boundaries.yaml") or ""
+        commits = [c for c in log.split() if c]
+        history = repo.boundary_history_file()
+        if history is None:
+            r.observe(f"{repo.name}: boundaries.yaml はあるが境界変更履歴が無い")
+            unreferenced.extend(commits)
+            continue
+        text = history.read_text(encoding="utf-8")
+        r.observe(f"{repo.name}: boundaries.yaml を変更したコミット {len(commits)} 件を照合")
+        unreferenced += [c for c in commits if c[:7] not in text and c not in text]
+
+    if unreferenced:
+        for c in unreferenced[:10]:
+            r.observe(f"履歴から参照されていないコミット: {c[:7]}")
+        for note in substitution_notes(events, "boundary_change_logged")[:1]:
+            r.substituted_by(note.get("detail", "（詳細の記載なし）"))
+        return r.conclude(SUBSTITUTED)
+
+    r.observe("boundaries.yaml の全変更コミットが履歴から参照されている")
+    return r.conclude(ACTIVE)
+
+
+def check_outer_loop_running(repos, events, _broken, _api, scope):
+    """外側ループが起動し、継続すること。
+
+    起動は、境界表のセルが動き、その根拠が履歴に残っていることで判定する
+    （定義§8）。継続の閾値は定めない。定義§17が緩和しきい値を未確定と
+    しており、実データなしに決め打ちすると根拠の無い数字が残るため。
+    """
+    r = Result(*INVARIANTS[0])
+    entries = 0
+    for repo in repos:
+        history = repo.boundary_history_file()
+        if history is None:
+            continue
+        text = history.read_text(encoding="utf-8")
+        found = sum(1 for line in text.splitlines() if line.startswith("## "))
+        entries += found
+        r.observe(f"{repo.name}: 境界変更履歴に {found} 件のエントリ")
+
+    if entries == 0:
+        r.observe("境界変更履歴が無い、またはエントリが1件も無い（外側ループが一周していない）")
+        for note in substitution_notes(events, "outer_loop_running")[:1]:
+            r.substituted_by(note.get("detail", "（詳細の記載なし）"))
+        return r.conclude(SUBSTITUTED)
+
+    r.not_implemented("エントリが根拠・コミット・承認の3点を備えるかの検証（段階3で境界表が置かれてから実装する）")
+    r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）")
+    return r.conclude(SUBSTITUTED)
+
+
+def check_ai_cannot_disable(repos, events, _broken, api, scope):
+    """AIがこれらを無効化できないこと。
+
+    強制ではなく検出で代替する方針のため、発効の条件は「無効化されたら
+    必ず気づけること」とする。既定ブランチの保護が入っているかを Repo API
+    から読む。読めない場合は判定不能であり、通してはいけない（定義§9）。
+    """
+    r = Result(*INVARIANTS[3])
+
+    if api.token is None:
+        r.observe("Repo API のトークンが無く、保護設定を読めない（AUTODRIVE_CI_TOKEN 未設定）")
+        r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）")
+        return r.conclude(UNSUBSTITUTED)
+
+    unprotected, plan_limited, unreadable = [], [], []
+    for repo in repos:
+        slug = repo.remote_slug()
+        if slug is None:
+            unreadable.append(f"{repo.name}: origin が無く、対応する Repo を特定できない")
+            continue
+        status, body = api.get(f"/repos/{slug}/rulesets")
+        if status == 200:
+            rules = body if isinstance(body, list) else []
+            if rules:
+                r.observe(f"{slug}: ruleset {len(rules)} 件")
+            else:
+                unprotected.append(slug)
+        elif status == 403 and "Upgrade" in str(body.get("message", "")):
+            plan_limited.append(slug)
+        else:
+            unreadable.append(f"{slug}: 応答 {status}")
+
+    for slug in plan_limited:
+        r.observe(f"{slug}: 403 — 非公開リポジトリに ruleset を設定できないプラン")
+    for slug in unprotected:
+        r.observe(f"{slug}: ruleset が1件も無い（既定ブランチが保護されていない）")
+    for msg in unreadable:
+        r.observe(f"読めない: {msg}")
+
+    if unreadable:
+        r.observe("判定できない対象がある。通さない（定義§9）")
+        return r.conclude(UNSUBSTITUTED)
+
+    if plan_limited or unprotected:
+        # 必須チェックの登録有無も ruleset に依存するため、ここでは判定できない。
+        r.not_implemented("verify を必須チェックとして登録しているかの検証（ruleset が使えないため判定手段が無い）")
+        for note in substitution_notes(events, "ai_cannot_disable")[:1]:
+            r.substituted_by(note.get("detail", "（詳細の記載なし）"))
+        return r.conclude(SUBSTITUTED)
+
+    r.not_implemented("エージェントに渡っている資格情報が保護設定を変更できないことの検証")
+    r.observe("全リポジトリで既定ブランチが保護されている")
+    return r.conclude(ACTIVE)
+
+
+# どの実行範囲で判定できるか。
+#
+# 不変条件1と4は、リポジトリをまたいで初めて成立するため self では判定しない。
+# 1つのリポジトリだけを見て「外側ループが回っていない」と報告しても、それは
+# 他のリポジトリで回っているかもしれず、判定になっていない。判定できないものを
+# 判定したふりをするほうが、判定しないと明示するより危ない。
+#
+# self は各リポジトリの CI が自分の提出を見るための範囲であり、そこで意味を
+# 持つのは、そのリポジトリの中だけで閉じる2つに限られる。
+CHECKS = {
+    "outer_loop_running": (check_outer_loop_running, {"cross"}),
+    "telemetry_recorded": (check_telemetry_recorded, {"cross", "self"}),
+    "boundary_change_logged": (check_boundary_change_logged, {"cross", "self"}),
+    "ai_cannot_disable": (check_ai_cannot_disable, {"cross"}),
+}
+
+
+# ---------------------------------------------------------------- Repo API
+
+class RepoApi:
+    """Repo ポートの読取。現在の実装は GitHub。"""
+
+    def __init__(self, token):
+        self.token = token
+
+    def get(self, path):
+        req = urllib.request.Request(
+            "https://api.github.com" + path,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "autodrive-verify",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as res:
+                return res.status, json.load(res)
+        except urllib.error.HTTPError as exc:
+            try:
+                return exc.code, json.load(exc)
+            except Exception:
+                return exc.code, {}
+        except Exception as exc:  # 通信できない場合も判定不能として扱う
+            return 0, {"message": str(exc)}
+
+
+# ---------------------------------------------------------------- 出力
+
+MARK = {
+    ACTIVE: "発効",
+    SUBSTITUTED: "未発効・代替あり",
+    UNSUBSTITUTED: "未発効・代替なし",
+    NOT_IN_SCOPE: "この範囲では判定しない",
+}
+
+
+def render_text(results, repos, scope, out):
+    print("不変条件の発効判定", file=out)
+    print("判定対象: " + ", ".join(r.name for r in repos), file=out)
+    print(f"実行範囲: {scope}", file=out)
+    print("", file=out)
+    for r in results:
+        print(f"[{MARK[r.state]}] {r.label}", file=out)
+        for o in r.observations:
+            print(f"    観測  {o}", file=out)
+        for s in r.substitutions:
+            print(f"    代替  {s}", file=out)
+        for u in r.unimplemented:
+            print(f"    未実装 {u}", file=out)
+        print("", file=out)
+    failed = [r for r in results if r.state in FAILING]
+    if failed:
+        print("失敗: " + "、".join(r.label for r in failed), file=out)
+        print("未発効であること自体は失敗ではない。代替の記録が無いこと、"
+              "および判定できないことが失敗である。", file=out)
+    else:
+        print("失敗なし", file=out)
+
+
+def render_json(results, repos, scope, out):
+    json.dump({
+        "scope": scope,
+        "repos": [r.name for r in repos],
+        "invariants": [{
+            "key": r.key,
+            "label": r.label,
+            "state": r.state,
+            "observations": r.observations,
+            "substitutions": r.substitutions,
+            "unimplemented": r.unimplemented,
+        } for r in results],
+        "failing": [r.key for r in results if r.state in FAILING],
+    }, out, ensure_ascii=False, indent=2)
+    print("", file=out)
+
+
+# ---------------------------------------------------------------- 入口
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="不変条件の発効判定器",
+        epilog="判定基準の全文は docs/verify-criteria.md を参照。",
+    )
+    parser.add_argument("--root", default=".",
+                        help="判定の起点。既定はカレントディレクトリ")
+    parser.add_argument("--scope", choices=("cross", "self"), default="cross",
+                        help="cross: 起点と直下のリポジトリを横断して判定 / "
+                             "self: 起点のリポジトリのみ")
+    parser.add_argument("--format", choices=("text", "json"), default="text")
+    args = parser.parse_args(argv)
+
+    repos = discover_repos(args.root, args.scope)
+    if not repos:
+        print(f"判定対象のリポジトリが見つからない: {Path(args.root).resolve()}",
+              file=sys.stderr)
+        return 2
+
+    events, broken = load_events(repos)
+    api = RepoApi(os.environ.get("AUTODRIVE_CI_TOKEN") or None)
+
+    results = []
+    for key, label in INVARIANTS:
+        check, scopes = CHECKS[key]
+        if args.scope not in scopes:
+            skipped = Result(key, label)
+            skipped.observe("リポジトリをまたいで初めて成立するため、--scope cross でのみ判定する")
+            skipped._state = NOT_IN_SCOPE
+            results.append(skipped)
+            continue
+        results.append(check(repos, events, broken, api, args.scope))
+
+    render = render_json if args.format == "json" else render_text
+    render(results, repos, args.scope, sys.stdout)
+    return 1 if any(r.state in FAILING for r in results) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
