@@ -11,7 +11,7 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.ts";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
-import { boundaryFor } from "./enactment.ts";
+import { boundaryValueFor } from "./enactment.ts";
 import { createRepoApi } from "./repoApi.ts";
 import { LinearTracker } from "./adapters/trackerLinear.ts";
 import { discoverRepos } from "./repos.ts";
@@ -20,6 +20,7 @@ import { renderJson, renderText } from "./report.ts";
 import { INVARIANTS, Result } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { loadEvents } from "./telemetry.ts";
+import type { TelemetryEvent } from "./telemetry.ts";
 
 const USAGE = `不変条件の発効判定器
 
@@ -46,7 +47,12 @@ const USAGE = `不変条件の発効判定器
  * 印はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
  * 証明になる。壊れていれば印を進められず、直書きのまま発効を名乗れない。
  */
-function enact(invariant: string, root: string, repos: Repo[]): { output: string; code: number } {
+function enact(
+  invariant: string,
+  root: string,
+  repos: Repo[],
+  events: TelemetryEvent[],
+): { output: string; code: number } {
   const known = INVARIANTS.map((i) => i.key);
   if (!known.includes(invariant)) {
     return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
@@ -60,7 +66,12 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
     };
   }
   const telemetry = new JsonlTelemetry(resolve(root));
-  telemetry.recordEnactment(invariant, `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`);
+  const boundary = boundaryValueFor(events, new Date());
+  telemetry.recordEnactment(
+    invariant,
+    `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
+    boundary,
+  );
   const written = telemetry.lastWrite;
   if (written === null || !written.attributed) {
     return {
@@ -68,7 +79,12 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
       code: 1,
     };
   }
-  return { output: `${invariant} の発効境界を進めた: ${written.path}`, code: 0 };
+  return {
+    output:
+      `${invariant} の発効境界を進めた: ${written.path}\n` +
+      `${boundary} 以前の記録は判定の対象から外れる（履歴としては残る）`,
+    code: 0,
+  };
 }
 
 export async function run(argv: string[]): Promise<{ output: string; code: number }> {
@@ -98,9 +114,9 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
     return { output: `判定対象のリポジトリが見つからない: ${resolve(values.root)}`, code: 2 };
   }
 
-  if (values.enact !== undefined) return enact(values.enact, values.root, repos);
-
   const { events, broken } = loadEvents(repos);
+  if (values.enact !== undefined) return enact(values.enact, values.root, repos, events);
+
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
   const trackerToken = process.env.LINEAR_API_KEY;
   const tracker =
