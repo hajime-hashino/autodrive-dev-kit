@@ -67,6 +67,18 @@ export class JsonlTelemetry implements TelemetryPort {
     });
   }
 
+  /**
+   * 発効境界を進める。
+   *
+   * **ポート語彙ではない。** スキルからは呼ばれない。判定の起点を動かす操作であり、
+   * 発効を判定する側（verify）が使う。ここに置いているのは、必須属性の付与を
+   * 1箇所に閉じるためと、この経路を通れること自体がアダプタが動いている証明に
+   * なるためである。壊れていれば印を進められない。
+   */
+  recordEnactment(invariant: string, detail: string): void {
+    this.#write({ type: "enactment", invariant, detail });
+  }
+
   /** 必須属性の付与はここに閉じる。呼び出し側からは渡せない。 */
   #write(body: Record<string, unknown>): void {
     const item = currentWorkItem(this.#root);
