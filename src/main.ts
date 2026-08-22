@@ -11,7 +11,6 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.ts";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
-import { boundaryValueFor } from "./enactment.ts";
 import { createRepoApi } from "./repoApi.ts";
 import { LinearTracker } from "./adapters/trackerLinear.ts";
 import { discoverRepos } from "./repos.ts";
@@ -20,7 +19,6 @@ import { renderJson, renderText } from "./report.ts";
 import { INVARIANTS, Result } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { loadEvents } from "./telemetry.ts";
-import type { TelemetryEvent } from "./telemetry.ts";
 
 const USAGE = `不変条件の発効判定器
 
@@ -47,12 +45,7 @@ const USAGE = `不変条件の発効判定器
  * 印はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
  * 証明になる。壊れていれば印を進められず、直書きのまま発効を名乗れない。
  */
-function enact(
-  invariant: string,
-  root: string,
-  repos: Repo[],
-  events: TelemetryEvent[],
-): { output: string; code: number } {
+function enact(invariant: string, root: string, repos: Repo[]): { output: string; code: number } {
   const known = INVARIANTS.map((i) => i.key);
   if (!known.includes(invariant)) {
     return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
@@ -66,7 +59,7 @@ function enact(
     };
   }
   const telemetry = new JsonlTelemetry(resolve(root));
-  const boundary = boundaryValueFor(events, new Date());
+  const boundary = new Date().toISOString();
   telemetry.recordEnactment(
     invariant,
     `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
@@ -115,7 +108,7 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
   }
 
   const { events, broken } = loadEvents(repos);
-  if (values.enact !== undefined) return enact(values.enact, values.root, repos, events);
+  if (values.enact !== undefined) return enact(values.enact, values.root, repos);
 
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
   const trackerToken = process.env.LINEAR_API_KEY;
