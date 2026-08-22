@@ -175,3 +175,65 @@ test("起票には題と本文が要る", async () => {
   const r = root();
   assert.equal((await trackerRun(["作業単位を起票する", "--title", "t"], r, fakeTracker())).code, 2);
 });
+
+// --------------------------------------------------------- 抜き取り確認
+
+test("抜き取り確認を記録する。見なかった範囲も残る", () => {
+  const r = withWorkItem("AUT-23", "kit");
+  const res = telemetryRun(
+    ["抜き取り確認を記録する", "--area", "エージェント作成画面",
+     "--looked", "アバター選択とプロンプト入力", "--not-looked", "共有設定と検索結果の並び",
+     "--detail", "崩れなし", "--root", r],
+    r,
+  );
+  assert.equal(res.code, 0);
+  const [event] = readEvents(join(r, "kit", "telemetry", "AUT-23.jsonl"));
+  assert.equal(event.type, "sampling");
+  assert.equal(event.looked, "アバター選択とプロンプト入力");
+  assert.equal(event.not_looked, "共有設定と検索結果の並び");
+  assert.equal(event.fixed, false);
+  assert.equal(event.emitter, "adapter");
+});
+
+test("修正が入らなかった回も記録される。緩和の判定に要るため", () => {
+  const r = withWorkItem("AUT-23", "kit");
+  telemetryRun(
+    ["抜き取り確認を記録する", "--area", "A", "--looked", "x", "--not-looked", "y",
+     "--detail", "問題なし", "--root", r],
+    r,
+  );
+  const [event] = readEvents(join(r, "kit", "telemetry", "AUT-23.jsonl"));
+  assert.equal(event.fixed, false);
+});
+
+test("修正が入った場合は fixed が立つ", () => {
+  const r = withWorkItem("AUT-23", "kit");
+  telemetryRun(
+    ["抜き取り確認を記録する", "--area", "A", "--looked", "x", "--not-looked", "y",
+     "--detail", "崩れを直した", "--fixed", "--root", r],
+    r,
+  );
+  const [event] = readEvents(join(r, "kit", "telemetry", "AUT-23.jsonl"));
+  assert.equal(event.fixed, true);
+});
+
+test("見なかった範囲を省略できない", () => {
+  const r = withWorkItem("AUT-23", "kit");
+  const res = telemetryRun(
+    ["抜き取り確認を記録する", "--area", "A", "--looked", "x", "--detail", "d", "--root", r],
+    r,
+  );
+  assert.equal(res.code, 2);
+});
+
+test("修正の有無は件数ではなく真偽で持つ。修正率を算出させない", () => {
+  const r = withWorkItem("AUT-23", "kit");
+  telemetryRun(
+    ["抜き取り確認を記録する", "--area", "A", "--looked", "x", "--not-looked", "y",
+     "--detail", "d", "--root", r],
+    r,
+  );
+  const [event] = readEvents(join(r, "kit", "telemetry", "AUT-23.jsonl"));
+  assert.equal(typeof event.fixed, "boolean");
+  assert.equal("fixed_count" in event, false);
+});
