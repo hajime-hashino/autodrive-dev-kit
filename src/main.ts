@@ -11,7 +11,6 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.ts";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
-import { boundaryFor } from "./enactment.ts";
 import { createRepoApi } from "./repoApi.ts";
 import { LinearTracker } from "./adapters/trackerLinear.ts";
 import { discoverRepos } from "./repos.ts";
@@ -60,7 +59,12 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
     };
   }
   const telemetry = new JsonlTelemetry(resolve(root));
-  telemetry.recordEnactment(invariant, `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`);
+  const boundary = new Date().toISOString();
+  telemetry.recordEnactment(
+    invariant,
+    `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
+    boundary,
+  );
   const written = telemetry.lastWrite;
   if (written === null || !written.attributed) {
     return {
@@ -68,7 +72,12 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
       code: 1,
     };
   }
-  return { output: `${invariant} の発効境界を進めた: ${written.path}`, code: 0 };
+  return {
+    output:
+      `${invariant} の発効境界を進めた: ${written.path}\n` +
+      `${boundary} 以前の記録は判定の対象から外れる（履歴としては残る）`,
+    code: 0,
+  };
 }
 
 export async function run(argv: string[]): Promise<{ output: string; code: number }> {
@@ -98,9 +107,9 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
     return { output: `判定対象のリポジトリが見つからない: ${resolve(values.root)}`, code: 2 };
   }
 
+  const { events, broken } = loadEvents(repos);
   if (values.enact !== undefined) return enact(values.enact, values.root, repos);
 
-  const { events, broken } = loadEvents(repos);
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
   const trackerToken = process.env.LINEAR_API_KEY;
   const tracker =
