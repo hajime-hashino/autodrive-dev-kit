@@ -12,6 +12,7 @@ import { appendEvent, currentWorkItem, telemetryPath } from "../workItem.ts";
 import type {
   BoundaryRecord,
   FixRecord,
+  SamplingRecord,
   StopRecord,
   TelemetryPort,
 } from "../ports/telemetry.ts";
@@ -53,6 +54,19 @@ export class JsonlTelemetry implements TelemetryPort {
       detail: record.detail,
       ...(record.cause === undefined ? {} : { cause: record.cause }),
       ...(record.foundIn === undefined ? {} : { found_in: record.foundIn }),
+    });
+  }
+
+  recordSampling(record: SamplingRecord): void {
+    this.#write({
+      type: "sampling",
+      area: record.area,
+      looked: record.looked,
+      not_looked: record.notLooked,
+      // 修正の有無は真偽値で持つ。件数にすると修正率を算出できてしまい、
+      // §8が禁じている使い方への道が開く。
+      fixed: record.fixed,
+      detail: record.detail,
     });
   }
 
