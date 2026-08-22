@@ -40,24 +40,6 @@ export function parseTs(value: unknown): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-/**
- * 境界を進めるときの値。
- *
- * 「いま」ではなく **`max(既存の記録の最大時刻, いま)`** に置く。
- *
- * 記録の時刻は、必ずしも時計から読まれているとは限らない。立ち上げ期の直書きには
- * 実時刻より未来を指す値が混じっていた。「いま」を境界にすると、そうした記録が
- * 判定の対象に残り続け、境界を進めても意味を持たない。
- *
- * 過去の記録を書き換えて辻褄を合わせることはしない。**境界を進めた時点で存在して
- * いた記録は、時刻の作り方によらずすべて対象から外す**、という約束にする。
- */
-export function boundaryValueFor(events: TelemetryEvent[], now: Date): string {
-  const times = events.map((e) => parseTs(e.ts)).filter((t): t is number => t !== null);
-  const latest = Math.max(now.getTime(), ...times);
-  return new Date(latest).toISOString();
-}
-
 export function boundaryFor(events: TelemetryEvent[], invariantKey: string): Boundary {
   // 印は自身が覆う範囲を boundary に持つ。持たない古い印は、自身の時刻で代用する。
   const marks = events

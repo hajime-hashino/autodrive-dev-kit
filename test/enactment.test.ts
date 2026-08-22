@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { boundaryFor, boundaryValueFor, eventsAfter, parseTs } from "../src/enactment.ts";
+import { boundaryFor, eventsAfter, parseTs } from "../src/enactment.ts";
 import type { TelemetryEvent } from "../src/telemetry.ts";
 
 function ev(ts: string, over: Record<string, unknown> = {}): TelemetryEvent {
@@ -65,21 +65,6 @@ test("時刻はオフセットを解いて比べる。文字列のまま比べ�
   ];
   const after = eventsAfter(events, boundaryFor(events, KEY));
   assert.equal(after.some((e) => e.emitter === "manual"), false);
-});
-
-test("境界は、いまと既存の記録の最大時刻の遅いほうに置く", () => {
-  // 手で書かれた記録が実時刻より未来を指していても、境界を進めた時点で
-  // 存在していた記録はすべて対象から外れる。
-  const now = new Date("2026-08-21T16:00:00Z");
-  const events = [ev("2026-08-22T15:00:00+09:00"), ev("2026-08-20T00:00:00Z")];
-  const value = boundaryValueFor(events, now);
-  assert.equal(parseTs(value), Date.parse("2026-08-22T15:00:00+09:00"));
-  assert.equal(eventsAfter(events, { since: value, moves: 1 }).length, 1);
-});
-
-test("記録が無ければ境界はいまになる", () => {
-  const now = new Date("2026-08-21T16:00:00Z");
-  assert.equal(parseTs(boundaryValueFor([], now)), now.getTime());
 });
 
 test("印が覆う範囲を持っていれば、印の時刻ではなくそちらを使う", () => {
