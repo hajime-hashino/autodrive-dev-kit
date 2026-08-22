@@ -31,6 +31,27 @@ export interface FixRecord {
   foundIn?: string;
 }
 
+/**
+ * 見た範囲・見なかった範囲と、修正の有無を残す。
+ *
+ * **修正が入らなかった場合も必ず記録する。** 定義§8は緩和の判定を「N回連続で
+ * 修正が入らないこと」で行うとしており、修正が無かった回が残らなければ判定が
+ * 成立しない。
+ *
+ * 見なかった範囲を必須にするのも同じ理由による。見ていないのか、見て問題が
+ * 無かったのかを区別できない記録は、判断を誤らせる（§8）。
+ */
+export interface SamplingRecord {
+  area: string;
+  /** 見た範囲。 */
+  looked: string;
+  /** 見なかった範囲。省略できない。 */
+  notLooked: string;
+  /** 修正が入ったか。入らなかった場合も記録する。 */
+  fixed: boolean;
+  detail: string;
+}
+
 /** 委譲範囲の変更と、その後の結果を残す。 */
 export interface BoundaryRecord {
   area: string;
@@ -46,6 +67,8 @@ export interface TelemetryPort {
   recordStop(record: StopRecord): void;
   /** 修正を記録する */
   recordFix(record: FixRecord): void;
+  /** 抜き取り確認を記録する */
+  recordSampling(record: SamplingRecord): void;
   /** 境界変更を記録する */
   recordBoundaryChange(record: BoundaryRecord): void;
 }
