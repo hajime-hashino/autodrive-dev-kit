@@ -75,8 +75,10 @@ export class JsonlTelemetry implements TelemetryPort {
    * 1箇所に閉じるためと、この経路を通れること自体がアダプタが動いている証明に
    * なるためである。壊れていれば印を進められない。
    */
-  recordEnactment(invariant: string, detail: string): void {
-    this.#write({ type: "enactment", invariant, detail });
+  recordEnactment(invariant: string, detail: string, boundary: string): void {
+    // 覆う範囲を印自身に持たせる。印の時刻とは別の値になりうるため
+    //（記録の時刻が時計に基づいていない場合がある）、明示的に残す。
+    this.#write({ type: "enactment", invariant, detail, boundary });
   }
 
   /** 必須属性の付与はここに閉じる。呼び出し側からは渡せない。 */
