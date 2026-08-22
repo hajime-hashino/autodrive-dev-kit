@@ -10,13 +10,14 @@
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.ts";
+import type { CheckInput } from "./checks.ts";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
 import { createRepoApi } from "./repoApi.ts";
 import { LinearTracker } from "./adapters/trackerLinear.ts";
 import { discoverRepos } from "./repos.ts";
 import type { Repo } from "./repos.ts";
 import { renderJson, renderText } from "./report.ts";
-import { INVARIANTS, Result } from "./state.ts";
+import { ACTIVE, INVARIANTS, Result } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { loadEvents } from "./telemetry.ts";
 
@@ -24,6 +25,7 @@ const USAGE = `不変条件の発効判定器
 
   verify [--root PATH] [--scope cross|self] [--format text|json]
   verify --enact <不変条件のキー> [--root PATH]
+  verify --substitute <不変条件のキー> --by <主体> --detail <内容> [--root PATH]
 
   --root    判定の起点。既定はカレントディレクトリ
   --scope   cross: 起点と直下のリポジトリを横断して判定（既定）
@@ -32,6 +34,10 @@ const USAGE = `不変条件の発効判定器
   --enact   発効境界を進める。これ以降の記録が判定の対象になる。
             記録を自動で残す仕掛けが登録されていなければ拒否する。
             印はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
+  --substitute
+            未発効の不変条件について、何が手で代替しているかを記録する。
+            定義§9の立ち上げ期の例外は、この記録があることを条件としている。
+            既に発効している不変条件に対しては拒否する。
 
 終了コード 0=失敗なし / 1=代替の記録が無い、または判定できない / 2=対象が無い
 判定基準の全文は docs/verify-criteria.md を参照。`;
@@ -80,6 +86,51 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
   };
 }
 
+/**
+ * 未発効の不変条件について、何が手で代替しているかを記録する。
+ *
+ * 定義§9の立ち上げ期の例外は「代替した事実を記録に残すこと」を条件としている。
+ * 手段が無ければ条件を満たしようがない。
+ *
+ * **既に発効している不変条件に対しては拒否する。** 代替が要らない状態に代替の
+ * 記録を足すと、発効が落ちたときに古い記録が残って判定を誤らせる。
+ *
+ * 記録はアダプタ経由で書く。手で書けば発効が落ちる形は保つ。
+ */
+async function substitute(
+  invariant: string,
+  by: string | undefined,
+  detail: string | undefined,
+  root: string,
+  input: CheckInput,
+): Promise<{ output: string; code: number }> {
+  const known = INVARIANTS.map((i) => i.key);
+  if (!known.includes(invariant)) {
+    return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
+  }
+  if ((by ?? "").trim() === "") return { output: "--by は必須（何が代替しているか）", code: 2 };
+  if ((detail ?? "").trim() === "") return { output: "--detail は必須", code: 2 };
+
+  const check = CHECKS.find((c) => c.key === invariant);
+  if (check !== undefined) {
+    const current = await check.run(input);
+    if (current.state === ACTIVE) {
+      return {
+        output: `${invariant} は既に発効している。代替の記録は要らない。`,
+        code: 2,
+      };
+    }
+  }
+
+  const telemetry = new JsonlTelemetry(resolve(root));
+  telemetry.recordSubstitution(invariant, by as string, detail as string);
+  const written = telemetry.lastWrite;
+  if (written === null || !written.attributed) {
+    return { output: "代替の記録が作業単位に紐づかなかった。着手してから実行すること。", code: 1 };
+  }
+  return { output: `${invariant} の代替を記録した: ${written.path}`, code: 0 };
+}
+
 export async function run(argv: string[]): Promise<{ output: string; code: number }> {
   const { values } = parseArgs({
     args: argv,
@@ -88,6 +139,9 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
       scope: { type: "string", default: "cross" },
       format: { type: "string", default: "text" },
       enact: { type: "string" },
+      substitute: { type: "string" },
+      by: { type: "string" },
+      detail: { type: "string" },
       help: { type: "boolean", default: false },
     },
     strict: true,
@@ -102,14 +156,14 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
   }
   const scope: Scope = values.scope;
 
-  const repos = discoverRepos(values.root, values.enact === undefined ? scope : "cross");
+  // 印を進める操作も代替の記録も、リポジトリをまたいだ状態に対して行う。
+  const writing = values.enact !== undefined || values.substitute !== undefined;
+  const repos = discoverRepos(values.root, writing ? "cross" : scope);
   if (repos.length === 0) {
     return { output: `判定対象のリポジトリが見つからない: ${resolve(values.root)}`, code: 2 };
   }
 
   const { events, broken } = loadEvents(repos);
-  if (values.enact !== undefined) return enact(values.enact, values.root, repos);
-
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
   const trackerToken = process.env.LINEAR_API_KEY;
   const tracker =
@@ -117,6 +171,14 @@ export async function run(argv: string[]): Promise<{ output: string; code: numbe
       ? null
       : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
   const input = { repos, events, broken, api, tracker, scope };
+
+  if (values.enact !== undefined) return enact(values.enact, values.root, repos);
+  if (values.substitute !== undefined) {
+    return await substitute(values.substitute, values.by, values.detail, values.root, {
+      ...input,
+      scope: "cross",
+    });
+  }
 
   const results: Result[] = [];
   for (const { key, label } of INVARIANTS) {
