@@ -95,6 +95,19 @@ export class JsonlTelemetry implements TelemetryPort {
     this.#write({ type: "enactment", invariant, detail, boundary });
   }
 
+  /**
+   * 代替を記録する。
+   *
+   * **ポート語彙ではない。** 不変条件の発効状態についての記述であり、
+   * 発効を判定する側（verify）が読む対象である。スキルからは呼ばれない。
+   *
+   * 定義§9は立ち上げ期の例外の条件として「代替した事実を記録に残すこと」を
+   * 挙げている。手段が無ければ、条件を満たしようがない。
+   */
+  recordSubstitution(invariant: string, by: string, detail: string): void {
+    this.#write({ type: "substitution", invariant, substituted_by: by, detail });
+  }
+
   /** 必須属性の付与はここに閉じる。呼び出し側からは渡せない。 */
   #write(body: Record<string, unknown>): void {
     const item = currentWorkItem(this.#root);
