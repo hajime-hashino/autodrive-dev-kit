@@ -373,3 +373,41 @@ test("境界より前でも、必須属性の欠けは見逃さない", async ()
   const r = await check("telemetry_recorded").run(input({ events }));
   assert.equal(r.state, UNSUBSTITUTED);
 });
+
+// --------------------------------------------------------- 未発効の結論
+
+test("境界変更履歴にエントリがあっても、代替の記録があれば失敗しない", async () => {
+  // 履歴が空でない経路。ここで代替の添付を忘れると UNSUBSTITUTED へ落ちる。
+  const repo = {
+    ...fakeRepo("r"),
+    boundaryHistoryFile: () => "/tmp/r/boundary-changes.md",
+    read: () => "## 2026-08-23 初期状態を置いた\n- 設定変更: commit abc1234\n",
+  } as unknown as Repo;
+  const events = [
+    event({ type: "substitution", invariant: "outer_loop_running", detail: "まだ一周していない" }),
+  ];
+  const r = await check("outer_loop_running").run(input({ repos: [repo], events }));
+  assert.equal(r.state, SUBSTITUTED);
+  assert.equal(r.failing, false);
+  assert.deepEqual(r.substitutions, ["まだ一周していない"]);
+});
+
+test("履歴が空の経路でも同じく代替が効く", async () => {
+  const events = [
+    event({ type: "substitution", invariant: "outer_loop_running", detail: "境界表が無い" }),
+  ];
+  const r = await check("outer_loop_running").run(input({ events }));
+  assert.equal(r.state, SUBSTITUTED);
+  assert.equal(r.failing, false);
+});
+
+test("すべての判定が、未発効のときに代替の記録を読むこと", async () => {
+  // 代替の記録が無ければ、どの判定も UNSUBSTITUTED になる。
+  // 添付を忘れた経路があると、代替を置いても失敗したままになり、ここで露見する。
+  const withSubstitutions = ["outer_loop_running", "boundary_change_logged", "ai_cannot_disable"];
+  for (const key of withSubstitutions) {
+    const events = [event({ type: "substitution", invariant: key, detail: "代替あり" })];
+    const r = await check(key).run(input({ events }));
+    assert.notEqual(r.state, UNSUBSTITUTED, `${key} が代替の記録を読んでいない`);
+  }
+});
