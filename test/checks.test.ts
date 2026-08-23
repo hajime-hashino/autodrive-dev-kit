@@ -43,7 +43,11 @@ function repoWithHook(name: string): Repo {
 }
 
 function fakeApi(responder: (slug: string) => ApiResponse, available = true): RepoApi {
-  return { available, rulesets: async (slug) => responder(slug) };
+  return {
+    available,
+    rulesets: async (slug) => responder(slug),
+    submissionsFor: async () => ({ status: 200, body: [] }),
+  };
 }
 
 function event(over: Record<string, unknown> = {}): TelemetryEvent {
