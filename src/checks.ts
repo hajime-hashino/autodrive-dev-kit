@@ -296,8 +296,13 @@ const checkBoundaryChangeLogged: Check = async ({ repos, events }) => {
 const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
   const r = resultFor("outer_loop_running");
 
-  // 承認は「提出を経て統合されたこと」で導出する。宣言に依らないことが条件
-  // （定義§17）。読めない場合に発効と報告してはいけない。
+  // 承認は「変更を統合する」が実行された事実から導出する。宣言に依らないことが
+  // 条件である（定義§8）。
+  //
+  // **読めない場合は未発効ではなく失敗にする。** セルが動いているのに承認を
+  // 確かめられない状態は、未発効なのではなく判定できていない状態であり、
+  // 定義§9はそれ自体を失敗として扱うとしている。代替を添えて通すと、判定できて
+  // いないことが未発効の中に紛れる。
   let approvalUnreadable: string | null = null;
   let qualified = 0;
 
@@ -359,11 +364,19 @@ const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
   r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）");
 
   if (qualified === 0) {
-    if (approvalUnreadable !== null) r.observe(approvalUnreadable);
+    if (approvalUnreadable !== null) {
+      // 未発効ではなく、判定できていない。代替を添えて通すと両者が区別できなくなる。
+      r.observe(approvalUnreadable);
+      r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+      return r.conclude(UNSUBSTITUTED);
+    }
     r.observe("セルが動き、根拠と承認の揃ったエントリが無い（外側ループが一周していない）");
     return substituted(r, events);
   }
 
+  // 承認の揃ったエントリが1件でもあれば、起動したかは判定できている。読めなかった
+  // 別のエントリは、結論を覆さないが穴なので観測として残す。
+  if (approvalUnreadable !== null) r.observe(approvalUnreadable);
   return r.conclude(ACTIVE);
 };
 
