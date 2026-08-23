@@ -14,7 +14,8 @@ import type { Scope } from "./state.ts";
 import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail } from "./telemetry.ts";
 import type { TelemetryEvent } from "./telemetry.ts";
 import { boundaryFor, eventsAfter } from "./enactment.ts";
-import { isPlanLimited } from "./repoApi.ts";
+import { movedAreas, parseAreas } from "./boundaries.ts";
+import { hasMergedSubmission, isPlanLimited } from "./repoApi.ts";
 import type { RepoApi } from "./repoApi.ts";
 import type { TrackerPort } from "./ports/tracker.ts";
 
@@ -292,32 +293,89 @@ const checkBoundaryChangeLogged: Check = async ({ repos, events }) => {
  * 継続の閾値は定めない。定義§17が緩和しきい値を未確定としており、実データなしに
  * 決め打ちすると根拠の無い数字が残るため。
  */
-const checkOuterLoopRunning: Check = async ({ repos, events }) => {
+const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
   const r = resultFor("outer_loop_running");
-  let entries = 0;
+
+  // 承認は「提出を経て統合されたこと」で導出する。宣言に依らないことが条件
+  // （定義§17）。読めない場合に発効と報告してはいけない。
+  let approvalUnreadable: string | null = null;
+  let qualified = 0;
 
   for (const repo of repos) {
+    if (repo.boundariesFile() === null) continue;
     const historyPath = repo.boundaryHistoryFile();
-    if (historyPath === null) continue;
-    const found = repo
-      .read(historyPath)
-      .split("\n")
-      .filter((line) => line.startsWith("## ")).length;
-    entries += found;
-    r.observe(`${repo.name}: 境界変更履歴に ${found} 件のエントリ`);
+    const history = historyPath === null ? "" : repo.read(historyPath);
+    const slug = repo.remoteSlug();
+
+    const log = repo.git("log", "--format=%H", "--", "boundaries.yaml") ?? "";
+    const commits = log.split("\n").map((c) => c.trim()).filter(Boolean);
+    r.observe(`${repo.name}: boundaries.yaml を変更したコミット ${commits.length} 件`);
+
+    for (const sha of commits) {
+      // 初期設置は動きではない。親に版が無いコミットがそれにあたる。
+      const after = repo.git("show", `${sha}:boundaries.yaml`);
+      const before = repo.git("show", `${sha}^:boundaries.yaml`);
+      if (after === null) continue;
+      if (before === null) {
+        r.observe(`${sha.slice(0, 7)}: 境界表の初期設置（動きとして数えない）`);
+        continue;
+      }
+
+      const moved = movedAreas(parseAreas(before), parseAreas(after));
+      if (moved.length === 0) continue;
+
+      const section = historySectionFor(history, sha);
+      if (section === null) {
+        r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動いたが、履歴から参照されていない`);
+        continue;
+      }
+      if (!section.includes("根拠")) {
+        r.observe(`${sha.slice(0, 7)}: 履歴の記載に根拠が無い`);
+        continue;
+      }
+
+      if (slug === null) {
+        approvalUnreadable ??= `${repo.name}: origin が無く、統合の事実を確かめられない`;
+        continue;
+      }
+      const res = await api.submissionsFor(slug, sha);
+      if (!hasMergedSubmission(res)) {
+        if (res.status === 200) {
+          r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動いたが、まだ統合されていない`);
+        } else {
+          approvalUnreadable ??=
+            `${slug}: 応答 ${res.status} — 提出を読めないため、承認を確かめられない`;
+        }
+        continue;
+      }
+
+      qualified += 1;
+      r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動き、根拠と統合済みの提出が揃っている`);
+    }
   }
 
-  if (entries === 0) {
-    r.observe("境界変更履歴が無い、またはエントリが1件も無い（外側ループが一周していない）");
+  // 継続の閾値は定めない。定義§17が未確定としており、実データなしに決め打ちすると
+  // 根拠の無い数字が残る。
+  r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）");
+
+  if (qualified === 0) {
+    if (approvalUnreadable !== null) r.observe(approvalUnreadable);
+    r.observe("セルが動き、根拠と承認の揃ったエントリが無い（外側ループが一周していない）");
     return substituted(r, events);
   }
 
-  r.notImplemented(
-    "エントリが根拠・コミット・承認の3点を備えるかの検証（段階3で境界表が置かれてから実装する）",
-  );
-  r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）");
-  return substituted(r, events);
+  return r.conclude(ACTIVE);
 };
+
+/** 当該コミットに触れている境界変更履歴の節。見つからなければ null。 */
+function historySectionFor(history: string, sha: string): string | null {
+  const short = sha.slice(0, 7);
+  const sections = history.split(/^## /m).slice(1);
+  for (const section of sections) {
+    if (section.includes(sha) || section.includes(short)) return section;
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 
