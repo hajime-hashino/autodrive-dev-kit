@@ -108,10 +108,21 @@ async function crossCheckTracker(
   return true;
 }
 
-/** 代替の記録があれば添える。無ければ conclude が UNSUBSTITUTED へ落とす。 */
-function attachSubstitution(r: Result, events: TelemetryEvent[]): void {
+/**
+ * 未発効と結論づける。
+ *
+ * **代替の添付と結論を1つにまとめている。** 別々にしていたとき、添付を忘れた
+ * 経路が2度できた（AUT-15 / AUT-33）。忘れられる形にしておくと、同じ型が
+ * 別の判定に現れ続ける。
+ *
+ * 代替の記録が無ければ conclude が UNSUBSTITUTED へ落とす。それは正しい挙動で
+ * あり、ここで握りつぶさない。**代替が無い未発効は、立ち上げ期の例外の条件を
+ * 満たしていない**（定義§9）。
+ */
+function substituted(r: Result, events: TelemetryEvent[]): Result {
   const detail = firstSubstitutionDetail(events, r.key);
   if (detail !== null) r.substitutedBy(detail);
+  return r.conclude(SUBSTITUTED);
 }
 
 // ---------------------------------------------------------------------------
@@ -221,8 +232,7 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     const sources = [...new Set(manual.map((e) => e.source))].sort();
     r.observe(`${manual.length} 件が emitter=manual（アダプタを経由せずファイルへ直書き）`);
     r.observe(`直書きのあるファイル: ${sources.join(", ")}`);
-    attachSubstitution(r, allEvents);
-    return r.conclude(SUBSTITUTED);
+    return substituted(r, allEvents);
   }
 
   r.observe("全イベントが emitter=adapter");
@@ -244,8 +254,7 @@ const checkBoundaryChangeLogged: Check = async ({ repos, events }) => {
   if (targets.length === 0) {
     r.observe("boundaries.yaml がどのリポジトリにも無い（動かす対象が存在しない）");
     // 対象が無いことを発効と報告してはいけない。仕組みが無いだけである。
-    attachSubstitution(r, events);
-    return r.conclude(SUBSTITUTED);
+    return substituted(r, events);
   }
 
   const unreferenced: string[] = [];
@@ -267,8 +276,7 @@ const checkBoundaryChangeLogged: Check = async ({ repos, events }) => {
     for (const c of unreferenced.slice(0, 10)) {
       r.observe(`履歴から参照されていないコミット: ${c.slice(0, 7)}`);
     }
-    attachSubstitution(r, events);
-    return r.conclude(SUBSTITUTED);
+    return substituted(r, events);
   }
 
   r.observe("boundaries.yaml の全変更コミットが履歴から参照されている");
@@ -301,15 +309,14 @@ const checkOuterLoopRunning: Check = async ({ repos, events }) => {
 
   if (entries === 0) {
     r.observe("境界変更履歴が無い、またはエントリが1件も無い（外側ループが一周していない）");
-    attachSubstitution(r, events);
-    return r.conclude(SUBSTITUTED);
+    return substituted(r, events);
   }
 
   r.notImplemented(
     "エントリが根拠・コミット・承認の3点を備えるかの検証（段階3で境界表が置かれてから実装する）",
   );
   r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）");
-  return r.conclude(SUBSTITUTED);
+  return substituted(r, events);
 };
 
 // ---------------------------------------------------------------------------
@@ -369,8 +376,7 @@ const checkAiCannotDisable: Check = async ({ repos, events, api }) => {
     r.notImplemented(
       "verify を必須チェックとして登録しているかの検証（ruleset が使えないため判定手段が無い）",
     );
-    attachSubstitution(r, events);
-    return r.conclude(SUBSTITUTED);
+    return substituted(r, events);
   }
 
   r.notImplemented("エージェントに渡っている資格情報が保護設定を変更できないことの検証");
