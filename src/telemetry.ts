@@ -2,6 +2,9 @@
 
 import type { Repo } from "./repos.ts";
 
+/** 帰属できなかった記録の置き場。作業単位を解決できない場合だけここへ落ちる。 */
+export const UNATTRIBUTED_FILE = "unattributed.jsonl";
+
 export const REQUIRED_EVENT_ATTRS = [
   "work_item_id",
   "model",
@@ -67,4 +70,22 @@ export function firstSubstitutionDetail(
   const note = substitutionNotes(events, invariantKey)[0];
   if (note === undefined) return null;
   return typeof note.detail === "string" ? note.detail : "（詳細の記載なし）";
+}
+
+/**
+ * 帰属できなかった記録か。
+ *
+ * **置き場と理由の両方を要求する。** 片方だけでは抜け道になる。理由だけを見ると、
+ * どの記録も「帰属できなかった」と名乗れば作業単位を持たずに済む。置き場だけを
+ * 見ると、そのファイルへ何でも投げ込めばよいことになる。
+ *
+ * 帰属できないことが正当な場面は実在する。作業単位を起こすかどうかの検討や、
+ * 起票されていない依頼がそれにあたる。**起票せずに作業を始めることを妨げる仕掛けは
+ * いまの構成に無い**ため、これを壊れた記録として扱うと、正しく動いた記録が失敗と
+ * して現れ続ける。
+ */
+export function isUnattributed(event: TelemetryEvent): boolean {
+  const inFile = event.source.endsWith(`/${UNATTRIBUTED_FILE}`);
+  const reason = event.unattributed_reason;
+  return inFile && typeof reason === "string" && reason.trim() !== "";
 }
