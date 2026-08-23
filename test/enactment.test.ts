@@ -67,6 +67,23 @@ test("時刻はオフセットを解いて比べる。文字列のまま比べ�
   assert.equal(after.some((e) => e.emitter === "manual"), false);
 });
 
+// **どの印が最後かも、オフセットを解いて決める。** 絞り込み側だけを実時刻で
+// 比べても、選んだ印が誤っていれば境界そのものが誤る。上のテストは印が1つの場合
+// しか通しておらず、この経路を覆っていなかった（AUT-42 で照合して判明）。
+test("どの印が最後かも、オフセットを解いて決める", () => {
+  const events = [
+    mark("2026-08-22T10:00:00+09:00"), // = 01:00Z。辞書順では後ろに来る
+    mark("2026-08-22T05:00:00Z"), // 実時刻ではこちらが後
+    ev("2026-08-22T03:00:00Z", { emitter: "manual" }),
+  ];
+  const b = boundaryFor(events, KEY);
+
+  assert.equal(parseTs(b.since), Date.parse("2026-08-22T05:00:00Z"));
+  assert.equal(b.moves, 2);
+  // 辞書順で選ぶと境界が 01:00Z になり、03:00Z の直書きが対象に残ってしまう。
+  assert.equal(eventsAfter(events, b).some((e) => e.emitter === "manual"), false);
+});
+
 test("印が覆う範囲を持っていれば、印の時刻ではなくそちらを使う", () => {
   const events = [
     ev("2026-08-21T16:00:00Z", { type: "enactment", invariant: KEY, boundary: "2026-08-22T15:00:00+09:00" }),
