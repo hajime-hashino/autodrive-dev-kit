@@ -11,7 +11,7 @@ import { join } from "node:path";
 import type { Repo } from "./repos.ts";
 import { ACTIVE, INVARIANTS, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
 import type { Scope } from "./state.ts";
-import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail } from "./telemetry.ts";
+import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail, isUnattributed } from "./telemetry.ts";
 import type { TelemetryEvent } from "./telemetry.ts";
 import { boundaryFor, eventsAfter } from "./enactment.ts";
 import { movedAreas, parseAreas } from "./boundaries.ts";
@@ -168,9 +168,21 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
 
   // 属性の存在だけでなく値も見る。アダプタは作業単位を解決できなかった場合に
   // work_item_id へ null を書く。存在確認だけでは、その記録を通してしまう。
+  //
+  // **帰属できなかった記録だけは、work_item_id を求めない。** 起票せずに作業を
+  // 始めることを妨げる仕掛けがいまの構成に無い以上、どの作業単位にも属さない
+  // やり取り（起票するかの検討、未起票の依頼）は実在する。それを壊れた記録として
+  // 扱うと、正しく動いた記録が失敗として現れ続け、しかも遡って付与できないため
+  // 二度と消せない。
+  //
+  // **免除するのは work_item_id だけ。** model / kit_version / emitter は
+  // ランタイム由来であり、帰属できなくても必ず付く。
+  const unattributed = allEvents.filter(isUnattributed);
   const missing: string[] = [];
   for (const event of allEvents) {
+    const exempt = isUnattributed(event) ? new Set(["work_item_id"]) : new Set<string>();
     for (const attr of REQUIRED_EVENT_ATTRS) {
+      if (exempt.has(attr)) continue;
       const value = event[attr];
       if (typeof value !== "string" || value.trim() === "") {
         missing.push(`${event.source}: ${attr}${attr in event ? "（値が空）" : "（属性が無い）"}`);
@@ -184,6 +196,14 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     return r.conclude(UNSUBSTITUTED);
   }
   r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} は全イベントが持つ`);
+
+  // **見えなくしない。** 件数は、起票せずに始めた作業がどれだけあるかの信号で
+  // あり、外側ループが読むべき入力になる（AUT-48 と同じ層）。
+  if (unattributed.length > 0) {
+    const reasons = [...new Set(unattributed.map((e) => String(e.unattributed_reason)))];
+    r.observe(`作業単位に帰属できなかった記録が ${unattributed.length} 件ある`);
+    for (const reason of reasons.slice(0, 3)) r.observe(`帰属できなかった理由: ${reason}`);
+  }
 
   const known = new Set<unknown>(EMITTERS);
   const unknownEmitters = [...new Set(allEvents.map((e) => e.emitter))].filter((v) => !known.has(v));
