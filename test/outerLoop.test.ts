@@ -6,7 +6,7 @@ import { movedAreas, parseAreas } from "../src/boundaries.ts";
 import type { Repo } from "../src/repos.ts";
 import type { ApiResponse, RepoApi } from "../src/repoApi.ts";
 import type { TrackerPort, WorkItemView } from "../src/ports/tracker.ts";
-import { ACTIVE, SUBSTITUTED } from "../src/state.ts";
+import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.ts";
 import type { TelemetryEvent } from "../src/telemetry.ts";
 
 const outerLoop = CHECKS.find((c) => c.key === "outer_loop_running")!;
@@ -205,27 +205,52 @@ test("まだ統合されていなければ発効しない", async () => {
   assert.equal(r.state, SUBSTITUTED);
 });
 
-// **読めないことを、通ったことにしない。** 承認を確かめられないまま発効を
-// 名乗ると、判定そのものが意味を失う（定義§9）。
-test("提出を読めなければ発効せず、読めない理由を出す", async () => {
+// **読めないことを、通ったことにしない。** 承認を確かめられないまま発効を名乗ると
+// 判定そのものが意味を失う。そして**未発効でもない。** 判定できていない状態であり、
+// 定義§9はそれ自体を失敗として扱う。
+test("統合を読めなければ失敗する。未発効ではない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     HISTORY,
   );
   const r = await outerLoop.run(input(repo, forbidden));
-  assert.equal(r.state, SUBSTITUTED);
+  assert.equal(r.state, UNSUBSTITUTED);
   assert.ok(
     r.observations.some((o) => o.includes("403") && o.includes("承認")),
     `読めない理由が出ていない: ${JSON.stringify(r.observations)}`,
   );
 });
 
-test("origin が無ければ承認を確かめられない", async () => {
+test("origin が無ければ承認を確かめられず、失敗する", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     HISTORY,
     null,
   );
   const r = await outerLoop.run(input(repo, merged));
-  assert.equal(r.state, SUBSTITUTED);
+  assert.equal(r.state, UNSUBSTITUTED);
+});
+
+// 判定できていないのは、結論が出せない場合に限る。
+test("1件でも承認が揃っていれば、別の1件が読めなくても発効する", async () => {
+  const history = `${HISTORY}
+## 2026-08-24 もう1つ動かした
+
+- 設定変更: commit ccccccc
+- 根拠: 実績2件
+`;
+  const repo = repoWith(
+    [
+      ["aaaaaaa", table()],
+      ["bbbbbbb", table({ detectable: true })],
+      ["ccccccc", table({ detectable: true, state: "委譲済み" })],
+    ],
+    history,
+  );
+  const r = await outerLoop.run(input(repo, (sha) => (sha === "ccccccc" ? forbidden() : merged())));
+  assert.equal(r.state, ACTIVE);
+  assert.ok(
+    r.observations.some((o) => o.includes("403")),
+    `読めなかった穴が残っていない: ${JSON.stringify(r.observations)}`,
+  );
 });
