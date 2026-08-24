@@ -169,11 +169,11 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
   // 属性の存在だけでなく値も見る。アダプタは作業単位を解決できなかった場合に
   // work_item_id へ null を書く。存在確認だけでは、その記録を通してしまう。
   //
-  // **帰属できなかった記録だけは、work_item_id を求めない。** 起票せずに作業を
-  // 始めることを妨げる仕掛けがいまの構成に無い以上、どの作業単位にも属さない
-  // やり取り（起票するかの検討、未起票の依頼）は実在する。それを壊れた記録として
-  // 扱うと、正しく動いた記録が失敗として現れ続け、しかも遡って付与できないため
-  // 二度と消せない。
+  // **帰属できなかった記録だけは、work_item_id を求めない。** 定義§6（v0.10）は、
+  // どの作業単位にも属さないやり取り（起票するかの検討、未起票の依頼）を§6の
+  // イベントではないと整理している。例外ではなく対象外である。壊れた記録として
+  // 扱うと、正しく動いた記録が失敗として現れ続け、遡って付与できないため二度と
+  // 消せない。
   //
   // **免除するのは work_item_id だけ。** model / kit_version / emitter は
   // ランタイム由来であり、帰属できなくても必ず付く。
@@ -197,8 +197,8 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
   }
   r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} は全イベントが持つ`);
 
-  // **見えなくしない。** 件数は、起票せずに始めた作業がどれだけあるかの信号で
-  // あり、外側ループが読むべき入力になる（AUT-48 と同じ層）。
+  // **見えなくしない。** 件数は、帰属しないやり取りがどれだけあるかの信号であり、
+  // 量が無視できなくなったときに§6の判断をやり直す材料になる。
   if (unattributed.length > 0) {
     const reasons = [...new Set(unattributed.map((e) => String(e.unattributed_reason)))];
     r.observe(`作業単位に帰属できなかった記録が ${unattributed.length} 件ある`);

@@ -20,26 +20,68 @@ export interface WorkItem {
   repoPath: string;
 }
 
+export interface WorkItemResolution {
+  item: WorkItem | null;
+  /** 解決できなかった理由。解決できた場合は null。 */
+  unattributedReason: string | null;
+}
+
 /**
- * 現在の作業単位を読む。
+ * 現在の作業単位を解決する。
  *
- * **見つからない場合は null を返し、呼び出し側はそれを握りつぶさないこと。**
- * 作業単位に紐づかない作業は起票せずに始めた作業であり、記録から消すのではなく
- * 記録に残して検出させる。
+ * **解決できない理由を3つに見分ける。** 定義§6（v0.10）は、作業単位に帰属しない
+ * やり取りが実在することを認める一方、**帰属できるものは必ず紐づける**ことを求めて
+ * いる。マーカーが壊れている場合は帰属できたはずの記録であり、そもそも作業単位が
+ * 無い場合とは意味が違う。同じ言葉で報告すると、壊れているのか、紐づく先が無い
+ * のかを読んだ側が区別できない。
+ *
+ * 原因の違うものを同じ言葉で言い切って人を誤らせた例が、記録に3件ある
+ * （AUT-37 の2件・AUT-39）。同じ型をここで繰り返さない。
  */
-export function currentWorkItem(root: string): WorkItem | null {
+export function resolveWorkItem(root: string): WorkItemResolution {
   const path = join(root, STATE_DIR, "current-work-item.json");
-  if (!existsSync(path)) return null;
+  if (!existsSync(path)) {
+    return {
+      item: null,
+      unattributedReason:
+        "作業単位マーカーが無い。作業単位に紐づかないやり取り（起票するかの検討など）である可能性がある",
+    };
+  }
+
   let parsed: { work_item_id?: unknown; repo?: unknown };
   try {
     parsed = JSON.parse(readFileSync(path, "utf8")) as typeof parsed;
   } catch {
-    return null;
+    return {
+      item: null,
+      unattributedReason:
+        "作業単位マーカーが読めない。壊れている。**紐づけられたはずの記録が帰属しないまま残る**",
+    };
   }
+
   const workItemId = typeof parsed.work_item_id === "string" ? parsed.work_item_id.trim() : "";
   const repo = typeof parsed.repo === "string" ? parsed.repo.trim() : "";
-  if (workItemId === "" || repo === "") return null;
-  return { workItemId, repoPath: resolveRepo(root, repo) };
+  if (workItemId === "" || repo === "") {
+    const missing = [workItemId === "" ? "work_item_id" : null, repo === "" ? "repo" : null]
+      .filter((v): v is string => v !== null)
+      .join(" / ");
+    return {
+      item: null,
+      unattributedReason: `作業単位マーカーの内容が欠けている（${missing}）。**紐づけられたはずの記録が帰属しないまま残る**`,
+    };
+  }
+
+  return { item: { workItemId, repoPath: resolveRepo(root, repo) }, unattributedReason: null };
+}
+
+/**
+ * 現在の作業単位を読む。
+ *
+ * **見つからない場合は null を返し、呼び出し側はそれを握りつぶさないこと。**
+ * 理由まで要る場合は `resolveWorkItem` を使う。
+ */
+export function currentWorkItem(root: string): WorkItem | null {
+  return resolveWorkItem(root).item;
 }
 
 /** リポジトリ名から作業ツリーの位置を求める。work 自身は直下ではなく起点そのもの。 */
