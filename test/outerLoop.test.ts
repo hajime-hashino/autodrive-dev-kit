@@ -67,6 +67,7 @@ function api(responder: (sha: string) => ApiResponse): RepoApi {
     available: true,
     rulesets: async () => ({ status: 200, body: [] }),
     submissionsFor: async (_slug, sha) => responder(sha),
+    repository: async () => ({ status: 200, body: { default_branch: "main" } }),
   };
 }
 

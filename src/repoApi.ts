@@ -18,6 +18,8 @@ export interface RepoApi {
    * 判定側は「統合されたか」だけを見る。実装名はここから出さない。
    */
   submissionsFor(slug: string, sha: string): Promise<ApiResponse>;
+  /** Repo が既定としているブランチ。手元の設定が無い場合の拠り所になる。 */
+  repository(slug: string): Promise<ApiResponse>;
 }
 
 export function createRepoApi(token: string | undefined): RepoApi {
@@ -50,7 +52,15 @@ export function createRepoApi(token: string | undefined): RepoApi {
     available: Boolean(token),
     rulesets: (slug) => get(`repos/${slug}/rulesets`),
     submissionsFor: (slug, sha) => get(`repos/${slug}/commits/${sha}/pulls`),
+    repository: (slug) => get(`repos/${slug}`),
   };
+}
+
+/** 応答から既定ブランチを読む。読めなければ null。 */
+export function defaultBranchOf(res: ApiResponse): string | null {
+  if (res.status !== 200) return null;
+  const value = (res.body as { default_branch?: unknown })?.default_branch;
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
 /** 応答の中に、統合済みの提出が1件以上あるか。 */

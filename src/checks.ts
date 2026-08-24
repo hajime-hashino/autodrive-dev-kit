@@ -15,7 +15,8 @@ import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail, isUnattributed
 import type { TelemetryEvent } from "./telemetry.ts";
 import { boundaryFor, eventsAfter } from "./enactment.ts";
 import { movedAreas, parseAreas } from "./boundaries.ts";
-import { hasMergedSubmission, isPlanLimited } from "./repoApi.ts";
+import { directCommitCandidates, localDefaultBranch } from "./directCommits.ts";
+import { defaultBranchOf, hasMergedSubmission, isPlanLimited } from "./repoApi.ts";
 import type { RepoApi } from "./repoApi.ts";
 import type { TrackerPort } from "./ports/tracker.ts";
 
@@ -400,6 +401,55 @@ const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
   return r.conclude(ACTIVE);
 };
 
+/**
+ * 提出を経ずに既定ブランチへ入った変更。判定できなければ null を返す。
+ *
+ * 候補が出たときだけ Repo API に問い合わせる。squash マージを使う実装では
+ * 全コミットが非マージになるため、コミットの形だけでは決められない。
+ * **通常は候補が出ないので、API 呼び出しは発生しない。**
+ */
+async function directCommitsAcross(
+  r: Result,
+  repos: Repo[],
+  api: RepoApi,
+): Promise<string[] | null> {
+  const found: string[] = [];
+  for (const repo of repos) {
+    const slug = repo.remoteSlug();
+    if (slug === null) {
+      r.observe(`${repo.name}: origin が無く、提出を経たかを確かめられない`);
+      return null;
+    }
+
+    // 手元の設定を先に見る。無い場合だけ Repo に尋ねる。`git init` から作った
+    // 作業ツリーには origin/HEAD が無く、そこで止めると誤警報になる。
+    let branch = localDefaultBranch(repo);
+    if (branch === null) branch = defaultBranchOf(await api.repository(slug));
+    if (branch === null) {
+      r.observe(`${repo.name}: 既定ブランチを特定できず、提出を経たかを確かめられない`);
+      return null;
+    }
+
+    const candidates = directCommitCandidates(repo, branch);
+    if (candidates === null) {
+      r.observe(`${repo.name}: ${branch} の履歴を読めず、提出を経たかを確かめられない`);
+      return null;
+    }
+    if (candidates.length === 0) continue;
+
+    for (const c of candidates) {
+      const res = await api.submissionsFor(slug, c.sha);
+      if (hasMergedSubmission(res)) continue; // squash マージ等。提出を経ている
+      if (res.status !== 200) {
+        r.observe(`${slug}: 応答 ${res.status} — 提出を読めず、${c.sha.slice(0, 7)} を確かめられない`);
+        return null;
+      }
+      found.push(`${repo.name} ${c.sha.slice(0, 7)} ${c.subject}`);
+    }
+  }
+  return found;
+}
+
 /** 当該コミットに触れている境界変更履歴の節。見つからなければ null。 */
 function historySectionFor(history: string, sha: string): string | null {
   const short = sha.slice(0, 7);
@@ -456,6 +506,21 @@ const checkAiCannotDisable: Check = async ({ repos, events, api }) => {
     r.observe(`${slug}: ruleset が1件も無い（既定ブランチが保護されていない）`);
   }
   for (const msg of unreadable) r.observe(`読めない: ${msg}`);
+
+  // **保護設定を持てなくても、破られたかどうかは見られる。** 段階0で検出による
+  // 代替を選んだ以上、検出が無いまま規約だけで担保する状態を続けない。
+  const direct = await directCommitsAcross(r, repos, api);
+  if (direct === null) {
+    r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+    return r.conclude(UNSUBSTITUTED);
+  }
+  if (direct.length > 0) {
+    for (const line of direct.slice(0, 10)) r.observe(`提出を経ずに既定ブランチへ入っている: ${line}`);
+    if (direct.length > 10) r.observe(`...ほか ${direct.length - 10} 件`);
+    // 規約が破られている。代替が成立していないため、代替ありでは通さない。
+    return r.conclude(UNSUBSTITUTED);
+  }
+  r.observe("既定ブランチの変更は、すべて提出を経て入っている");
 
   if (unreadable.length > 0) {
     r.observe("判定できない対象がある。通さない（定義§9）");
