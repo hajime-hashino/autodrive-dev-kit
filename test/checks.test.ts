@@ -334,6 +334,72 @@ test("必須属性が空文字の記録も通さない", async () => {
   assert.equal(r.state, UNSUBSTITUTED);
 });
 
+// --------------------------------------------------- 帰属できなかった記録
+
+/** 作業単位に紐づけられなかった記録。置き場と理由の両方を持つ。 */
+function unattributed(over: Record<string, unknown> = {}): TelemetryEvent {
+  return event({
+    source: "repo/telemetry/unattributed.jsonl",
+    work_item_id: null,
+    type: "tokens",
+    unattributed_reason: "作業単位マーカーが無い。起票せずに作業した可能性がある",
+    ...over,
+  });
+}
+
+// **起票せずに作業を始めることを妨げる仕掛けが無い以上、どの作業単位にも属さない
+// やり取りは実在する。** 正しく動いた記録を、壊れた記録として失敗にしない。
+test("帰属できなかった記録があっても発効できる", async () => {
+  const events = [event(), unattributed()];
+  const r = await check("telemetry_recorded").run(
+    input({ events, repos: [repoWithHook("r")] }),
+  );
+  assert.equal(r.state, ACTIVE);
+});
+
+// **見えなくしない。** 件数は、起票せずに始めた作業の量を示す信号である。
+test("帰属できなかった記録の件数と理由を出す", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event(), unattributed(), unattributed()] }),
+  );
+  assert.ok(
+    r.observations.some((o) => o.includes("帰属できなかった記録が 2 件")),
+    `件数が出ていない: ${JSON.stringify(r.observations)}`,
+  );
+  assert.ok(r.observations.some((o) => o.includes("帰属できなかった理由")));
+});
+
+// 免除するのは work_item_id だけ。ランタイム由来の属性は帰属できなくても付く。
+test("帰属できなかった記録でも、model が欠ければ失敗する", async () => {
+  const r = await check("telemetry_recorded").run(input({ events: [unattributed({ model: "" })] }));
+  assert.equal(r.state, UNSUBSTITUTED);
+  // **「model」を含むかだけでは足りない。** 正常時の観測にも
+  // 「必須属性 work_item_id/model/... は全イベントが持つ」という行が出るため、
+  // それで通ってしまう。欠けたことを言う行そのものを見る。
+  assert.ok(
+    r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("model")),
+    `欠落を言う観測が無い: ${JSON.stringify(r.observations)}`,
+  );
+});
+
+// --- 抜け道を塞ぐ ---
+
+test("理由を名乗っても、置き場が違えば免除しない", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ source: "repo/telemetry/AUT-1.jsonl" })] }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("work_item_id")));
+});
+
+test("置き場が同じでも、理由が無ければ免除しない", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ unattributed_reason: "  " })] }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("work_item_id")));
+});
+
 test("発効境界より前の直書きは、判定の対象から外れる", async () => {
   const events = [
     event({ ts: "2026-01-01T00:00:00Z", emitter: "manual" }),
