@@ -17,7 +17,17 @@ function check(key: string) {
   return found;
 }
 
-function fakeRepo(name: string, slug: string | null = `owner/${name}`): Repo {
+/** 既定ブランチが提出だけで作られている履歴。根 + マージコミット。 */
+const CLEAN_LOG = [
+  "bbbbbbb\taaaaaaa ccccccc\tMerge pull request #1",
+  "aaaaaaa\t\t初期化",
+].join("\n");
+
+function fakeRepo(
+  name: string,
+  slug: string | null = `owner/${name}`,
+  log: string | null = CLEAN_LOG,
+): Repo {
   return {
     name,
     path: `/tmp/${name}`,
@@ -25,7 +35,11 @@ function fakeRepo(name: string, slug: string | null = `owner/${name}`): Repo {
     boundariesFile: () => null,
     boundaryHistoryFile: () => null,
     telemetryFiles: () => [],
-    git: () => null,
+    git: (...args: string[]) => {
+      if (args[0] === "symbolic-ref") return "origin/main\n";
+      if (args[0] === "log") return log;
+      return null;
+    },
     read: () => "",
   } as unknown as Repo;
 }
@@ -469,6 +483,63 @@ test("履歴が空の経路でも同じく代替が効く", async () => {
   const r = await check("outer_loop_running").run(input({ events }));
   assert.equal(r.state, SUBSTITUTED);
   assert.equal(r.failing, false);
+});
+
+// ------------------------------------------- 提出を経ずに入った変更
+
+const DIRECT_LOG = [
+  "bbbbbbb\tp1\tAUT-42 枝を切らずに直接コミット",
+  "aaaaaaa\t\t初期化",
+].join("\n");
+
+/** プラン制限で ruleset を持てない、いまの構成と同じ状況。 */
+function planLimitedApi(submissions: ApiResponse = { status: 200, body: [] }): RepoApi {
+  return {
+    available: true,
+    rulesets: async () => ({ status: 403, body: { message: "Upgrade to GitHub Pro" } }),
+    submissionsFor: async () => submissions,
+    repository: async () => ({ status: 200, body: { default_branch: "main" } }),
+  };
+}
+
+// **保護設定を持てなくても、破られたかどうかは見られる。**
+test("提出を経ずに既定ブランチへ入った変更があれば失敗する", async () => {
+  const repos = [fakeRepo("r", "owner/r", DIRECT_LOG)];
+  const r = await check("ai_cannot_disable").run(
+    input({ repos, api: planLimitedApi(), events: [event({ type: "substitution", invariant: "ai_cannot_disable", detail: "—" })] }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(
+    r.observations.some((o) => o.includes("提出を経ずに既定ブランチへ入っている") && o.includes("bbbbbbb")),
+    `どのコミットかを出していない: ${JSON.stringify(r.observations)}`,
+  );
+});
+
+// squash マージでは全コミットが非マージになる。コミットの形だけで決めない。
+test("統合済みの提出に含まれていれば、直接コミットとしない", async () => {
+  const repos = [fakeRepo("r", "owner/r", DIRECT_LOG)];
+  const merged = { status: 200, body: [{ merged_at: "2026-08-24T00:00:00Z" }] };
+  const r = await check("ai_cannot_disable").run(
+    input({ repos, api: planLimitedApi(merged), events: [event({ type: "substitution", invariant: "ai_cannot_disable", detail: "—" })] }),
+  );
+  assert.equal(r.state, SUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("すべて提出を経て入っている")));
+});
+
+test("提出を読めなければ、直接コミットの有無を判定しない", async () => {
+  const repos = [fakeRepo("r", "owner/r", DIRECT_LOG)];
+  const r = await check("ai_cannot_disable").run(
+    input({ repos, api: planLimitedApi({ status: 403, body: { message: "Resource not accessible" } }) }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("提出を読めず")), JSON.stringify(r.observations));
+});
+
+test("既定ブランチの履歴を読めなければ判定しない", async () => {
+  const repos = [fakeRepo("r", "owner/r", null)];
+  const r = await check("ai_cannot_disable").run(input({ repos, api: planLimitedApi() }));
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("提出を経たかを確かめられない")), JSON.stringify(r.observations));
 });
 
 test("すべての判定が、未発効のときに代替の記録を読むこと", async () => {
