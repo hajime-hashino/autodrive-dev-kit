@@ -9,6 +9,7 @@
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
+import { resolveWorkItem } from "./workItem.ts";
 
 const USAGE = `記録を残す
 
@@ -111,10 +112,13 @@ export function run(argv: string[], root: string): { output: string; code: numbe
 
   const written = telemetry.lastWrite;
   if (written === null) return { output: "記録できなかった", code: 1 };
+  // **理由をそのまま出す。** 紐づく先が無いのか、マーカーが壊れているのかで、
+  // 人がやることが違う。同じ言葉で報告すると、違うところを探すことになる。
+  const reason = resolveWorkItem(root).unattributedReason ?? "理由を特定できない";
   return {
     output: written.attributed
       ? `記録した: ${written.path}`
-      : `記録したが作業単位に紐づいていない: ${written.path}\n起票せずに作業していないか確認すること`,
+      : `記録したが作業単位に紐づいていない: ${written.path}\n${reason}`,
     // 紐づかない記録は残すが、成功として返さない。握りつぶさず、気づける形にする。
     code: written.attributed ? 0 : 1,
   };
