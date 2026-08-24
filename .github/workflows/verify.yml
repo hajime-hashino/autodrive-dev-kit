@@ -26,6 +26,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: work/autodrive-dev-kit
+          # **既定ブランチの履歴が要る。** 提出を経ずに入った変更の検出は
+          # first-parent を辿って判定するため、浅いチェックアウトでは
+          # 「判定できない」として失敗する。他の3リポジトリは git clone で
+          # 全履歴を取得している。
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
