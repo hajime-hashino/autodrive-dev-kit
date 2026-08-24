@@ -8,7 +8,7 @@
 
 import { KIT_VERSION } from "../kitVersion.ts";
 import { readSessionState } from "../sessionState.ts";
-import { appendEvent, currentWorkItem, telemetryPath } from "../workItem.ts";
+import { appendEvent, resolveWorkItem, telemetryPath } from "../workItem.ts";
 import type {
   BoundaryRecord,
   FixRecord,
@@ -110,22 +110,20 @@ export class JsonlTelemetry implements TelemetryPort {
 
   /** 必須属性の付与はここに閉じる。呼び出し側からは渡せない。 */
   #write(body: Record<string, unknown>): void {
-    const item = currentWorkItem(this.#root);
+    const { item, unattributedReason } = resolveWorkItem(this.#root);
     const session = readSessionState(this.#root);
     const path = telemetryPath(this.#root, item);
 
     appendEvent(path, {
       ts: this.#now().toISOString(),
-      // 解決できない属性は握りつぶさず null で残す。作業単位に紐づかない作業は
-      // 起票せずに始めた作業であり、記録から消すと違反も消える。
+      // 解決できない属性は握りつぶさず null で残す。理由を添えて残すことで、
+      // 紐づく先が無いのか、仕掛けが壊れているのかを後から読める。
       work_item_id: item?.workItemId ?? null,
       model: session.last_model,
       kit_version: KIT_VERSION,
       emitter: "adapter",
       ...body,
-      ...(item === null
-        ? { unattributed_reason: "作業単位マーカーが無い。起票せずに作業した可能性がある" }
-        : {}),
+      ...(item === null ? { unattributed_reason: unattributedReason } : {}),
     });
     this.#last = { path, attributed: item !== null };
   }
