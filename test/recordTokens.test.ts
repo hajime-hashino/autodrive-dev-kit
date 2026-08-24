@@ -104,7 +104,38 @@ test("作業単位が解決できなければ work_item_id を null で残す。
 
   const written = events(join(root, "telemetry", "unattributed.jsonl"));
   assert.equal(written[0].work_item_id, null);
-  assert.ok(String(written[0].unattributed_reason).includes("起票せず"));
+  assert.ok(String(written[0].unattributed_reason).includes("マーカーが無い"));
+});
+
+// **原因の違うものを同じ言葉で報告しない。** 定義§6（v0.10）は、作業単位に
+// 帰属しないやり取りが実在することを認める一方、帰属できるものは必ず紐づける
+// ことを求める。マーカーが壊れている場合は帰属できたはずの記録であり、そもそも
+// 紐づく先が無い場合とは意味が違う。
+test("マーカーが壊れている場合と、無い場合を見分ける", () => {
+  const { root, transcript } = fixture([assistant("claude-opus-5", "r1", { output_tokens: 7 })]);
+  mkdirSync(join(root, ".autodrive"), { recursive: true });
+  writeFileSync(join(root, ".autodrive", "current-work-item.json"), "{ これは JSON ではない", "utf8");
+  record({ transcript_path: transcript, session_id: "s1" }, root);
+
+  const reason = String(events(join(root, "telemetry", "unattributed.jsonl"))[0].unattributed_reason);
+  assert.ok(reason.includes("読めない"), `壊れていることを言っていない: ${reason}`);
+  assert.ok(!reason.includes("マーカーが無い"), `無い場合と同じ言葉になっている: ${reason}`);
+});
+
+test("マーカーの内容が欠けている場合も、無い場合と見分ける", () => {
+  const { root, transcript } = fixture([assistant("claude-opus-5", "r1", { output_tokens: 7 })]);
+  mkdirSync(join(root, ".autodrive"), { recursive: true });
+  writeFileSync(
+    join(root, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-1", repo: "" }),
+    "utf8",
+  );
+  record({ transcript_path: transcript, session_id: "s1" }, root);
+
+  const reason = String(events(join(root, "telemetry", "unattributed.jsonl"))[0].unattributed_reason);
+  assert.ok(reason.includes("欠けている"), `欠落を言っていない: ${reason}`);
+  assert.ok(reason.includes("repo"), `どれが欠けたかを言っていない: ${reason}`);
+  assert.ok(!reason.includes("マーカーが無い"), `無い場合と同じ言葉になっている: ${reason}`);
 });
 
 test("壊れた行があっても他の行の集計を止めない", () => {

@@ -15,7 +15,7 @@ import { readUsageSince } from "./transcript.ts";
 import { writeSessionState } from "./sessionState.ts";
 import {
   appendEvent,
-  currentWorkItem,
+  resolveWorkItem,
   cursorPath,
   readCursor,
   telemetryPath,
@@ -52,7 +52,7 @@ export function record(input: HookInput, root: string, now = new Date()): Record
     return { written: 0, path: null, note: "新しい使用量は無い" };
   }
 
-  const item = currentWorkItem(root);
+  const { item, unattributedReason } = resolveWorkItem(root);
   const path = telemetryPath(root, item);
   const ts = now.toISOString();
 
@@ -64,7 +64,7 @@ export function record(input: HookInput, root: string, now = new Date()): Record
   for (const usage of byModel) {
     appendEvent(path, {
       ts,
-      // 作業単位が解決できない場合は null を書く。埋めずに残すことで、起票せずに
+      // 作業単位が解決できない場合は null を書く。埋めずに残すことで、帰属しない
       // 始めた作業を verify が検出できる。握りつぶすと記録から消えてしまう。
       work_item_id: item?.workItemId ?? null,
       model: usage.model,
@@ -79,9 +79,7 @@ export function record(input: HookInput, root: string, now = new Date()): Record
       output_tokens: usage.output_tokens,
       cache_creation_input_tokens: usage.cache_creation_input_tokens,
       cache_read_input_tokens: usage.cache_read_input_tokens,
-      ...(item === null
-        ? { unattributed_reason: "作業単位マーカーが無い。起票せずに作業した可能性がある" }
-        : {}),
+      ...(item === null ? { unattributed_reason: unattributedReason } : {}),
     });
   }
 
