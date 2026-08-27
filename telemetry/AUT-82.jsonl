@@ -1,0 +1,1 @@
+{"ts":"2026-08-27T23:40:35.159Z","work_item_id":"AUT-82","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"stop","stop_kind":"readme_audience","stop_type":"入力","detail":"READMEの読み手を、キットを使ってアプリを作る人に定める判断。開発経験の無い人向けは別途とすることも含めて人が決めた","resolved":true}
