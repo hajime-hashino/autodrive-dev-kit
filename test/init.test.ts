@@ -1,0 +1,146 @@
+import assert from "node:assert/strict";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { init, mergeHook } from "../src/init.ts";
+import { delegateFor } from "../src/cli.ts";
+
+const KIT = "/kit";
+
+function project(): string {
+  const root = mkdtempSync(join(tmpdir(), "autodrive-init-"));
+  mkdirSync(join(root, ".git"), { recursive: true });
+  return root;
+}
+
+const placementOf = (r: { placed: { path: string; placement: string }[] }, path: string) =>
+  r.placed.find((p) => p.path === path)?.placement;
+
+// ------------------------------------------------------------ 前提の確認
+
+// **記録も判定も履歴の上で成り立っている。** 履歴が無い場所へ置いても動かない。
+test("git のリポジトリでなければ、置かずに理由を出す", () => {
+  const root = mkdtempSync(join(tmpdir(), "autodrive-nogit-"));
+  const r = init(root, KIT);
+  assert.equal(r.code, 1);
+  assert.ok(r.message?.includes("git init"), r.message ?? "");
+  assert.equal(r.placed.length, 0, "止まるべきところで置いている");
+  assert.equal(existsSync(join(root, "boundaries.yaml")), false);
+});
+
+// ------------------------------------------------------------ 置くもの
+
+test("土台を置く", () => {
+  const root = project();
+  const r = init(root, KIT);
+  assert.equal(r.code, 0);
+  for (const p of [
+    ".env.example",
+    ".github/workflows/verify.yml",
+    "docs/autodrive.md",
+    "boundaries.yaml",
+    "docs/what-why.md",
+    "CLAUDE.md",
+  ]) {
+    assert.ok(existsSync(join(root, p)), `${p} が置かれていない`);
+  }
+});
+
+// **固有のものは生成しない**（BOOTSTRAP 段階5）。テスト・ADR・境界変更履歴は
+// そのプロジェクトのものであり、雛形を置くと中身が無いまま残る。
+test("固有のものは生成しない", () => {
+  const root = project();
+  init(root, KIT);
+  for (const p of ["docs/adr", "docs/boundary-changes.md", "test"]) {
+    assert.equal(existsSync(join(root, p)), false, `${p} を作ってしまっている`);
+  }
+});
+
+test("人にしかできないことを最後に出す", () => {
+  const r = init(project(), KIT);
+  assert.ok(r.todo.some((t) => t.includes(".env")), r.todo.join(" / "));
+  assert.ok(r.todo.some((t) => t.includes("AUTODRIVE_CI_TOKEN")), r.todo.join(" / "));
+});
+
+// ------------------------------------------------------------ 2回目
+
+// **何度実行しても壊れないこと。** 途中で失敗したときにやり直せる必要がある。
+test("管理下は上書きし、播種は触らない", () => {
+  const root = project();
+  init(root, KIT);
+
+  writeFileSync(join(root, "boundaries.yaml"), "areas: [自分で書いた]", "utf8");
+  writeFileSync(join(root, ".env.example"), "書き換えた", "utf8");
+
+  const r = init(root, KIT);
+  assert.equal(placementOf(r, "boundaries.yaml"), "skipped");
+  assert.equal(readFileSync(join(root, "boundaries.yaml"), "utf8"), "areas: [自分で書いた]");
+
+  assert.equal(placementOf(r, ".env.example"), "managed");
+  assert.notEqual(readFileSync(join(root, ".env.example"), "utf8"), "書き換えた");
+});
+
+// **利用側の規約を上書きしない。** ただし繋がっていなければ、そう言う。
+test("既にある CLAUDE.md を上書きせず、繋ぎ方を案内する", () => {
+  const root = project();
+  writeFileSync(join(root, "CLAUDE.md"), "# うちの決まり\n", "utf8");
+
+  const r = init(root, KIT);
+  assert.equal(readFileSync(join(root, "CLAUDE.md"), "utf8"), "# うちの決まり\n");
+  assert.equal(placementOf(r, "CLAUDE.md"), "skipped");
+  assert.ok(r.todo.some((t) => t.includes("docs/autodrive.md")), r.todo.join(" / "));
+});
+
+test("既に繋がっていれば、案内を出さない", () => {
+  const root = project();
+  writeFileSync(join(root, "CLAUDE.md"), "進め方は docs/autodrive.md に従う\n", "utf8");
+  const r = init(root, KIT);
+  assert.equal(r.todo.some((t) => t.includes("次の1行")), false, r.todo.join(" / "));
+});
+
+// ------------------------------------------------------------ 記録の仕掛け
+
+// **既にある登録を壊さない。** 設定は利用側のものである。
+test("他の仕掛けを消さずに足す", () => {
+  const before = JSON.stringify({
+    hooks: { Stop: [{ hooks: [{ type: "command", command: "自前の仕掛け" }] }] },
+  });
+  const { json, changed } = mergeHook(before, "kit/hooks/record-tokens");
+
+  assert.equal(changed, true);
+  assert.ok(json.includes("自前の仕掛け"), "既にあったものが消えている");
+  assert.ok(json.includes("kit/hooks/record-tokens"));
+});
+
+test("同じ登録が既にあれば、二重に足さない", () => {
+  const before = JSON.stringify({
+    hooks: { Stop: [{ hooks: [{ type: "command", command: "kit/hooks/record-tokens" }] }] },
+  });
+  assert.equal(mergeHook(before, "kit/hooks/record-tokens").changed, false);
+});
+
+test("設定が無ければ作る", () => {
+  const { json, changed } = mergeHook(null, "kit/hooks/record-tokens");
+  assert.equal(changed, true);
+  assert.ok(json.includes("record-tokens"));
+});
+
+// **読めない設定を捨てない。** 壊れているからといって上書きすると、
+// 利用側の設定が失われる。
+test("読めない設定を上書きしない", () => {
+  const { json, changed } = mergeHook("{ これは JSON ではない", "kit/hooks/record-tokens");
+  assert.equal(changed, false);
+  assert.equal(json, "{ これは JSON ではない");
+});
+
+// ------------------------------------------------------------ 入口
+
+// **PATH に入れて増えるものを1つにする。** 使う人が打つのは init だけ。
+test("AIが使う道具は、入口の下にまとめる", () => {
+  for (const c of ["begin", "tracker", "telemetry", "verify"]) {
+    assert.notEqual(delegateFor(c), null, `${c} を渡せていない`);
+  }
+  assert.equal(delegateFor("知らない操作"), null);
+  assert.equal(delegateFor(undefined), null);
+});
