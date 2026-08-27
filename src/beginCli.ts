@@ -60,6 +60,40 @@ function fail(lines: string[]): { output: string; code: number } {
   return { output: lines.join("\n"), code: 1 };
 }
 
+/**
+ * 既定ブランチ。特定できなければ null。
+ *
+ * **手元の設定が無いことを異常としない。** `git clone` は `origin/HEAD` を置くが、
+ * `git init` から作った作業ツリーには無い。ここで落とすと、問題の無いリポジトリで
+ * 着手できなくなる。
+ *
+ * 判定器では Repo に尋ねて補っている（AUT-53）。ここでは**資格情報を前提に
+ * できない**ため、手元から引き直す。引けなければ、何をすればよいかを出して止まる。
+ */
+export function defaultBranchOf(repoPath: string, git: Git): string | null {
+  const read = (): string | null => {
+    try {
+      const value = git(repoPath, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+        .trim()
+        .replace(/^origin\//, "");
+      return value === "" ? null : value;
+    } catch {
+      return null;
+    }
+  };
+
+  const found = read();
+  if (found !== null) return found;
+
+  // 引き直す。**手元の設定を直すだけで、書き換えるのは設定であってコードではない。**
+  try {
+    git(repoPath, ["remote", "set-head", "origin", "-a"]);
+  } catch {
+    return null;
+  }
+  return read();
+}
+
 export async function run(
   argv: string[],
   root: string,
@@ -120,16 +154,23 @@ export async function run(
 
   // 2. 作業空間 -------------------------------------------------------------
   let current: string;
-  let defaultBranch: string;
   try {
     current = git(repoPath, ["branch", "--show-current"]).trim();
-    defaultBranch = git(repoPath, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
-      .trim()
-      .replace(/^origin\//, "");
   } catch (error) {
     return fail([
-      `${repo} の状態を読めない: ${error instanceof Error ? error.message : String(error)}`,
+      `${repo} の状態を読めない: ${message(error)}`,
       "作業ツリーが壊れていないかを確かめること。",
+    ]);
+  }
+
+  const defaultBranch = defaultBranchOf(repoPath, git);
+  if (defaultBranch === null) {
+    return fail([
+      `${repo} の既定ブランチを特定できない。`,
+      "`git clone` は origin/HEAD を置くが、`git init` から作った作業ツリーには無い。",
+      "",
+      "次を実行してから、もう一度着手すること。",
+      `  git -C ${repo} remote set-head origin -a`,
     ]);
   }
 
