@@ -8,13 +8,18 @@
 
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { init } from "./init.ts";
+import { setup } from "./setup.ts";
+import type { Mode, SetupResult } from "./setup.ts";
+import { terminalInterview } from "./adapters/interviewTerminal.ts";
+import type { InterviewPort } from "./ports/interview.ts";
 
 const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const USAGE = `AIに開発を任せて回すための道具一式
 
-  autodrive-dev-kit init                    このプロジェクトに土台を置く
+  autodrive-dev-kit init                    新しく始める。構成を聞いて、土台を置く
+  autodrive-dev-kit apply                   既にあるものへ入れる。構成を推測して確かめる
+  autodrive-dev-kit update                  道具を新しい版へ入れ替える。構成は聞かない
 
 AIが使うもの（人は打たなくてよい）
 
@@ -38,8 +43,15 @@ export function delegateFor(command: string | undefined): string | null {
   return DELEGATES[command] ?? null;
 }
 
-export function runInit(root: string): { output: string; code: number } {
-  const result = init(root, KIT_ROOT);
+export const MODES: ReadonlySet<string> = new Set<Mode>(["init", "apply", "update"]);
+
+const HEADLINE: Record<Mode, string> = {
+  init: "土台を置いた",
+  apply: "既にあるものへ土台を入れた",
+  update: "道具を入れ替えた",
+};
+
+export function renderSetup(mode: Mode, result: SetupResult): { output: string; code: number } {
   if (result.message !== null) return { output: result.message, code: result.code };
 
   const label: Record<string, string> = {
@@ -49,13 +61,30 @@ export function runInit(root: string): { output: string; code: number } {
     skipped: "そのままにした（既にある）",
   };
 
-  const lines = [`土台を置いた（版 ${result.version ?? "不明"}）。`, ""];
+  const lines = [`${HEADLINE[mode]}（版 ${result.version ?? "不明"}）。`, ""];
   for (const p of result.placed) lines.push(`  ${p.path.padEnd(34)} ${label[p.placement]}`);
 
-  lines.push("", "**ここから先は人にしかできない。**", "");
-  result.todo.forEach((t, i) => lines.push(`  ${i + 1}. ${t}`));
+  // **何をどう決めたかを出す。** 出さないと、聞かれなかった項目が決まっている
+  // ことに気づけない。
+  if (result.decisions.length > 0) {
+    lines.push("", "構成:", "");
+    for (const d of result.decisions) lines.push(`  ${d}`);
+  }
+
+  if (result.todo.length > 0) {
+    lines.push("", "**ここから先は人にしかできない。**", "");
+    result.todo.forEach((t, i) => lines.push(`  ${i + 1}. ${t}`));
+  }
 
   return { output: lines.join("\n"), code: 0 };
+}
+
+export function runSetup(
+  mode: Mode,
+  root: string,
+  interviewer: InterviewPort = terminalInterview(),
+): { output: string; code: number } {
+  return renderSetup(mode, setup(mode, root, KIT_ROOT, interviewer));
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
@@ -68,8 +97,8 @@ if (invokedDirectly) {
     process.exit(0);
   }
 
-  if (command === "init") {
-    const { output, code } = runInit(process.cwd());
+  if (MODES.has(command)) {
+    const { output, code } = runSetup(command as Mode, process.cwd());
     (code === 0 ? console.log : console.error)(output);
     process.exit(code);
   }

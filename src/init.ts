@@ -169,12 +169,17 @@ export function init(root: string, kitRoot: string): InitResult {
   seeded(root, "CLAUDE.md", template(kitRoot, "CLAUDE.md"), placed);
 
   // 人にしかできないこと --------------------------------------------------------
-  const todo = [
-    ".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）",
-    "Repo の Actions シークレットに AUTODRIVE_CI_TOKEN を登録する（提出の読取を含めること）",
-  ];
+  //
+  // **済んでいることを頼まない。** 毎回同じ一覧を出すと、読まれなくなる。読まれ
+  // なくなった一覧は、本当に要るものが出たときにも読まれない。
+  const todo: string[] = [];
+  if (!existsSync(join(root, ".env"))) {
+    todo.push(".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）");
+    todo.push("Repo の Actions シークレットに AUTODRIVE_CI_TOKEN を登録する（提出の読取を含めること）");
+  }
   if (pointer !== null) todo.push(pointer);
-  todo.push("Claude Code を開き、作りたいものを話す。着手も記録もAIが行う");
+  // **覚えることを増やさない。** どこから始めるかはAIが状態を見て決める（AUT-80）。
+  todo.push("Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める");
 
   return { placed, todo, version, code: 0, message: null };
 }
