@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { branchNameFor, run } from "../src/beginCli.ts";
+import { branchNameFor, defaultBranchOf, run } from "../src/beginCli.ts";
 import type { Git } from "../src/beginCli.ts";
 import type { TrackerPort, WorkItemView } from "../src/ports/tracker.ts";
 
@@ -68,6 +68,56 @@ test("枝の名前を省略すると、作業単位のIDから作る", () => {
   assert.equal(branchNameFor("AUT-99", undefined), "aut-99");
   assert.equal(branchNameFor("AUT-99", "  "), "aut-99");
   assert.equal(branchNameFor("AUT-99", "aut-99-begin"), "aut-99-begin");
+});
+
+// ------------------------------------------------------------ 既定ブランチ
+
+// **手元の設定が無いことを異常としない。** git clone は origin/HEAD を置くが、
+// git init から作った作業ツリーには無い。ここで落とすと着手できなくなる。
+// AUT-53 で判定器に対して直したのと同じ型を、ここでも塞ぐ。
+test("手元に設定が無ければ、引き直して補う", () => {
+  let hasHead = false;
+  const git = ((_p: string, args: string[]) => {
+    if (args[0] === "symbolic-ref") {
+      if (!hasHead) throw new Error("is not a symbolic ref");
+      return "origin/main\n";
+    }
+    if (args[0] === "remote" && args[1] === "set-head") {
+      hasHead = true;
+      return "";
+    }
+    return "";
+  }) as Git;
+
+  assert.equal(defaultBranchOf("/repo", git), "main");
+  assert.equal(hasHead, true, "引き直していない");
+});
+
+test("引き直しても駄目なら null を返す。落とさない", () => {
+  const git = (() => { throw new Error("引けない"); }) as Git;
+  assert.equal(defaultBranchOf("/repo", git), null);
+});
+
+test("手元に設定があれば、引き直さない", () => {
+  const calls: string[][] = [];
+  const git = ((_p: string, args: string[]) => {
+    calls.push(args);
+    return "origin/main\n";
+  }) as Git;
+
+  assert.equal(defaultBranchOf("/repo", git), "main");
+  assert.equal(calls.some((a) => a[1] === "set-head"), false, "余計に引き直している");
+});
+
+// **落ちた理由が読み取れる形にする。** 何をすればよいかを出して止まる。
+test("特定できなければ、直し方を出して止まる", async () => {
+  const root = workspace();
+  const git = fakeGit({}, ["symbolic-ref", "remote set-head"]);
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+
+  assert.equal(code, 1);
+  assert.ok(output.includes("既定ブランチを特定できない"), output);
+  assert.ok(output.includes("remote set-head"), `直し方を出していない: ${output}`);
 });
 
 // ------------------------------------------------------------------ 成功の道
