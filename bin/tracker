@@ -1,8 +1,0 @@
-#!/bin/sh
-# tracker ポートの入口。実装言語を呼び出し側に漏らさないための殻。
-#
-# ルート直下ではなく bin/ に置くのは、telemetry/ が記録の置き場所として
-# 定義で決まっており、同名のファイルを置けないため。
-set -e
-dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec node "$dir/src/trackerCli.ts" "$@"
