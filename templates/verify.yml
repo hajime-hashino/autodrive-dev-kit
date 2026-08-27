@@ -1,0 +1,26 @@
+name: verify
+
+# このリポジトリの範囲の判定のみを行う。リポジトリをまたいで初めて成立する
+# 不変条件は、参照実装側の定期実行が見る。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  self:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # **既定ブランチの履歴が要る。** 提出を経ずに入った変更の検出は
+          # first-parent を辿って判定するため、浅い取得では判定できない。
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.18"
+
+      - name: 判定する
+        run: {{KIT}}/verify --root . --scope self

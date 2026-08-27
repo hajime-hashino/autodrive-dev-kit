@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { init, mergeHook } from "../src/init.ts";
 import { delegateFor } from "../src/cli.ts";
 
-const KIT = "/kit";
+// **本物の参照実装を指す。** 雛形をファイルから読むようになったため、偽の場所では
+// 動かない。ここで偽物を使うと、雛形の欠落を捕まえられない。
+const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project(): string {
   const root = mkdtempSync(join(tmpdir(), "autodrive-init-"));
@@ -35,6 +38,8 @@ test("土台を置く", () => {
   const root = project();
   const r = init(root, KIT);
   assert.equal(r.code, 0);
+  assert.ok(existsSync(join(root, "autodrive", "verify")), "道具を複製していない");
+  assert.notEqual(r.version, null, "版を残していない");
   for (const p of [
     ".env.example",
     ".github/workflows/verify.yml",
@@ -99,6 +104,20 @@ test("既に繋がっていれば、案内を出さない", () => {
   assert.equal(r.todo.some((t) => t.includes("次の1行")), false, r.todo.join(" / "));
 });
 
+// **前の版の残骸を残さない。** 混ざると、どの版で動いているのかが読めなくなる。
+// 版を固定するという目的そのものが崩れる。
+test("入れ替えると、前の版の残骸が消える", () => {
+  const root = project();
+  init(root, KIT);
+
+  const stale = join(root, "autodrive", "src", "前の版にだけあったもの.ts");
+  writeFileSync(stale, "export const x = 1;\n", "utf8");
+  assert.ok(existsSync(stale));
+
+  init(root, KIT);
+  assert.equal(existsSync(stale), false, "前の版の残骸が残っている");
+});
+
 // ------------------------------------------------------------ 記録の仕掛け
 
 // **既にある登録を壊さない。** 設定は利用側のものである。
@@ -106,22 +125,22 @@ test("他の仕掛けを消さずに足す", () => {
   const before = JSON.stringify({
     hooks: { Stop: [{ hooks: [{ type: "command", command: "自前の仕掛け" }] }] },
   });
-  const { json, changed } = mergeHook(before, "kit/hooks/record-tokens");
+  const { json, changed } = mergeHook(before, "autodrive/hooks/record-tokens");
 
   assert.equal(changed, true);
   assert.ok(json.includes("自前の仕掛け"), "既にあったものが消えている");
-  assert.ok(json.includes("kit/hooks/record-tokens"));
+  assert.ok(json.includes("autodrive/hooks/record-tokens"));
 });
 
 test("同じ登録が既にあれば、二重に足さない", () => {
   const before = JSON.stringify({
-    hooks: { Stop: [{ hooks: [{ type: "command", command: "kit/hooks/record-tokens" }] }] },
+    hooks: { Stop: [{ hooks: [{ type: "command", command: "autodrive/hooks/record-tokens" }] }] },
   });
-  assert.equal(mergeHook(before, "kit/hooks/record-tokens").changed, false);
+  assert.equal(mergeHook(before, "autodrive/hooks/record-tokens").changed, false);
 });
 
 test("設定が無ければ作る", () => {
-  const { json, changed } = mergeHook(null, "kit/hooks/record-tokens");
+  const { json, changed } = mergeHook(null, "autodrive/hooks/record-tokens");
   assert.equal(changed, true);
   assert.ok(json.includes("record-tokens"));
 });
@@ -129,7 +148,7 @@ test("設定が無ければ作る", () => {
 // **読めない設定を捨てない。** 壊れているからといって上書きすると、
 // 利用側の設定が失われる。
 test("読めない設定を上書きしない", () => {
-  const { json, changed } = mergeHook("{ これは JSON ではない", "kit/hooks/record-tokens");
+  const { json, changed } = mergeHook("{ これは JSON ではない", "autodrive/hooks/record-tokens");
   assert.equal(changed, false);
   assert.equal(json, "{ これは JSON ではない");
 });

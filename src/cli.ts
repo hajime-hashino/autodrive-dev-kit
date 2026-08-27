@@ -43,13 +43,13 @@ export function runInit(root: string): { output: string; code: number } {
   if (result.message !== null) return { output: result.message, code: result.code };
 
   const label: Record<string, string> = {
-    managed: "置いた（参照実装が管理する）",
+    managed: "置いた（参照実装が管理する。次に入れ替えると上書きされる）",
     seeded: "置いた（このプロジェクトのものになる）",
     merged: "足した",
     skipped: "そのままにした（既にある）",
   };
 
-  const lines = ["土台を置いた。", ""];
+  const lines = [`土台を置いた（版 ${result.version ?? "不明"}）。`, ""];
   for (const p of result.placed) lines.push(`  ${p.path.padEnd(34)} ${label[p.placement]}`);
 
   lines.push("", "**ここから先は人にしかできない。**", "");
