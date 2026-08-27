@@ -80,7 +80,7 @@ set -a; . /path/to/autodrive-dev-work/.env; set +a
 ## 着手する
 
 ```sh
-./bin/begin <作業単位ID> --repo <対象リポジトリ> [--branch <枝の名前>]
+autodrive-dev-kit begin <作業単位ID> --repo <対象リポジトリ> [--branch <枝の名前>]
 ```
 
 着手には3つが要る。作業単位の確認、作業空間の用意（既定ブランチを最新にして枝を切る）、記録の紐づけ先の設置。**手で順に踏む形だと、どれかを飛ばしたことに気づけない。**
@@ -114,16 +114,16 @@ autodrive-dev-kit はいま aut-48-begin-work にいる（既定ブランチは 
 差し替えるときは `src/adapters/` の中だけを置き換える。
 
 ```sh
-./bin/tracker 作業単位を取得する [<ID>]
-./bin/tracker 作業単位を起票する --title <題> --body <本文>
-./bin/tracker 状態を進める <ID> --to started --repo <対象リポジトリ>
-./bin/tracker 経過を追記する <ID> --text <内容>
+autodrive-dev-kit tracker 作業単位を取得する [<ID>]
+autodrive-dev-kit tracker 作業単位を起票する --title <題> --body <本文>
+autodrive-dev-kit tracker 状態を進める <ID> --to started --repo <対象リポジトリ>
+autodrive-dev-kit tracker 経過を追記する <ID> --text <内容>
 
-./bin/telemetry 停止を記録する     --kind <種別> --detail <内容>
-./bin/telemetry 修正を記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
-./bin/telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> \
+autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --detail <内容>
+autodrive-dev-kit telemetry 修正を記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
+autodrive-dev-kit telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> \
                                      --not-looked <見なかった範囲> --detail <内容> [--fixed]
-./bin/telemetry 境界変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
+autodrive-dev-kit telemetry 境界変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
 ```
 
 **抜き取り確認は、修正が入らなかった場合も必ず記録する。** 定義§8は緩和の判定を
@@ -133,8 +133,10 @@ autodrive-dev-kit はいま aut-48-begin-work にいる（既定ブランチは 
 修正の有無は件数ではなく真偽で持つ。件数にすると修正率を算出できてしまい、
 §8が禁じている使い方への道が開く。
 
-入口が `bin/` にあるのは、`telemetry/` が記録の置き場所として定義で決まっており、
-同名のファイルをルートに置けないため。`verify` はルートのままにしている。
+入口は `bin/autodrive-dev-kit` の1つにまとめてある。**PATH に入れて増えるものを
+1つにするため。** 使う人が打つのは `init` だけで、残りはAIが打つ。
+
+`verify` はルートにも残している。**既存の CI が呼んでいる**ため、壊さない。
 
 **必須属性（作業単位ID・モデル・参照実装の版・書き込み経路）は渡さない。**
 アダプタが自動で付ける（定義§16の補足）。渡せる形にすると、渡し忘れた記録と

@@ -1,5 +1,0 @@
-#!/bin/sh
-# 着手の入口。作業単位の確認・作業空間の用意・マーカーの設置を1つにまとめる。
-set -e
-dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec node "$dir/src/beginCli.ts" "$@"
