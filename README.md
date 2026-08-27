@@ -119,7 +119,7 @@ autodrive-dev-kit tracker 作業単位を起票する --title <題> --body <本�
 autodrive-dev-kit tracker 状態を進める <ID> --to started --repo <対象リポジトリ>
 autodrive-dev-kit tracker 経過を追記する <ID> --text <内容>
 
-autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --detail <内容>
+autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --type <入力|手戻り> --detail <内容>
 autodrive-dev-kit telemetry 修正を記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
 autodrive-dev-kit telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> \
                                      --not-looked <見なかった範囲> --detail <内容> [--fixed]
