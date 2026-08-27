@@ -1,0 +1,7 @@
+# 資格情報。追跡しない。
+.env
+.env.*
+!.env.example
+
+# 作業状態。成果物ではない。
+.autodrive/
