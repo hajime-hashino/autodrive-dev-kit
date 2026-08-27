@@ -127,3 +127,37 @@ test("参照実装のテストや文書は複製しない", () => {
     assert.equal(existsSync(join(root, VENDOR_DIR, p)), false, `${VENDOR_DIR}/${p} を複製している`);
   }
 });
+
+// ------------------------------------------------------------ 始まりの合図
+
+// **人に始め方を覚えさせない。** 置かれた文書がどこから始めるかを言えていないと、
+// 人は「AIになんて言えばいいのか」から詰まる（AUT-80）。
+test("置かれた文書が、どこから始めるかを言っている", () => {
+  const root = initialized();
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+
+  assert.ok(rules.includes("docs/what-why.md"), "始まりの判断材料を指していない");
+  assert.ok(rules.includes("聞き返さない"), rules.slice(0, 400));
+});
+
+// **始まりの合図が、機械的に決まること。** 「雛形のまま」を目で判断させると、
+// 判断がぶれる。指している文書が実在し、その中に「残っていれば雛形」と分かる印が
+// あって初めて、合図として働く。**どちらが欠けても空振りする。**
+test("始まりの合図が、指した先に実在する", () => {
+  const root = initialized();
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+
+  // 判断の表の行から、見る先と印を読む。**本文の他の言及ではなく、表の行から取る。**
+  const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("雛形のまま"));
+  assert.ok(row, "どこから始めるかの表が無い");
+
+  const [, path, marker] = row.match(/`([^`]+)`.*`([^`]+)`/) ?? [];
+  assert.ok(path && marker, `表の行から見る先と印を読めない: ${row}`);
+
+  const target = join(root, path);
+  assert.ok(existsSync(target), `${path} を指しているが、置かれていない`);
+  assert.ok(
+    readFileSync(target, "utf8").includes(marker),
+    `${path} に ${marker} が無い。合図が空振りする`,
+  );
+});

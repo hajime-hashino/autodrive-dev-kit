@@ -1,0 +1,1 @@
+{"ts":"2026-08-27T16:04:36.618Z","work_item_id":"AUT-80","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"docs/design.md","detail":"停止の記録の書式が --type 追加に追随していなかった。AUT-79 で CLI を変えたとき、参照実装側の文書を直し忘れた","cause":"実装バグ","found_in":"後続の作業単位"}
