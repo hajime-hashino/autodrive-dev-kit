@@ -41,6 +41,9 @@ export class JsonlTelemetry implements TelemetryPort {
     this.#write({
       type: "stop",
       stop_kind: record.kind,
+      // **種別と別に持つ。** 種別は「何について」、これは「減らす対象か」。
+      // 種別から導けるようにすると、種別が増えるたびに対応表が要る。
+      stop_type: record.stopType,
       detail: record.detail,
       resolved: record.resolved ?? false,
     });

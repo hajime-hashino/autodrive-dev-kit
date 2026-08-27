@@ -10,16 +10,22 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.ts";
 import { resolveWorkItem } from "./workItem.ts";
+import { STOP_TYPES } from "./ports/telemetry.ts";
+import type { StopType } from "./ports/telemetry.ts";
 
 const USAGE = `記録を残す
 
-  telemetry 停止を記録する   --kind <種別> --detail <内容> [--resolved]
+  telemetry 停止を記録する   --kind <種別> --type <入力|手戻り> --detail <内容> [--resolved]
   telemetry 修正を記録する   --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
   telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> --not-looked <見なかった範囲>
                                  --detail <内容> [--fixed]
   telemetry 境界変更を記録する   --area <領域> --from <状態> --to <状態> --detail <内容> [--basis <根拠>]
 
   --root  記録の起点。既定は CLAUDE_PROJECT_DIR かカレントディレクトリ
+
+停止の種類（--type）は「入力」か「手戻り」。**すべての停止が減らす対象ではない。**
+入力を得る停止（ヒアリング、見え方の決定、資格情報の発行）は、手法が正しく
+働いている印である。**同じことを繰り返し聞くのは、入力ではなく手戻り。**
 
 原因は「要件のズレ」「設計のズレ」「実装バグ」のいずれか（定義§6）。
 抜き取り確認は、修正が入らなかった場合も必ず記録すること（定義§8）。
@@ -48,6 +54,7 @@ export function run(argv: string[], root: string): { output: string; code: numbe
     args: argv.slice(1),
     options: {
       kind: { type: "string" },
+      type: { type: "string" },
       detail: { type: "string" },
       resolved: { type: "boolean", default: false },
       target: { type: "string" },
@@ -75,7 +82,26 @@ export function run(argv: string[], root: string): { output: string; code: numbe
 
   if (operation === "stop") {
     if ((values.kind ?? "").trim() === "") return { output: "--kind は必須", code: 2 };
-    telemetry.recordStop({ kind: values.kind as string, detail, resolved: values.resolved });
+    // **省略できる形にしない。** 既定値を置くと、考えずに通る側へ倒れる。
+    // 定義§6は記録の時点で区別することを求めており、後から分類し直すと解釈が入る。
+    if (!(STOP_TYPES as readonly string[]).includes(values.type ?? "")) {
+      return {
+        output:
+          `--type は ${STOP_TYPES.join(" / ")} のいずれか\n\n` +
+          "  入力    何を作るかのヒアリング、見え方の決定、順序の合意、資格情報の発行\n" +
+          "          手法が正しく働いている。減らす対象ではない\n" +
+          "  手戻り  認識が違っていた、作り直しが要る、承認で差し戻された\n" +
+          "          減らす対象\n\n" +
+          "**同じことを繰り返し聞くのは、入力ではなく手戻りである。**",
+        code: 2,
+      };
+    }
+    telemetry.recordStop({
+      kind: values.kind as string,
+      stopType: values.type as StopType,
+      detail,
+      resolved: values.resolved,
+    });
   } else if (operation === "fix") {
     if ((values.target ?? "").trim() === "") return { output: "--target は必須", code: 2 };
     telemetry.recordFix({
