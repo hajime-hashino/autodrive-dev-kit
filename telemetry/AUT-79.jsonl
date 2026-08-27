@@ -1,0 +1,1 @@
+{"ts":"2026-08-27T15:57:30.937Z","work_item_id":"AUT-79","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"stop","stop_kind":"design_direction","stop_type":"入力","detail":"停止の内訳に閾値を置くか、数を見せるだけにするかを人に確認した。数を見せる側で合意","resolved":true}
