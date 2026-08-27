@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CHECKS } from "../src/checks.ts";
+import { CHECKS, observeStops } from "../src/checks.ts";
 import type { CheckInput } from "../src/checks.ts";
 import type { Repo } from "../src/repos.ts";
 import type { ApiResponse, RepoApi } from "../src/repoApi.ts";
@@ -551,4 +551,72 @@ test("すべての判定が、未発効のときに代替の記録を読むこ�
     const r = await check(key).run(input({ events }));
     assert.notEqual(r.state, UNSUBSTITUTED, `${key} が代替の記録を読んでいない`);
   }
+});
+
+// ---------------------------------------------------------------- 停止の内訳
+
+// **判定はしない。数を見せる。** 定義§6（v0.11）は停止を2種類に分ける。
+// 入力を得る停止は減らす対象ではないため、一括りに数えて減らしにかかると
+// 必要な対話まで削られる。実際にその誤読が起きた（AUT-77）。
+function stopped(...pairs: Array<[string | undefined, string]>): TelemetryEvent[] {
+  return pairs.map(([stop_type, stop_kind], i) => ({
+    type: "stop",
+    stop_type,
+    stop_kind,
+    source: `t${i}`,
+  })) as unknown as TelemetryEvent[];
+}
+
+function observed(events: TelemetryEvent[]): string[] {
+  const lines: string[] = [];
+  observeStops({ observe: (l) => lines.push(l) }, events);
+  return lines;
+}
+
+test("停止は2種類に分けて数える", () => {
+  const lines = observed(
+    stopped(["入力", "見え方の決定"], ["手戻り", "承認で差し戻し"], ["入力", "見え方の決定"]),
+  );
+  assert.ok(lines[0]?.includes("入力 2"), lines.join(" / "));
+  assert.ok(lines[0]?.includes("手戻り 1"), lines.join(" / "));
+});
+
+// **繰り返し出ている種別が上に来る。** 定義§6の「繰り返し出る種別はスキル化・
+// 自動化の候補」は、この並びから読む。
+test("同じ種別が繰り返し出ていることが分かる", () => {
+  // **先に出た順ではなく、多い順。** 挿入順と件数順をわざと食い違わせる。
+  const lines = observed(
+    stopped(["手戻り", "1回だけ"], ["入力", "多いほう"], ["入力", "多いほう"]),
+  );
+  const body = lines.slice(1);
+  assert.ok(body[0]?.includes("多いほう") && body[0]?.includes("2 件"), body.join(" / "));
+});
+
+// **区別の無い記録を欠陥として扱わない。** 種類は後から足したものであり、
+// 遡って分類すると解釈が入る（定義§6は遡及付与を禁じる）。
+test("種類を持たない古い記録は「区別なし」として残す", () => {
+  const lines = observed(stopped([undefined, "昔の記録"], ["入力", "いまの記録"]));
+  assert.ok(lines[0]?.includes("区別なし 1"), lines.join(" / "));
+  assert.ok(lines.some((l) => l.includes("区別なし / 昔の記録")), lines.join(" / "));
+});
+
+// 区別が要らないときに、要らない言葉を出さない。
+test("すべてに種類が付いていれば、区別なしは出さない", () => {
+  const lines = observed(stopped(["入力", "a"], ["手戻り", "b"]));
+  assert.equal(lines[0]?.includes("区別なし"), false, lines[0]);
+});
+
+test("停止が1件も無ければ、何も言わない", () => {
+  assert.deepEqual(observed([]), []);
+  // 記録には停止以外も並ぶ。**それを停止として数えない。**
+  const others = [{ type: "cost", source: "t" }] as unknown as TelemetryEvent[];
+  assert.deepEqual(observed(others), []);
+});
+
+test("停止以外の記録を数に混ぜない", () => {
+  const events = [
+    ...stopped(["入力", "見え方の決定"]),
+    ...([{ type: "rework", cause: "要件のズレ", source: "t" }] as unknown as TelemetryEvent[]),
+  ];
+  assert.ok(observed(events)[0]?.startsWith("停止 1 件"), observed(events).join(" / "));
 });
