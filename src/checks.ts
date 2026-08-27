@@ -136,6 +136,42 @@ function substituted(r: Result, events: TelemetryEvent[]): Result {
  * 「ハーネスの既定動作として組み込む」を満たさない。したがって発効の条件は、
  * 記録がアダプタ（ポート語彙）経由で書かれていることとする。
  */
+/**
+ * 停止の内訳を出す。**判定はしない。**
+ *
+ * 定義§6（v0.11）は停止を2種類に分ける。**入力を得る停止は減らす対象ではない。**
+ * 一括りに数えて減らしにかかると、必要な対話まで削られる。実際にその誤読が起きた
+ * （AUT-77）。
+ *
+ * ここで閾値を置かないのは、**何回なら多いかを決める材料がまだ無い**ため。
+ * 数を見せれば、同じ種別が繰り返し出ていること自体が信号になる。定義§6の
+ * 「繰り返し出る種別はスキル化・自動化の候補」はそこから読む。
+ *
+ * **区別の無い記録を欠陥として扱わない。** 種類は AUT-79 で足したものであり、
+ * それ以前の記録には無い。遡って分類すると解釈が入る（定義§6は遡及付与を禁じる）。
+ */
+export function observeStops(r: { observe(line: string): void }, events: ReadonlyArray<TelemetryEvent>): void {
+  const stops = events.filter((e) => e.type === "stop");
+  if (stops.length === 0) return;
+
+  const counts = new Map<string, number>();
+  for (const stop of stops) {
+    const type = typeof stop.stop_type === "string" ? stop.stop_type : "区別なし";
+    const key = `${type} / ${typeof stop.stop_kind === "string" ? stop.stop_kind : "不明"}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const byType = (t: string) => stops.filter((e) => (e.stop_type ?? "区別なし") === t).length;
+  r.observe(
+    `停止 ${stops.length} 件（入力 ${byType("入力")} / 手戻り ${byType("手戻り")}` +
+      `${byType("区別なし") > 0 ? ` / 区別なし ${byType("区別なし")}` : ""}）`,
+  );
+  // 多い順に出す。**繰り返し出ている種別が上に来る。**
+  for (const [key, n] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+    r.observe(`  ${key}: ${n} 件`);
+  }
+}
+
 const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken, scope, tracker }) => {
   const r = resultFor("telemetry_recorded");
 
@@ -205,6 +241,8 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     r.observe(`作業単位に帰属できなかった記録が ${unattributed.length} 件ある`);
     for (const reason of reasons.slice(0, 3)) r.observe(`帰属できなかった理由: ${reason}`);
   }
+
+  observeStops(r, allEvents);
 
   const known = new Set<unknown>(EMITTERS);
   const unknownEmitters = [...new Set(allEvents.map((e) => e.emitter))].filter((v) => !known.has(v));

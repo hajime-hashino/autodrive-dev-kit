@@ -40,13 +40,15 @@ function readEvents(path: string): Record<string, unknown>[] {
 test("停止を記録すると、必須属性がアダプタ側で付く", () => {
   const r = withWorkItem("AUT-12", "kit");
   const res = telemetryRun(
-    ["停止を記録する", "--kind", "approval_required", "--detail", "承認を待つ", "--root", r],
+    ["停止を記録する", "--kind", "approval_required", "--type", "手戻り", "--detail", "承認を待つ", "--root", r],
     r,
   );
   assert.equal(res.code, 0);
   const [event] = readEvents(join(r, "kit", "telemetry", "AUT-12.jsonl"));
   assert.equal(event.type, "stop");
   assert.equal(event.stop_kind, "approval_required");
+  // **種別と別に持つ。** 種別は「何について」、これは「減らす対象か」（定義§6 v0.11）。
+  assert.equal(event.stop_type, "手戻り");
   assert.equal(event.work_item_id, "AUT-12");
   assert.equal(event.model, "claude-opus-5");
   // **固定の値と比べない。** 版はファイルから読むようになった。ここに literal を
@@ -102,7 +104,7 @@ test("境界変更を記録する", () => {
 
 test("作業単位に紐づかない記録は残すが、成功として返さない", () => {
   const r = root();
-  const res = telemetryRun(["停止を記録する", "--kind", "k", "--detail", "d", "--root", r], r);
+  const res = telemetryRun(["停止を記録する", "--kind", "k", "--type", "入力", "--detail", "d", "--root", r], r);
   assert.equal(res.code, 1);
   const [event] = readEvents(join(r, "telemetry", "unattributed.jsonl"));
   assert.equal(event.work_item_id, null);
@@ -110,8 +112,16 @@ test("作業単位に紐づかない記録は残すが、成功として返さ�
 
 test("必須の引数が無ければ実行しない", () => {
   const r = withWorkItem("AUT-12", "kit");
-  assert.equal(telemetryRun(["停止を記録する", "--detail", "d", "--root", r], r).code, 2);
-  assert.equal(telemetryRun(["停止を記録する", "--kind", "k", "--root", r], r).code, 2);
+  assert.equal(telemetryRun(["停止を記録する", "--type", "入力", "--detail", "d", "--root", r], r).code, 2);
+  assert.equal(telemetryRun(["停止を記録する", "--kind", "k", "--type", "入力", "--root", r], r).code, 2);
+
+  // **省略できる形にしない。** 既定値を置くと、考えずに通る側へ倒れる。
+  // 定義§6は記録の時点で区別することを求めている。
+  assert.equal(telemetryRun(["停止を記録する", "--kind", "k", "--detail", "d", "--root", r], r).code, 2);
+  assert.equal(
+    telemetryRun(["停止を記録する", "--kind", "k", "--type", "その他", "--detail", "d", "--root", r], r).code,
+    2,
+  );
 });
 
 // --------------------------------------------------------- Tracker
