@@ -161,3 +161,68 @@ test("始まりの合図が、指した先に実在する", () => {
     `${path} に ${marker} が無い。合図が空振りする`,
   );
 });
+
+// ------------------------------------------------------------ 配るもの
+
+// **手順だけを配っても、この手法にはならない。** 手順は何をするかを言うが、
+// どう判断するかを言わない。段階5の完了条件は「素のディレクトリに init して
+// 段階0〜3が再現できる」ことであり、判断の仕方が無いと再現しない（AUT-93）。
+test("配る規約に、振る舞いとスタンスが入っている", () => {
+  const root = initialized();
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+
+  // 節が揃っていること。**1つでも欠けると、その判断だけが配られない。**
+  for (const section of [
+    "振る舞いとスタンス",
+    "停止するときの作法",
+    "意思決定は代行しない",
+    "制約かどうかを、出所で確かめる",
+    "確認の仕掛けは、作った時点で検証する",
+    "立ち止まる合図",
+    "人の承認が必要なもの",
+    "ポート語彙",
+  ]) {
+    assert.ok(rules.includes(section), `配る規約に「${section}」が無い`);
+  }
+});
+
+// **停止の作法は、4点そろって意味を持つ。** 1つ欠けると、止められた人が
+// 動けなくなる（定義§4「人の関与あたりの成果」）。
+test("停止の作法が、4点そろっている", () => {
+  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
+  const section = rules.slice(rules.indexOf("### 停止するときの作法"), rules.indexOf("### 意思決定"));
+
+  for (const point of ["なぜ必要か", "何をすればよいか", "判断の材料", "詰まったとき"]) {
+    assert.ok(section.includes(point), `停止の作法に「${point}」が無い`);
+  }
+  // **例を添えること。** 4点を並べるだけでは、何が悪い問いかけかが伝わらない。
+  assert.ok(section.includes("悪い例") && section.includes("良い例"), "例が無い");
+});
+
+// **出所の表が、配られた先の出所を指すこと。** 参照実装のものをそのまま配ると、
+// 「この作業ルール」がどれを指すのか、受け取った側から読めない。
+test("制約の出所が、配られた先から見て正しい", () => {
+  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
+  const section = rules.slice(
+    rules.indexOf("### 制約かどうかを、出所で確かめる"),
+    rules.indexOf("### 設計上の欠陥"),
+  );
+
+  assert.ok(section.includes("この文書"), "配られたこの文書が、出所として挙がっていない");
+  assert.ok(section.includes("CLAUDE.md"), "プロジェクト固有の規約が、出所として挙がっていない");
+  // **自分の推論を制約として扱わないこと。** ここが要である。
+  // 本文で触れているだけでは足りない。**表に、制約ではないものとして並ぶこと。**
+  const row = section
+    .split("\n")
+    .find((l) => l.startsWith("|") && l.includes("自分の推論"));
+  assert.ok(row, "出所の表に「自分の推論」が無い");
+  assert.ok(row.includes("制約ではない"), `制約ではないと書かれていない: ${row}`);
+});
+
+// **この作業場に固有のものは配らない**（BOOTSTRAP 段階5の仕分け）。
+test("この作業場に固有のものは配らない", () => {
+  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
+  for (const local of ["BOOTSTRAP", "autodrive-dev-work", "agent-playground", "題材アプリ", "現在の段階"]) {
+    assert.equal(rules.includes(local), false, `配る規約に、この作業場のもの「${local}」が入っている`);
+  }
+});

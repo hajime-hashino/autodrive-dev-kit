@@ -101,7 +101,7 @@ my-app/
 | `autodrive/` | init | dev-kit | ツールセットの複製。`update` で入れ替わる |
 | `.env.example` | init | dev-kit | 必要な資格情報の一覧 |
 | `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
-| `docs/autodrive.md` | init | dev-kit | AI向けの作業規約 |
+| `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 境界表。どの領域をAIに任せているか |
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
