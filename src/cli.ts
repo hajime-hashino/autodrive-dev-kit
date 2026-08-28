@@ -26,7 +26,7 @@ AIが使うもの（人は打たなくてよい）
   autodrive-dev-kit begin <ID> --repo <先>  着手する
   autodrive-dev-kit tracker <操作> ...      作業単位を扱う
   autodrive-dev-kit telemetry <操作> ...    記録する
-  autodrive-dev-kit verify [--root <場所>]  決めたことが守られているかを判定する
+  autodrive-dev-kit invariants [--root <場所>]  不変条件の状態を判定する
 
 使い方の全体は README を参照。`;
 
@@ -35,6 +35,8 @@ const DELEGATES: Record<string, string> = {
   begin: "beginCli.ts",
   tracker: "trackerCli.ts",
   telemetry: "telemetryCli.ts",
+  invariants: "main.ts",
+  // **旧名。invariants と同じものを指す。** 既に配線されている CI が呼んでいる。
   verify: "main.ts",
 };
 

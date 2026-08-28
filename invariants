@@ -1,0 +1,8 @@
+#!/bin/sh
+# 不変条件の状態を判定する。
+#
+# 実装は TypeScript だが、呼び出し側に実装言語を漏らさないためこの殻を入口とする。
+# 言語を差し替えても、CI の呼び出しと各リポジトリの配線は書き換えずに済む。
+set -e
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec node "$dir/src/main.ts" "$@"

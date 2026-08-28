@@ -24,7 +24,7 @@ import { dirname, join } from "node:path";
 export const VENDOR_DIR = "autodrive";
 
 /** 複製するもの。テストや文書は要らない（プロジェクトは `init` を打たない）。 */
-const VENDORED = ["src", "hooks", "bin", "verify", "VERSION", "package.json"];
+const VENDORED = ["src", "hooks", "bin", "invariants", "verify", "VERSION", "package.json"];
 
 export type Placement = "managed" | "seeded" | "skipped" | "merged";
 
@@ -141,7 +141,7 @@ export function init(root: string, kitRoot: string): InitResult {
 
   // 管理下 --------------------------------------------------------------------
   managed(root, ".env.example", template(kitRoot, ".env.example"), placed);
-  managed(root, ".github/workflows/verify.yml", template(kitRoot, "verify.yml"), placed);
+  managed(root, ".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), placed);
   managed(root, "docs/autodrive.md", template(kitRoot, "autodrive.md"), placed);
 
   // 記録の仕掛け。**利用側の設定へ併合する。**
@@ -178,6 +178,17 @@ export function init(root: string, kitRoot: string): InitResult {
     todo.push("Repo の Actions シークレットに AUTODRIVE_CI_TOKEN を登録する（提出の読取を含めること）");
   }
   if (pointer !== null) todo.push(pointer);
+
+  // **前の版が置いた CI 定義を、黙って消さない。** 判定は `invariants` に改名した
+  // が（AUT-83）、古い `verify.yml` が残ると同じ判定が二重に走る。手を入れられて
+  // いる可能性があるため、消すのは人に任せ、残っている事実だけを出す。
+  const stale = join(root, ".github", "workflows", "verify.yml");
+  if (existsSync(stale) && readFileSync(stale, "utf8").includes(`${VENDOR_DIR}/verify`)) {
+    todo.push(
+      ".github/workflows/verify.yml を削除する（invariants.yml に置き換わった。" +
+        "残すと同じ判定が二重に走る）",
+    );
+  }
   // **覚えることを増やさない。** どこから始めるかはAIが状態を見て決める（AUT-80）。
   todo.push("Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める");
 

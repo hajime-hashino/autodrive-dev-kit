@@ -83,7 +83,7 @@ my-app/
 ├── .claude/
 │   └── settings.json                記録の仕掛けの登録
 ├── .github/
-│   └── workflows/verify.yml         点検をCIで実行する定義
+│   └── workflows/invariants.yml         点検をCIで実行する定義
 ├── docs/
 │   ├── autodrive.md                 AI向けの作業規約
 │   ├── what-why.md                  何を作るか、なぜ作るか
@@ -100,7 +100,7 @@ my-app/
 |---|---|---|---|
 | `autodrive/` | init | dev-kit | ツールセットの複製。`update` で入れ替わる |
 | `.env.example` | init | dev-kit | 必要な資格情報の一覧 |
-| `.github/workflows/verify.yml` | init | dev-kit | 点検をCIで実行する定義 |
+| `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
 | `docs/autodrive.md` | init | dev-kit | AI向けの作業規約 |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 境界表。どの領域をAIに任せているか |
@@ -126,7 +126,7 @@ dev-kit が所有するファイルは `update` で上書きされる。プロ�
 
   autodrive-dev-kit/                my-app/
     src/          ───── init ─────▶   autodrive/       ツールセットの複製
-    verify                            autodrive.json   構成
+    invariants                        autodrive.json   構成
     VERSION                           docs/            規約 / What・Why
     templates/                        .github/         CI
 ```
@@ -146,10 +146,10 @@ dev-kit を更新しても、`update` を実行するまでプロジェクトは
 
 ### 不変条件の点検
 
-配置された仕掛けが実際に機能しているかを `verify` が判定する。CIから自動実行され、手動でも実行できる。
+配置された仕掛けが実際に機能しているかを `invariants` が判定する。CIから自動実行され、手動でも実行できる。
 
 ```sh
-autodrive/verify --root . --scope self
+autodrive/invariants --root . --scope self
 ```
 
 見るのは次の4つである。**どれも、上で説明した2つのループが成り立つための前提にあたる。**
@@ -164,22 +164,23 @@ autodrive/verify --root . --scope self
 出力は次の形になる。
 
 ```
-[発効]             テレメトリが記録されること
-[未発効・代替あり] AIがこれらを無効化できないこと
+[有効]    テレメトリが記録されること
+[代替]    AIがこれらを無効化できないこと
+[要対応]  境界変更が履歴に残ること
 ```
 
-**「発効」とは、その項目が仕組みとして自動的に強制されている状態を指す**（定義§9の用語）。人が意識しなくても守られ、忘れることができない。
+状態は4つある（定義§9）。**どれも「いま何であるか」を言う。**
 
-**「未発効・代替あり」は、まだ仕組みになっておらず、人が手で肩代わりしている状態である。** 忘れれば守られない。
+| 状態 | 意味 | 「記録が残っているか」の例 |
+|---|---|---|
+| **有効** | 仕組みとして働いている。人が意識しなくても守られ、忘れることができない | フックが登録されていて、記録が自動的に残る |
+| **代替** | まだ仕組みになっておらず、人が手で肩代わりしている | 人が思い出して手で記録している。肩代わりの事実も記録に残っている |
+| **要対応** | 肩代わりの記録が無い、または有効かどうかを判定できない | 手で記録しているが、そうしている事実がどこにも無い |
+| **対象外** | この判定の範囲では扱わない | 横断でしか判定できない項目を、1リポジトリの中で見たとき |
 
-| 状態 | 「記録が残っているか」の例 |
-|---|---|
-| 発効 | フックが登録されていて、記録が自動的に残る |
-| 未発効・代替あり | 人が思い出して手で記録している。代替している事実は記録に残っている |
+**代替であること自体は失敗ではない。** 仕組みを作る作業には、まだその仕組みが無い。失敗として扱うのは**要対応だけ**である。「やっているつもり」のまま運用が続くことを防ぐためである。
 
-**未発効であること自体は失敗ではない。** 仕組みを作る作業には、まだその仕組みが無い。失敗として扱うのは、**人が肩代わりしている事実が記録に無い場合**、および**発効しているかどうかを判定できない場合**である（定義§9）。「やっているつもり」のまま運用が続くことを防ぐためである。
-
-判定の内容、境界の進め方、代替の記録方法は [docs/verify-criteria.md](docs/verify-criteria.md) と [docs/commands.md](docs/commands.md) にある。
+判定の内容、境界の進め方、代替の記録方法は [docs/invariants.md](docs/invariants.md) と [docs/commands.md](docs/commands.md) にある。
 
 ## もっと知る
 
@@ -187,7 +188,7 @@ autodrive/verify --root . --scope self
 |---|---|
 | [docs/design.md](docs/design.md) | 画面の見え方を、実装前に合意する手順 |
 | [docs/commands.md](docs/commands.md) | コマンドの全体。**AIが実行するものを含む** |
-| [docs/verify-criteria.md](docs/verify-criteria.md) | 判定基準の全文 |
+| [docs/invariants.md](docs/invariants.md) | 判定基準の全文 |
 | [docs/adr/](docs/adr/) | 設計判断の記録。**覆す提案をする前に読む** |
 
 ## dev-kit そのものを直す
