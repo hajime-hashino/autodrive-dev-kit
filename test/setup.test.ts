@@ -222,7 +222,7 @@ test("入れ替えは、構成を読むだけで書き換えない", () => {
   const r = run("update", root, answering({}));
   assert.equal(r.code, 0);
   assert.equal(readFileSync(join(root, CONFIG_FILE), "utf8"), before, "構成を書き換えている");
-  assert.ok(existsSync(join(root, "autodrive", "verify")), "道具を入れ替えていない");
+  assert.ok(existsSync(join(root, "autodrive", "invariants")), "道具を入れ替えていない");
 });
 
 // **済んでいることを頼まない。** 毎回同じ一覧を出すと読まれなくなり、本当に

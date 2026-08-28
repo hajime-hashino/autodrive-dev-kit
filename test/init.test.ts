@@ -38,11 +38,11 @@ test("土台を置く", () => {
   const root = project();
   const r = init(root, KIT);
   assert.equal(r.code, 0);
-  assert.ok(existsSync(join(root, "autodrive", "verify")), "道具を複製していない");
+  assert.ok(existsSync(join(root, "autodrive", "invariants")), "道具を複製していない");
   assert.notEqual(r.version, null, "版を残していない");
   for (const p of [
     ".env.example",
-    ".github/workflows/verify.yml",
+    ".github/workflows/invariants.yml",
     "docs/autodrive.md",
     "boundaries.yaml",
     "docs/what-why.md",
@@ -118,6 +118,51 @@ test("入れ替えると、前の版の残骸が消える", () => {
   assert.equal(existsSync(stale), false, "前の版の残骸が残っている");
 });
 
+// ------------------------------------------------------------ 旧名からの移行
+
+// **前の版が置いた CI 定義を、黙って消さない。** 判定は invariants に改名したが
+// （AUT-83）、古い verify.yml が残ると同じ判定が二重に走る。手を入れられている
+// 可能性があるため、消すのは人に任せ、残っている事実だけを出す。
+test("前の版の CI 定義が残っていたら、消さずに知らせる", () => {
+  const root = project();
+  const stale = join(root, ".github", "workflows", "verify.yml");
+  mkdirSync(dirname(stale), { recursive: true });
+  writeFileSync(stale, "run: autodrive/verify --root . --scope self\n", "utf8");
+
+  const r = init(root, KIT);
+  assert.ok(existsSync(stale), "人の判断を経ずに消している");
+  assert.ok(
+    r.todo.some((t) => t.includes("verify.yml") && t.includes("削除")),
+    r.todo.join(" / "),
+  );
+  assert.ok(existsSync(join(root, ".github", "workflows", "invariants.yml")), "新しい定義を置いていない");
+});
+
+// **人が書いた別の verify.yml を、消せとは言わない。** 同じ名前でも、こちらが
+// 置いたものとは限らない。
+test("こちらが置いたものでなければ、削除を促さない", () => {
+  const root = project();
+  const theirs = join(root, ".github", "workflows", "verify.yml");
+  mkdirSync(dirname(theirs), { recursive: true });
+  writeFileSync(theirs, "run: npm test\n", "utf8");
+
+  const r = init(root, KIT);
+  assert.equal(
+    r.todo.some((t) => t.includes("verify.yml")),
+    false,
+    r.todo.join(" / "),
+  );
+});
+
+// **既に配線されている CI が旧名を呼んでいる。** 入れ替えても動き続けること。
+test("旧名の入口も複製され、動き続ける", () => {
+  const root = project();
+  init(root, KIT);
+  for (const name of ["invariants", "verify"]) {
+    assert.ok(existsSync(join(root, "autodrive", name)), `${name} を複製していない`);
+  }
+});
+
 // ------------------------------------------------------------ 記録の仕掛け
 
 // **既にある登録を壊さない。** 設定は利用側のものである。
@@ -157,9 +202,12 @@ test("読めない設定を上書きしない", () => {
 
 // **PATH に入れて増えるものを1つにする。** 使う人が打つのは init だけ。
 test("AIが使う道具は、入口の下にまとめる", () => {
-  for (const c of ["begin", "tracker", "telemetry", "verify"]) {
+  for (const c of ["begin", "tracker", "telemetry", "invariants"]) {
     assert.notEqual(delegateFor(c), null, `${c} を渡せていない`);
   }
+  // **旧名も通ること。** 既に配線されている CI が呼んでいる（AUT-83）。
+  assert.equal(delegateFor("verify"), delegateFor("invariants"));
+
   assert.equal(delegateFor("知らない操作"), null);
   assert.equal(delegateFor(undefined), null);
 });
