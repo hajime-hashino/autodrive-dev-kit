@@ -1,0 +1,1 @@
+{"ts":"2026-08-28T13:45:15.235Z","work_item_id":"AUT-93","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"rework","target":"templates/autodrive.md","detail":"配布物に手順しか入っておらず、振る舞いとスタンスがこの作業場のCLAUDE.mdに留まっていた。素のディレクトリに init しても、判断の仕方が配られない","cause":"要件のズレ"}
