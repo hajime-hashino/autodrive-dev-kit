@@ -52,7 +52,7 @@ export function loadEvents(repos: Repo[]): TelemetryLoad {
  * 該当する不変条件について、代替を記録したイベントを新しい順に返す。
  *
  * 代替の事実は宣言用のファイルではなく記録そのものから読む。宣言を別に持つと、
- * 記録と宣言という2つの真実ができ、宣言だけを更新して発効を名乗る経路が開く。
+ * 記録と宣言という2つの真実ができ、宣言だけを更新して有効を名乗る経路が開く。
  */
 export function substitutionNotes(
   events: TelemetryEvent[],

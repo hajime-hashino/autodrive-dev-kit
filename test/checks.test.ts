@@ -44,7 +44,7 @@ function fakeRepo(
   } as unknown as Repo;
 }
 
-/** 記録を自動で残す仕掛けが登録されているリポジトリ。発効の条件のひとつ。 */
+/** 記録を自動で残す仕掛けが登録されているリポジトリ。有効の条件のひとつ。 */
 function repoWithHook(name: string): Repo {
   const path = mkdtempSync(join(tmpdir(), "autodrive-repo-"));
   mkdirSync(join(path, ".claude"), { recursive: true });
@@ -131,7 +131,7 @@ test("emitter に未定義の値があれば失敗", async () => {
   assert.equal(r.state, UNSUBSTITUTED);
 });
 
-test("直書きがあり代替の記録もあれば、未発効・代替あり", async () => {
+test("直書きがあり代替の記録もあれば、代替", async () => {
   const events = [
     event({ emitter: "manual" }),
     event({
@@ -194,7 +194,7 @@ test("Tracker が読めなければ判定不能として失敗する", async () 
   assert.ok(r.observations.some((o) => o.includes("接続できない")));
 });
 
-test("self では発効の可否を判定しない。記録が壊れていないかだけを見る", async () => {
+test("self では有効かどうかを判定しない。記録が壊れていないかだけを見る", async () => {
   const events = [event({ emitter: "manual" }), event()];
   const r = await check("telemetry_recorded").run(input({ events, scope: "self" }));
   assert.equal(r.state, NOT_IN_SCOPE);
@@ -238,7 +238,7 @@ test("origin が無いリポジトリは判定不能として失敗する", asyn
   assert.equal(r.state, UNSUBSTITUTED);
 });
 
-test("403 Upgrade はプラン制限として観測し、代替があれば未発効・代替あり", async () => {
+test("403 Upgrade はプラン制限として観測し、代替があれば代替", async () => {
   const events = [
     event({
       type: "substitution",
@@ -274,7 +274,7 @@ test("ruleset が0件なら保護されていないとして観測する", async
 
 // --------------------------------------------------------- 境界
 
-test("boundaries.yaml が無い状態を発効と報告しない", async () => {
+test("boundaries.yaml が無い状態を有効と報告しない", async () => {
   const events = [
     event({ type: "substitution", invariant: "boundary_change_logged", detail: "まだ無い" }),
   ];
@@ -298,7 +298,7 @@ test("boundaries.yaml があり履歴が無ければ、変更が残っていな�
   assert.ok(r.observations.some((o) => o.includes("境界変更履歴が無い")));
 });
 
-test("全変更コミットが履歴から参照されていれば発効", async () => {
+test("全変更コミットが履歴から参照されていれば有効", async () => {
   const repo = {
     ...fakeRepo("r"),
     boundariesFile: () => "/tmp/r/boundaries.yaml",
@@ -310,7 +310,7 @@ test("全変更コミットが履歴から参照されていれば発効", async
   assert.equal(r.state, ACTIVE);
 });
 
-test("履歴から参照されないコミットがあれば発効にしない", async () => {
+test("履歴から参照されないコミットがあれば有効にしない", async () => {
   const repo = {
     ...fakeRepo("r"),
     boundariesFile: () => "/tmp/r/boundaries.yaml",
@@ -363,7 +363,7 @@ function unattributed(over: Record<string, unknown> = {}): TelemetryEvent {
 
 // **起票せずに作業を始めることを妨げる仕掛けが無い以上、どの作業単位にも属さない
 // やり取りは実在する。** 正しく動いた記録を、壊れた記録として失敗にしない。
-test("帰属できなかった記録があっても発効できる", async () => {
+test("帰属できなかった記録があっても有効できる", async () => {
   const events = [event(), unattributed()];
   const r = await check("telemetry_recorded").run(
     input({ events, repos: [repoWithHook("r")] }),
@@ -414,18 +414,18 @@ test("置き場が同じでも、理由が無ければ免除しない", async ()
   assert.ok(r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("work_item_id")));
 });
 
-test("発効境界より前の直書きは、判定の対象から外れる", async () => {
+test("有効境界より前の直書きは、判定の対象から外れる", async () => {
   const events = [
     event({ ts: "2026-01-01T00:00:00Z", emitter: "manual" }),
     event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
     event({ ts: "2026-03-01T00:00:00Z" }),
   ];
   const r = await check("telemetry_recorded").run(input({ events }));
-  assert.ok(r.observations.some((o) => o.includes("発効境界")));
+  assert.ok(r.observations.some((o) => o.includes("有効境界")));
   assert.equal(r.observations.some((o) => o.includes("emitter=manual")), false);
 });
 
-test("発効境界より後の直書きは、判定の対象に入る", async () => {
+test("有効境界より後の直書きは、判定の対象に入る", async () => {
   const events = [
     event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
     event({ ts: "2026-03-01T00:00:00Z", emitter: "manual" }),
@@ -458,7 +458,7 @@ test("境界より前でも、必須属性の欠けは見逃さない", async ()
   assert.equal(r.state, UNSUBSTITUTED);
 });
 
-// --------------------------------------------------------- 未発効の結論
+// --------------------------------------------------------- 有効かどうかの結論
 
 test("境界変更履歴にエントリがあっても、代替の記録があれば失敗しない", async () => {
   // 履歴が空でない経路。ここで代替の添付を忘れると UNSUBSTITUTED へ落ちる。
@@ -542,7 +542,7 @@ test("既定ブランチの履歴を読めなければ判定しない", async ()
   assert.ok(r.observations.some((o) => o.includes("提出を経たかを確かめられない")), JSON.stringify(r.observations));
 });
 
-test("すべての判定が、未発効のときに代替の記録を読むこと", async () => {
+test("すべての判定が、有効でないときに代替の記録を読むこと", async () => {
   // 代替の記録が無ければ、どの判定も UNSUBSTITUTED になる。
   // 添付を忘れた経路があると、代替を置いても失敗したままになり、ここで露見する。
   const withSubstitutions = ["outer_loop_running", "boundary_change_logged", "ai_cannot_disable"];
