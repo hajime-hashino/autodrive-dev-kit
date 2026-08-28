@@ -5,10 +5,10 @@
  * 何を見て何が見つかった／見つからなかったかを必ず添える。
  */
 
-export const ACTIVE = "ACTIVE" as const; // 発効している
-export const SUBSTITUTED = "SUBSTITUTED" as const; // 未発効。代替の事実が記録にある
-export const UNSUBSTITUTED = "UNSUBSTITUTED" as const; // 未発効。代替の記録が無い、または判定不能
-export const NOT_IN_SCOPE = "NOT_IN_SCOPE" as const; // この実行範囲では判定しない
+export const ACTIVE = "ACTIVE" as const; // 有効。仕組みとして働いている
+export const SUBSTITUTED = "SUBSTITUTED" as const; // 代替。人が肩代わりし、その事実が記録にある
+export const UNSUBSTITUTED = "UNSUBSTITUTED" as const; // 要対応。肩代わりの記録が無い、または判定不能
+export const NOT_IN_SCOPE = "NOT_IN_SCOPE" as const; // 対象外。この実行範囲では扱わない
 
 export type State =
   | typeof ACTIVE
@@ -19,8 +19,8 @@ export type State =
 /**
  * UNSUBSTITUTED だけが失敗である。
  *
- * 未発効であること自体は失敗ではない（定義§9の立ち上げ期の例外）。
- * 失敗なのは、代替の記録が無いことと、判定ができないことである。
+ * 代替であること自体は失敗ではない（定義§9の立ち上げ期の例外）。
+ * 失敗なのは、肩代わりの記録が無いことと、有効かどうかを判定できないことである。
  */
 export const FAILING: ReadonlySet<State> = new Set<State>([UNSUBSTITUTED]);
 
@@ -59,9 +59,9 @@ export class Result {
       return this;
     }
     let next = state;
-    // 判定していない項目が残っている状態を、発効と呼んではいけない。
+    // 判定していない項目が残っている状態を、有効と呼んではいけない。
     if (next === ACTIVE && this.unimplemented.length > 0) next = SUBSTITUTED;
-    // 未発効なのに代替の記録が無いなら、立ち上げ期の例外の条件を満たさない。
+    // 代替と判定したのに肩代わりの記録が無いなら、立ち上げ期の例外の条件を満たさない。
     if (next === SUBSTITUTED && this.substitutions.length === 0) next = UNSUBSTITUTED;
     this.#state = next;
     return this;

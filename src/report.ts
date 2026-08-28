@@ -4,16 +4,22 @@ import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "./state.ts";
 import type { Result, Scope, State } from "./state.ts";
 import type { Repo } from "./repos.ts";
 
+/**
+ * 状態の名前（定義§9 v0.12）。
+ *
+ * **どれも「いま何であるか」を言う。** 状態の不在を名前にすると、実際に何が
+ * 起きているのかが読めない。「未有効」ではなく「代替」としているのはそのため。
+ */
 const MARK: Record<State, string> = {
-  [ACTIVE]: "発効",
-  [SUBSTITUTED]: "未発効・代替あり",
-  [UNSUBSTITUTED]: "未発効・代替なし",
-  [NOT_IN_SCOPE]: "この範囲では判定しない",
+  [ACTIVE]: "有効",
+  [SUBSTITUTED]: "代替",
+  [UNSUBSTITUTED]: "要対応",
+  [NOT_IN_SCOPE]: "対象外",
 };
 
 export function renderText(results: Result[], repos: Repo[], scope: Scope): string {
   const lines: string[] = [
-    "不変条件の発効判定",
+    "不変条件の状態",
     `判定対象: ${repos.map((r) => r.name).join(", ")}`,
     `実行範囲: ${scope}`,
     "",
@@ -29,8 +35,8 @@ export function renderText(results: Result[], repos: Repo[], scope: Scope): stri
   if (failed.length > 0) {
     lines.push(`失敗: ${failed.map((r) => r.label).join("、")}`);
     lines.push(
-      "未発効であること自体は失敗ではない。代替の記録が無いこと、" +
-        "および判定できないことが失敗である。",
+      "代替であること自体は失敗ではない。肩代わりの記録が無いこと、" +
+        "および有効かどうかを判定できないことが失敗である。",
     );
   } else {
     lines.push("失敗なし");

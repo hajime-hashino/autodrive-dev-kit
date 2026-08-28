@@ -1,7 +1,7 @@
-name: verify
+name: invariants
 
 # 横断判定は kit の定期実行が担う。各リポジトリの CI は自リポジトリの範囲のみを
-# 判定する（docs/verify-criteria.md の「実行範囲」を参照）。
+# 判定する（docs/invariants.md の「実行範囲」を参照）。
 on:
   schedule:
     - cron: "0 21 * * *"   # 毎日 06:00 JST
@@ -56,7 +56,7 @@ jobs:
           # 横断の判定では、記録が指す作業単位が実在するかを Tracker と突き合わせる。
           # self では突き合わせないため、各リポジトリの CI には渡していない。
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        run: work/autodrive-dev-work/autodrive-dev-kit/verify --root work/autodrive-dev-work
+        run: work/autodrive-dev-work/autodrive-dev-kit/invariants --root work/autodrive-dev-work
 
       - name: 判定結果を残す
         if: always()
@@ -64,16 +64,16 @@ jobs:
           AUTODRIVE_CI_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
-          work/autodrive-dev-work/autodrive-dev-kit/verify \
-            --root work/autodrive-dev-work --format json > verify.json || true
+          work/autodrive-dev-work/autodrive-dev-kit/invariants \
+            --root work/autodrive-dev-work --format json > invariants.json || true
           {
             echo '```json'
-            cat verify.json
+            cat invariants.json
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: verify-result
-          path: verify.json
+          name: invariants-result
+          path: invariants.json
