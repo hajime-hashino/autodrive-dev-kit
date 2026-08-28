@@ -29,7 +29,7 @@ const USAGE = `作業単位を扱う
 資格情報は環境変数 LINEAR_API_KEY から読む。対象が複数ある場合は
 AUTODRIVE_TRACKER_TEAM で指定する。`;
 
-const OPERATIONS: Record<string, "get" | "create" | "advance" | "note"> = {
+export const OPERATIONS: Record<string, "get" | "create" | "advance" | "note"> = {
   作業単位を取得する: "get",
   作業単位を起票する: "create",
   状態を進める: "advance",

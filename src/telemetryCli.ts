@@ -33,7 +33,7 @@ const USAGE = `記録を残す
 作業単位ID・モデル・参照実装の版・書き込み経路は自動で付く。渡さないこと。`;
 
 // 語彙は定義§16の操作名で受ける。英語の別名も受けるが、正は日本語の操作名とする。
-const OPERATIONS: Record<string, "stop" | "fix" | "sampling" | "boundary"> = {
+export const OPERATIONS: Record<string, "stop" | "fix" | "sampling" | "boundary"> = {
   停止を記録する: "stop",
   修正を記録する: "fix",
   抜き取り確認を記録する: "sampling",
