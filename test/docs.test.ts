@@ -123,7 +123,7 @@ test("文書に載っている操作が実在する", () => {
 // そこを間違えると「覚えることを増やさない」という前提が崩れる。
 test("README は、人が打つものだけを使い方として出す", () => {
   const readme = readFileSync(join(KIT, "README.md"), "utf8");
-  const upTo = readme.slice(0, readme.indexOf("## 何が置かれるか"));
+  const upTo = readme.slice(0, readme.indexOf("## 関連ファイル"));
 
   const calls = invocations(upTo);
   assert.ok(calls.length > 0, "使い方に、打つ形が1つも無い");
@@ -141,5 +141,61 @@ test("参照実装を触る人向けの内容が、移した先にある", () =>
   const commands = readFileSync(join(KIT, "docs", "commands.md"), "utf8");
   for (const kept of ["--enact", "--substitute", "終了コード", "作業単位マーカー", "record-tokens"]) {
     assert.ok(commands.includes(kept), `docs/commands.md に ${kept} が無い`);
+  }
+});
+
+// ------------------------------------------------------------ 置かれるものの一覧
+
+// **README の一覧が、実際に置かれるものと一致すること。** 一覧は手で保たれており、
+// 置くものを変えたときに追随しなかったことに気づく機会が無い。**初日に見る表が
+// 間違っていると、そこで詰まる。**
+test("README の一覧が、実際に置かれるものと一致する", async () => {
+  // **人が打つ経路をそのまま使う。** 下位の関数を直に呼ぶと、そこでは置かれない
+  // ものが表から漏れる（実際に autodrive.json で漏れた）。
+  const { setup } = await import("../src/setup.ts");
+  const { useRecommended } = await import("../src/ports/interview.ts");
+  const { mkdirSync, mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+
+  const root = mkdtempSync(join(tmpdir(), "autodrive-readme-"));
+  mkdirSync(join(root, ".git"), { recursive: true });
+  const placed = setup("init", root, KIT, useRecommended).placed.map((p) => p.path);
+
+  const readme = readFileSync(join(KIT, "README.md"), "utf8");
+  const section = readme.slice(readme.indexOf("## 関連ファイル"), readme.indexOf("## 仕組み"));
+
+  // 表の1列目のうち、`init` の行だけを見る。
+  const listed = [...section.matchAll(/^\| `([^`]+)` \| init \|/gm)].map((m) => m[1]);
+  assert.ok(listed.length > 0, "init で置かれるものの一覧を拾えていない");
+
+  for (const path of listed) {
+    assert.ok(placed.includes(path), `README に載っているが置かれない: ${path}`);
+  }
+  for (const path of placed) {
+    assert.ok(listed.includes(path), `置かれるのに README に無い: ${path}`);
+  }
+});
+
+// **生成しないものが、生成しないままであること。** 雛形を置くと中身が無いまま残る。
+test("後から作られると書いたものは、init では作られない", async () => {
+  const { setup } = await import("../src/setup.ts");
+  const { useRecommended } = await import("../src/ports/interview.ts");
+  const { existsSync, mkdirSync, mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+
+  const readme = readFileSync(join(KIT, "README.md"), "utf8");
+  const section = readme.slice(readme.indexOf("## 関連ファイル"), readme.indexOf("## 仕組み"));
+
+  const later = [...section.matchAll(/^\| `([^`]+)` \| (?!init \|)[^|]+\|/gm)].map((m) => m[1]);
+  assert.ok(later.length > 0, "後から作られるものの一覧を拾えていない");
+
+  const root = mkdtempSync(join(tmpdir(), "autodrive-later-"));
+  mkdirSync(join(root, ".git"), { recursive: true });
+  setup("init", root, KIT, useRecommended);
+
+  for (const path of later) {
+    // 作業単位IDのような差し込みを含む行は、置き場所だけを見る。
+    const target = path.includes("<") ? path.slice(0, path.indexOf("<")) : path;
+    assert.equal(existsSync(join(root, target)), false, `後から作ると書いてあるのに置いている: ${path}`);
   }
 });
