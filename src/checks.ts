@@ -2,7 +2,7 @@
  * 4つの不変条件（定義§9）の判定。
  *
  * 判定材料は、リポジトリの内容・git 履歴・Repo API の応答に限る。
- * 「やっています」と書かれたファイルの存在は根拠にしない。宣言で発効を
+ * 「やっています」と書かれたファイルの存在は根拠にしない。宣言で有効を
  * 名乗れる構造では、接続されないまま運用が続く事故を防げないため。
  */
 
@@ -111,14 +111,14 @@ async function crossCheckTracker(
 }
 
 /**
- * 未発効と結論づける。
+ * 有効でないと結論づける。
  *
  * **代替の添付と結論を1つにまとめている。** 別々にしていたとき、添付を忘れた
  * 経路が2度できた（AUT-15 / AUT-33）。忘れられる形にしておくと、同じ型が
  * 別の判定に現れ続ける。
  *
  * 代替の記録が無ければ conclude が UNSUBSTITUTED へ落とす。それは正しい挙動で
- * あり、ここで握りつぶさない。**代替が無い未発効は、立ち上げ期の例外の条件を
+ * あり、ここで握りつぶさない。**肩代わりの記録が無ければ、立ち上げ期の例外の条件を
  * 満たしていない**（定義§9）。
  */
 function substituted(r: Result, events: TelemetryEvent[]): Result {
@@ -133,7 +133,7 @@ function substituted(r: Result, events: TelemetryEvent[]): Result {
  * テレメトリが記録されること。
  *
  * 「記録がある」では足りない。人や AI が覚えていないと残らない状態は、定義§9の
- * 「ハーネスの既定動作として組み込む」を満たさない。したがって発効の条件は、
+ * 「ハーネスの既定動作として組み込む」を満たさない。したがって有効の条件は、
  * 記録がアダプタ（ポート語彙）経由で書かれていることとする。
  */
 /**
@@ -194,12 +194,12 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
 
   r.observe(`${allEvents.length} 件のイベントを ${repos.length} リポジトリから読んだ`);
   if (boundary.since === null) {
-    r.observe("発効境界が置かれていない。全期間の記録を判定の対象にする");
+    r.observe("有効境界が置かれていない。全期間の記録を判定の対象にする");
   } else {
-    r.observe(`発効境界: ${boundary.since} 以降の ${events.length} 件を判定の対象にする`);
+    r.observe(`有効境界: ${boundary.since} 以降の ${events.length} 件を判定の対象にする`);
     if (boundary.moves > 1) {
       // 何回で異常とみなすかは定めない。回数を出し、判断は人に残す。
-      r.observe(`発効境界はこれまでに ${boundary.moves} 回動いている（直書きへ戻った回数）`);
+      r.observe(`有効境界はこれまでに ${boundary.moves} 回動いている（直書きへ戻った回数）`);
     }
   }
 
@@ -267,11 +267,11 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
   if (scope === "self") {
     // 1リポジトリの記録だけでは、ハーネスが記録を受け持っているかは決まらない。
     // ここで判定できるのは構造の妥当性（読めること、必須属性が妥当なこと）までで、
-    // 発効の可否を論じること自体が誤りである。
+    // 有効かどうかを論じること自体が誤りである。
     //
-    // 代替の記録を無理に添えて未発効を名乗らせるより、判定しないと明示するほうが
+    // 代替の記録を無理に添えて代替を名乗らせるより、判定しないと明示するほうが
     // 正しい。壊れた記録はすでに上で失敗にしているため、見落としは生じない。
-    r.observe("記録の構造に問題は無い。発効の可否は cross でのみ判定する");
+    r.observe("記録の構造に問題は無い。有効かどうかは cross でのみ判定する");
     return r.conclude(NOT_IN_SCOPE);
   }
 
@@ -280,8 +280,8 @@ const checkTelemetryRecorded: Check = async ({ repos, events: allEvents, broken,
     const registeredIn = hookRegistered(repos);
     if (registeredIn === null) {
       r.observe("記録を自動で残す仕掛けが .claude/settings.json に登録されていない");
-      // 登録が無ければ、いま自動で書けていても続く保証が無い。発効とは呼べない。
-      r.notImplemented("記録の自動化が登録されていないため、発効の条件を満たさない");
+      // 登録が無ければ、いま自動で書けていても続く保証が無い。有効とは呼べない。
+      r.notImplemented("記録の自動化が登録されていないため、有効の条件を満たさない");
     } else {
       r.observe(`記録を自動で残す仕掛けは ${registeredIn} に登録されている`);
     }
@@ -313,7 +313,7 @@ const checkBoundaryChangeLogged: Check = async ({ repos, events }) => {
 
   if (targets.length === 0) {
     r.observe("boundaries.yaml がどのリポジトリにも無い（動かす対象が存在しない）");
-    // 対象が無いことを発効と報告してはいけない。仕組みが無いだけである。
+    // 対象が無いことを有効と報告してはいけない。仕組みが無いだけである。
     return substituted(r, events);
   }
 
@@ -358,10 +358,10 @@ const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
   // 承認は「変更を統合する」が実行された事実から導出する。宣言に依らないことが
   // 条件である（定義§8）。
   //
-  // **読めない場合は未発効ではなく失敗にする。** セルが動いているのに承認を
-  // 確かめられない状態は、未発効なのではなく判定できていない状態であり、
+  // **読めない場合は代替ではなく失敗にする。** セルが動いているのに承認を
+  // 確かめられない状態は、代替なのではなく判定できていない状態であり、
   // 定義§9はそれ自体を失敗として扱うとしている。代替を添えて通すと、判定できて
-  // いないことが未発効の中に紛れる。
+  // いないことが代替の中に紛れる。
   let approvalUnreadable: string | null = null;
   let qualified = 0;
 
@@ -424,7 +424,7 @@ const checkOuterLoopRunning: Check = async ({ repos, events, api }) => {
 
   if (qualified === 0) {
     if (approvalUnreadable !== null) {
-      // 未発効ではなく、判定できていない。代替を添えて通すと両者が区別できなくなる。
+      // 代替ではなく、判定できていない。代替を添えて通すと両者が区別できなくなる。
       r.observe(approvalUnreadable);
       r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
       return r.conclude(UNSUBSTITUTED);
@@ -503,7 +503,7 @@ function historySectionFor(history: string, sha: string): string | null {
 /**
  * AIがこれらを無効化できないこと。
  *
- * 強制ではなく検出で代替する。したがって発効の条件は「AIが実際に無効化できない
+ * 強制ではなく検出で代替する。したがって有効の条件は「AIが実際に無効化できない
  * こと」ではなく、無効化されたら必ず気づけることとする。
  */
 const checkAiCannotDisable: Check = async ({ repos, events, api }) => {
@@ -568,7 +568,7 @@ const checkAiCannotDisable: Check = async ({ repos, events, api }) => {
   if (planLimited.length > 0 || unprotected.length > 0) {
     // 必須チェックの登録有無も ruleset に依存するため、ここでは判定できない。
     r.notImplemented(
-      "verify を必須チェックとして登録しているかの検証（ruleset が使えないため判定手段が無い）",
+      "invariants を必須チェックとして登録しているかの検証（ruleset が使えないため判定手段が無い）",
     );
     return substituted(r, events);
   }

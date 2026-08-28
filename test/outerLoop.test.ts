@@ -75,7 +75,7 @@ const merged = (): ApiResponse => ({ status: 200, body: [{ merged_at: "2026-08-2
 const notMerged = (): ApiResponse => ({ status: 200, body: [{ merged_at: null }] });
 const forbidden = (): ApiResponse => ({ status: 403, body: { message: "Resource not accessible" } });
 
-/** 未発効を SUBSTITUTED として読めるようにするための代替の記録。 */
+/** 代替を SUBSTITUTED として読めるようにするための代替の記録。 */
 const substitution = {
   source: "p/telemetry/AUT-1.jsonl",
   work_item_id: "AUT-1",
@@ -161,7 +161,7 @@ test("初期設置だけでは、外側ループは一周していない", async
   assert.equal(r.state, SUBSTITUTED);
 });
 
-test("セルが動き、根拠と統合済みの提出が揃えば発効", async () => {
+test("セルが動き、根拠と統合済みの提出が揃えば有効", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     HISTORY,
@@ -179,7 +179,7 @@ test("コメントだけを直した変更は、動いたと数えない", async
   assert.equal(r.state, SUBSTITUTED);
 });
 
-test("履歴から参照されていなければ発効しない", async () => {
+test("履歴から参照されていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     "# 境界変更履歴\n\n## 別の話\n\n- 根拠: なし\n",
@@ -188,7 +188,7 @@ test("履歴から参照されていなければ発効しない", async () => {
   assert.equal(r.state, SUBSTITUTED);
 });
 
-test("根拠が書かれていなければ発効しない", async () => {
+test("根拠が書かれていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     "# 境界変更履歴\n\n## 動かした\n\n- 設定変更: commit bbbbbbb\n",
@@ -197,7 +197,7 @@ test("根拠が書かれていなければ発効しない", async () => {
   assert.equal(r.state, SUBSTITUTED);
 });
 
-test("まだ統合されていなければ発効しない", async () => {
+test("まだ統合されていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     HISTORY,
@@ -206,10 +206,10 @@ test("まだ統合されていなければ発効しない", async () => {
   assert.equal(r.state, SUBSTITUTED);
 });
 
-// **読めないことを、通ったことにしない。** 承認を確かめられないまま発効を名乗ると
-// 判定そのものが意味を失う。そして**未発効でもない。** 判定できていない状態であり、
+// **読めないことを、通ったことにしない。** 承認を確かめられないまま有効を名乗ると
+// 判定そのものが意味を失う。そして**代替でもない。** 判定できていない状態であり、
 // 定義§9はそれ自体を失敗として扱う。
-test("統合を読めなければ失敗する。未発効ではない", async () => {
+test("統合を読めなければ失敗する。代替ではない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
     HISTORY,
@@ -233,7 +233,7 @@ test("origin が無ければ承認を確かめられず、失敗する", async (
 });
 
 // 判定できていないのは、結論が出せない場合に限る。
-test("1件でも承認が揃っていれば、別の1件が読めなくても発効する", async () => {
+test("1件でも承認が揃っていれば、別の1件が読めなくても有効になる", async () => {
   const history = `${HISTORY}
 ## 2026-08-24 もう1つ動かした
 
