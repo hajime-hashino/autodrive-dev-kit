@@ -44,7 +44,7 @@ function initialized(): string {
 /** 置かれた先の道具を、置かれた先から実行する。 */
 function run(root: string, args: string[]): { out: string; code: number } {
   try {
-    const out = execFileSync(join(root, VENDOR_DIR, "verify"), args, {
+    const out = execFileSync(join(root, VENDOR_DIR, "invariants"), args, {
       cwd: root,
       encoding: "utf8",
       env: { ...process.env, AUTODRIVE_CI_TOKEN: "", LINEAR_API_KEY: "" },
@@ -64,7 +64,7 @@ function run(root: string, args: string[]): { out: string; code: number } {
 test("道具がプロジェクトの中に置かれ、そこから動く", () => {
   const root = initialized();
 
-  for (const p of ["verify", "VERSION", "src", "hooks", "bin"]) {
+  for (const p of ["invariants", "verify", "VERSION", "src", "hooks", "bin"]) {
     assert.ok(existsSync(join(root, VENDOR_DIR, p)), `${VENDOR_DIR}/${p} が無い`);
   }
 
@@ -86,8 +86,8 @@ test("複製した時点の版が、置かれた先に残る", () => {
 test("置かれた設定が、置かれた道具を指している", () => {
   const root = initialized();
 
-  const workflow = readFileSync(join(root, ".github", "workflows", "verify.yml"), "utf8");
-  assert.ok(workflow.includes(`${VENDOR_DIR}/verify`), workflow);
+  const workflow = readFileSync(join(root, ".github", "workflows", "invariants.yml"), "utf8");
+  assert.ok(workflow.includes(`${VENDOR_DIR}/invariants`), workflow);
   assert.equal(workflow.includes("git clone"), false, "取りに行く形が残っている");
 
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");

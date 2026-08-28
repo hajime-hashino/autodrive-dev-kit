@@ -4,7 +4,7 @@
 
 入口は `bin/autodrive-dev-kit` の1つにまとめてある。**PATH に入れて増えるものを1つにするため。**
 
-`verify` はルートにも残している。**既存の CI が呼んでいるため**、壊さない。
+`invariants` はルートにも残している。**既存の CI が呼んでいるため**、壊さない。
 
 ## 土台を置く
 
@@ -76,69 +76,69 @@ autodrive-dev-kit telemetry 境界変更を記録する --area <領域> --from <
 
 ### 着手が紐づけの起点になる
 
-`状態を進める --to started` は作業単位マーカーを書く。以降の記録はその作業単位に紐づく。**着手していない状態で記録が発生したら、`work_item_id` が `null` になり `verify` が落ちる。** 起票せずに作業した事実を、記録から消さずに検出する。
+`状態を進める --to started` は作業単位マーカーを書く。以降の記録はその作業単位に紐づく。**着手していない状態で記録が発生したら、`work_item_id` が `null` になり `invariants` が落ちる。** 起票せずに作業した事実を、記録から消さずに検出する。
 
 `--to done` / `--to canceled` はマーカーを外す。別の作業単位の記録が紛れ込まないようにするため。
 
-## `verify`
+## `invariants`
 
 ```sh
 # ワークディレクトリ全体を横断して判定する（既定）
-autodrive-dev-kit verify --root /path/to/work
+autodrive-dev-kit invariants --root /path/to/work
 
 # 1リポジトリの中だけで閉じる判定に限る（各リポジトリの CI 用）
-autodrive-dev-kit verify --root . --scope self
+autodrive-dev-kit invariants --root . --scope self
 
 # 機械可読な出力
-autodrive-dev-kit verify --root . --format json
+autodrive-dev-kit invariants --root . --format json
 ```
 
-判定基準の全文は [verify-criteria.md](verify-criteria.md) を参照。
+判定基準の全文は [invariants.md](invariants.md) を参照。
 
-不変条件「AIがこれらを無効化できないこと」の判定に Repo API を読むため、環境変数 `AUTODRIVE_CI_TOKEN` が要る。無い場合は判定不能として失敗する（定義§9「発効の判定ができない状態は、それ自体を失敗として扱う」）。
+不変条件「AIがこれらを無効化できないこと」の判定に Repo API を読むため、環境変数 `AUTODRIVE_CI_TOKEN` が要る。無い場合は判定不能として失敗する（定義§9「有効の判定ができない状態は、それ自体を失敗として扱う」）。
 
 ```sh
 set -a; . /path/to/work/.env; set +a
-autodrive-dev-kit verify --root /path/to/work
+autodrive-dev-kit invariants --root /path/to/work
 ```
 
-### 発効境界を進める
+### 有効境界を進める
 
 ```sh
-./verify --enact telemetry_recorded
+./invariants --enact telemetry_recorded
 ```
 
 判定の起点を進める。これ以降の記録が判定の対象になる。障害で直書きへ戻ったあと、アダプタが直ってから復帰させるために使う。
 
-記録を自動で残す仕掛けが `.claude/settings.json` に登録されていなければ拒否する。印はアダプタ経由で書かれるため、**アダプタが壊れていれば進められない。** 直書きのまま発効を名乗る経路が無い。
+記録を自動で残す仕掛けが `.claude/settings.json` に登録されていなければ拒否する。印はアダプタ経由で書かれるため、**アダプタが壊れていれば進められない。** 直書きのまま有効を名乗る経路が無い。
 
 詳細は [ADR 0003](adr/0003-enactment-boundary.md)。
 
 ### 代替を記録する
 
 ```sh
-./verify --substitute boundary_change_logged --by human --detail "境界表は段階3で置く"
+./invariants --substitute boundary_change_logged --by human --detail "境界表は段階3で置く"
 ```
 
-未発効の不変条件について、何が手で代替しているかを記録する。**定義§9の立ち上げ期の例外は、この記録があることを条件としている。** 記録が無ければ `verify` は失敗する。
+有効になっていない不変条件について、何が手で代替しているかを記録する。**定義§9の立ち上げ期の例外は、この記録があることを条件としている。** 記録が無ければ `invariants` は失敗する。
 
-**既に発効している不変条件に対しては拒否する。** 代替が要らない状態に代替の記録を足すと、発効が落ちたときに古い記録が残って判定を誤らせる。
+**既に有効である不変条件に対しては拒否する。** 代替が要らない状態に代替の記録を足すと、有効が落ちたときに古い記録が残って判定を誤らせる。
 
-記録はアダプタ経由で書かれる。手で書けば発効が落ちる形は保たれている。
+記録はアダプタ経由で書かれる。手で書けば有効が落ちる形は保たれている。
 
 ### 終了コード
 
 | 値 | 意味 |
 |---|---|
-| 0 | 失敗なし。未発効の不変条件があっても、代替が記録されていれば 0 |
+| 0 | 失敗なし。有効になっていない不変条件があっても、代替が記録されていれば 0 |
 | 1 | 代替の記録が無い不変条件がある、または判定できない不変条件がある |
 | 2 | 引数が不正、または判定対象のリポジトリが見つからない |
 
-**未発効であること自体は失敗ではない。** 失敗なのは、代替の記録が無いことと、判定ができないことである。
+**代替であること自体は失敗ではない。** 失敗なのは、代替の記録が無いことと、判定ができないことである。
 
 ### エージェントの外から実行できること
 
-`verify` は実行可能なファイルであり、スラッシュコマンドとしてのみ存在する形は取らない。エージェントに接続されないまま運用が続く事故を防げないためである。CI からの実行は [.github/workflows/verify.yml](../.github/workflows/verify.yml) を参照。
+`invariants` は実行可能なファイルであり、スラッシュコマンドとしてのみ存在する形は取らない。エージェントに接続されないまま運用が続く事故を防げないためである。CI からの実行は [.github/workflows/invariants.yml](../.github/workflows/invariants.yml) を参照。
 
 ## トークン消費の記録
 
@@ -148,7 +148,7 @@ autodrive-dev-kit verify --root /path/to/work
 ./hooks/record-tokens   # フックの入力を標準入力から受け取る
 ```
 
-フックの登録は、この参照実装ではなく利用側のリポジトリの `.claude/settings.json` に置く。`verify` が読める場所に置くことで、外されたときに検出できる。
+フックの登録は、この参照実装ではなく利用側のリポジトリの `.claude/settings.json` に置く。`invariants` が読める場所に置くことで、外されたときに検出できる。
 
 設計と、他の経路を採らなかった理由は [ADR 0002](adr/0002-token-usage-capture.md) にある。
 
@@ -161,4 +161,4 @@ autodrive-dev-kit verify --root /path/to/work
 .autodrive/cursors/<セッションID>.json
 ```
 
-マーカーが無い状態で使用量が発生した場合、`work_item_id` に `null` を書いて `telemetry/unattributed.jsonl` へ残す。**握りつぶさない。** 起票せずに始めた作業を記録から消すと、違反も消えるため。`verify` がこれを検出する。
+マーカーが無い状態で使用量が発生した場合、`work_item_id` に `null` を書いて `telemetry/unattributed.jsonl` へ残す。**握りつぶさない。** 起票せずに始めた作業を記録から消すと、違反も消えるため。`invariants` がこれを検出する。

@@ -1,4 +1,4 @@
-name: verify
+name: invariants
 
 # このリポジトリの範囲の判定のみを行う。リポジトリをまたいで初めて成立する
 # 不変条件は、参照実装側の定期実行が見る。
@@ -23,4 +23,4 @@ jobs:
           node-version: "22.18"
 
       - name: 判定する
-        run: {{KIT}}/verify --root . --scope self
+        run: {{KIT}}/invariants --root . --scope self

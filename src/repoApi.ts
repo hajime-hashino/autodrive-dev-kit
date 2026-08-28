@@ -30,7 +30,7 @@ export function createRepoApi(token: string | undefined): RepoApi {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github+json",
-          "User-Agent": "autodrive-verify",
+          "User-Agent": "autodrive-dev-kit",
         },
         signal: AbortSignal.timeout(20_000),
       });

@@ -1,10 +1,10 @@
 /**
- * 不変条件の発効判定器。
+ * 不変条件の状態を判定する。
  *
- * 定義§9の4つの不変条件それぞれについて、発効しているか、未発効なら何が手で
+ * 定義§9の4つの不変条件それぞれについて、有効であるか、有効でないなら、何が手で
  * 代替しているかを判定して出力する。
  *
- * 使い方は README.md、判定基準の全文は docs/verify-criteria.md を参照。
+ * 使い方は README.md、判定基準の全文は docs/invariants.md を参照。
  */
 
 import { parseArgs } from "node:util";
@@ -21,35 +21,35 @@ import { ACTIVE, INVARIANTS, Result } from "./state.ts";
 import type { Scope } from "./state.ts";
 import { loadEvents } from "./telemetry.ts";
 
-const USAGE = `不変条件の発効判定器
+const USAGE = `不変条件の状態を判定する
 
-  verify [--root PATH] [--scope cross|self] [--format text|json]
-  verify --enact <不変条件のキー> [--root PATH]
-  verify --substitute <不変条件のキー> --by <主体> --detail <内容> [--root PATH]
+  invariants [--root PATH] [--scope cross|self] [--format text|json]
+  invariants --enact <不変条件のキー> [--root PATH]
+  invariants --substitute <不変条件のキー> --by <主体> --detail <内容> [--root PATH]
 
   --root    判定の起点。既定はカレントディレクトリ
   --scope   cross: 起点と直下のリポジトリを横断して判定（既定）
             self:  起点のリポジトリのみ
   --format  text（既定）または json
-  --enact   発効境界を進める。これ以降の記録が判定の対象になる。
+  --enact   有効境界を進める。これ以降の記録が判定の対象になる。
             記録を自動で残す仕掛けが登録されていなければ拒否する。
             印はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
   --substitute
-            未発効の不変条件について、何が手で代替しているかを記録する。
+            有効になっていない不変条件について、何が手で代替しているかを記録する。
             定義§9の立ち上げ期の例外は、この記録があることを条件としている。
-            既に発効している不変条件に対しては拒否する。
+            既に有効である不変条件に対しては拒否する。
 
 終了コード 0=失敗なし / 1=代替の記録が無い、または判定できない / 2=対象が無い
-判定基準の全文は docs/verify-criteria.md を参照。`;
+判定基準の全文は docs/invariants.md を参照。`;
 
 /**
- * 発効境界を進める。
+ * 有効境界を進める。
  *
  * 仕掛けが登録されていることを先に確かめる。登録が無い状態で印だけ進めると、
- * 記録が続く保証が無いまま発効を名乗ることになる。
+ * 記録が続く保証が無いまま有効を名乗ることになる。
  *
  * 印はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
- * 証明になる。壊れていれば印を進められず、直書きのまま発効を名乗れない。
+ * 証明になる。壊れていれば印を進められず、直書きのまま有効を名乗れない。
  */
 function enact(invariant: string, root: string, repos: Repo[]): { output: string; code: number } {
   const known = INVARIANTS.map((i) => i.key);
@@ -60,7 +60,7 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
   if (registeredIn === null) {
     return {
       output: "記録を自動で残す仕掛けが .claude/settings.json に登録されていない。\n" +
-        "登録しないまま境界を進めると、記録が続く保証が無いまま発効を名乗ることになる。",
+        "登録しないまま境界を進めると、記録が続く保証が無いまま有効を名乗ることになる。",
       code: 1,
     };
   }
@@ -68,7 +68,7 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
   const boundary = new Date().toISOString();
   telemetry.recordEnactment(
     invariant,
-    `発効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
+    `有効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
     boundary,
   );
   const written = telemetry.lastWrite;
@@ -80,22 +80,22 @@ function enact(invariant: string, root: string, repos: Repo[]): { output: string
   }
   return {
     output:
-      `${invariant} の発効境界を進めた: ${written.path}\n` +
+      `${invariant} の有効境界を進めた: ${written.path}\n` +
       `${boundary} 以前の記録は判定の対象から外れる（履歴としては残る）`,
     code: 0,
   };
 }
 
 /**
- * 未発効の不変条件について、何が手で代替しているかを記録する。
+ * 有効になっていない不変条件について、何が手で代替しているかを記録する。
  *
  * 定義§9の立ち上げ期の例外は「代替した事実を記録に残すこと」を条件としている。
  * 手段が無ければ条件を満たしようがない。
  *
- * **既に発効している不変条件に対しては拒否する。** 代替が要らない状態に代替の
- * 記録を足すと、発効が落ちたときに古い記録が残って判定を誤らせる。
+ * **既に有効である不変条件に対しては拒否する。** 代替が要らない状態に代替の
+ * 記録を足すと、有効が落ちたときに古い記録が残って判定を誤らせる。
  *
- * 記録はアダプタ経由で書く。手で書けば発効が落ちる形は保つ。
+ * 記録はアダプタ経由で書く。手で書けば有効が落ちる形は保つ。
  */
 async function substitute(
   invariant: string,
@@ -116,7 +116,7 @@ async function substitute(
     const current = await check.run(input);
     if (current.state === ACTIVE) {
       return {
-        output: `${invariant} は既に発効している。代替の記録は要らない。`,
+        output: `${invariant} は既に有効である。代替の記録は要らない。`,
         code: 2,
       };
     }

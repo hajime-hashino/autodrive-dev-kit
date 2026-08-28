@@ -65,7 +65,7 @@ export function record(input: HookInput, root: string, now = new Date()): Record
     appendEvent(path, {
       ts,
       // 作業単位が解決できない場合は null を書く。埋めずに残すことで、帰属しない
-      // 始めた作業を verify が検出できる。握りつぶすと記録から消えてしまう。
+      // 始めた作業を invariants が検出できる。握りつぶすと記録から消えてしまう。
       work_item_id: item?.workItemId ?? null,
       model: usage.model,
       kit_version: KIT_VERSION,
