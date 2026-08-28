@@ -15,6 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { delegateFor, MODES } from "../src/cli.ts";
+import { brokenEmphasis } from "../src/emphasis.ts";
 import { OPERATIONS as TELEMETRY_OPS } from "../src/telemetryCli.ts";
 import { OPERATIONS as TRACKER_OPS } from "../src/trackerCli.ts";
 
@@ -198,4 +199,35 @@ test("後から作られると書いたものは、init では作られない", 
     const target = path.includes("<") ? path.slice(0, path.indexOf("<")) : path;
     assert.equal(existsSync(join(root, target)), false, `後から作ると書いてあるのに置いている: ${path}`);
   }
+});
+
+// ------------------------------------------------------------ 強調が効いているか
+
+// **日本語では `**強調**` が黙って効かなくなる。** 助詞が直後に続くと、CommonMark の
+// 規則で閉じられない。書いた側には見えず、読む側には平文として届く。
+// 実際に出た（README で1箇所指摘され、調べたら文書全体で20箇所を超えていた）。
+test("強調が、強調として表示される", () => {
+  const broken: string[] = [];
+  for (const doc of documents()) {
+    for (const b of brokenEmphasis(readFileSync(doc, "utf8"))) {
+      broken.push(`${doc.slice(KIT.length + 1)}:${b.line}  ${b.text.slice(0, 70)}`);
+    }
+  }
+  assert.deepEqual(broken, [], `閉じられていない ** がある:\n${broken.join("\n")}`);
+});
+
+// **判定が本当に見つけられること。** 空の配列は、見ていなくても出る。
+test("助詞が続く強調を、実際に見つける", () => {
+  assert.equal(brokenEmphasis("**開発に必要な環境**は必要に応じて構築します。").length, 1);
+  assert.equal(brokenEmphasis("**履歴に載っていないと固定にならない**ため。").length, 1);
+
+  // 閉じられる形は、見つけない。
+  assert.equal(brokenEmphasis("**この版で動く。** 参照実装を更新しても変わらない。").length, 0);
+  assert.equal(brokenEmphasis("**既存の CI が呼んでいるため**、壊さない。").length, 0);
+  assert.equal(brokenEmphasis("英語なら **bold** is fine.").length, 0);
+
+  // **行をまたぐ強調を誤検出しない。** 段落として見る。
+  assert.equal(brokenEmphasis("これは **強調が\n行をまたぐ場合。** 続く文。").length, 0);
+  // **囲みの中は対象外。** 記号としての * が入る。
+  assert.equal(brokenEmphasis("```\nls **/*.ts\n```").length, 0);
 });
