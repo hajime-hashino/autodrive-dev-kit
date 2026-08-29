@@ -4,6 +4,18 @@
   "private": true,
   "type": "module",
   "description": "AIオートドライビング開発の参照実装",
+  "bin": {
+    "autodrive-dev-kit": "bin/autodrive-dev-kit"
+  },
+  "files": [
+    "bin",
+    "src",
+    "hooks",
+    "templates",
+    "invariants",
+    "verify",
+    "VERSION"
+  ],
   "engines": {
     "node": ">=22.18"
   },
