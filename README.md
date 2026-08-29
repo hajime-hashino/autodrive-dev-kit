@@ -85,7 +85,7 @@ my-app/
 ├── autodrive.json                   構成
 ├── boundaries.yaml                  境界表
 ├── CLAUDE.md                        プロジェクト固有の規約
-├── .env.example                     必要な資格情報の一覧
+├── .env.example                     必要な資格情報の一覧。**構成から作られる**
 ├── .gitignore
 ├── .claude/
 │   └── settings.json                記録の仕掛けの登録
@@ -106,7 +106,7 @@ my-app/
 | ファイル | 作成 | 所有 | 内容 |
 |---|---|---|---|
 | `autodrive/` | init | dev-kit | ツールセットの複製。`update` で入れ替わる |
-| `.env.example` | init | dev-kit | 必要な資格情報の一覧 |
+| `.env.example` | init | dev-kit | 必要な資格情報の一覧。**構成から作られる** |
 | `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
 | `.devcontainer/` | init | dev-kit | AIを動かす隔離された作業場。**外向き通信は許可制** |
 | `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
