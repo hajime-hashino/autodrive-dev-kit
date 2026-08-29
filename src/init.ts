@@ -18,7 +18,9 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
+import { allowedDomains } from "./sandbox.ts";
+import type { Config } from "./config.ts";
 
 /** 複製先。**追跡する。** 版を固定するには、履歴に載っている必要がある。 */
 export const VENDOR_DIR = "autodrive";
@@ -68,9 +70,11 @@ function seeded(root: string, path: string, body: string, out: Placed[]): void {
  * **雛形をコードの中に文字列で持たない。** ファイルにしておくと、アプリの種別や
  * エージェントの種別ごとに差し替えるとき、置き場所を変えるだけで済む。
  */
-export function template(kitRoot: string, name: string): string {
-  const body = readFileSync(join(kitRoot, "templates", name), "utf8");
-  return body.replaceAll("{{KIT}}", VENDOR_DIR);
+export function template(kitRoot: string, name: string, vars: Record<string, string> = {}): string {
+  let body = readFileSync(join(kitRoot, "templates", name), "utf8");
+  body = body.replaceAll("{{KIT}}", VENDOR_DIR);
+  for (const [key, value] of Object.entries(vars)) body = body.replaceAll(`{{${key}}}`, value);
+  return body;
 }
 
 /**
@@ -120,7 +124,32 @@ export function vendor(root: string, kitRoot: string): string {
   return existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : "不明";
 }
 
-export function init(root: string, kitRoot: string): InitResult {
+/**
+ * サンドボックスを置く。
+ *
+ * **記録しているのに置いていない状態を作らない。** 構成が `sandbox: none` なら
+ * 置かない。それ以外なら置く。
+ *
+ * **許可する宛先は構成から組み立てる**（`sandbox.ts`）。使わないものへの穴を
+ * 開けない。
+ */
+function placeSandbox(root: string, kitRoot: string, config: Config, placed: Placed[]): void {
+  if (config.ports.sandbox === "none") return;
+
+  const name = basename(root) || "project";
+  const inside: Placed[] = [];
+  for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "devcontainer-lock.json", "README.md"]) {
+    managed(root, `.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`, { NAME: name }), inside);
+  }
+  // **一覧は構成から作る。** 雛形を写すと、使わないポートの宛先が付いてくる。
+  managed(root, ".devcontainer/allowed-domains.txt", allowedDomains(config), inside);
+
+  // **1つにまとめて報告する。** 中の1つ1つを並べると、出力の大半が
+  // サンドボックスで埋まり、何が置かれたのかが読みにくくなる。
+  placed.push({ path: ".devcontainer/", placement: "managed" });
+}
+
+export function init(root: string, kitRoot: string, config: Config | null = null): InitResult {
   const placed: Placed[] = [];
 
   if (!existsSync(join(root, ".git"))) {
@@ -154,6 +183,10 @@ export function init(root: string, kitRoot: string): InitResult {
   } else {
     placed.push({ path: ".claude/settings.json", placement: "skipped" });
   }
+
+  // サンドボックス --------------------------------------------------------------
+  // **構成が要ると言っているものを、置かないままにしない。**
+  if (config !== null) placeSandbox(root, kitRoot, config, placed);
 
   // 播種 ----------------------------------------------------------------------
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);

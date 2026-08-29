@@ -1,0 +1,1 @@
+{"ts":"2026-08-29T06:49:18.203Z","work_item_id":"AUT-95","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"src/init.ts","detail":"autodrive.json は sandbox: devcontainer と記録するのに、.devcontainer/ を置いていなかった。記録しているのに置いていない。段階5の完了条件（素のディレクトリに init して段階0〜3が再現）を満たせない","cause":"要件のズレ","found_in":"段階5の準備"}
