@@ -1,0 +1,2 @@
+{"ts":"2026-08-29T07:04:06.075Z","work_item_id":"AUT-96","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"stop","stop_kind":"irreversible_publish","stop_type":"入力","detail":"npm への公開は定義§9の固定条件（外部への不可逆な公開）。下ごしらえだけ行い公開はしないことを人が選んだ","resolved":true}
+{"ts":"2026-08-29T07:04:06.177Z","work_item_id":"AUT-96","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"rework","target":"bin/autodrive-dev-kit","detail":"版の確認を判定できる形にするため invokedDirectly の分岐を入れたところ、npx が別名を経由するため npx 経由で何も動かなくなった。実際に npx を通して気づいた","cause":"実装バグ"}
