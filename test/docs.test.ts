@@ -10,7 +10,7 @@
  */
 
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -230,4 +230,100 @@ test("助詞が続く強調を、実際に見つける", () => {
   assert.equal(brokenEmphasis("これは **強調が\n行をまたぐ場合。** 続く文。").length, 0);
   // **囲みの中は対象外。** 記号としての * が入る。
   assert.equal(brokenEmphasis("```\nls **/*.ts\n```").length, 0);
+});
+
+// ------------------------------------------------------------ 配り方
+
+// **最初の1手で詰まらせない。** clone と PATH の設定を挟むと、いちばん負担を
+// かけたくない人に摩擦が当たる（AUT-96）。
+test("最初に打つものが、clone も PATH も要らない形で書いてある", () => {
+  const readme = readFileSync(join(KIT, "README.md"), "utf8");
+  const start = readme.slice(readme.indexOf("### はじめ方"), readme.indexOf("### 開発の進め方"));
+
+  assert.ok(start.includes("npx"), "clone せずに打てる形が書かれていない");
+  assert.ok(start.includes("clone も PATH の設定も要らない"), start.slice(0, 400));
+});
+
+// **npm から辿れる形になっていること。** bin が無いと、npx は何を実行すれば
+// よいか分からない（実際に「could not determine executable to run」で止まった）。
+test("入口が、npm から辿れる形で宣言されている", async () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8")) as {
+    bin?: Record<string, string>;
+    files?: string[];
+    private?: boolean;
+  };
+
+  assert.ok(pkg.bin?.["autodrive-dev-kit"], "bin が宣言されていない");
+  const entry = join(KIT, pkg.bin["autodrive-dev-kit"]);
+  assert.ok(existsSync(entry), `bin が指す ${pkg.bin["autodrive-dev-kit"]} が無い`);
+
+  // **Windows でも動く形であること。** シェルスクリプトだと npm が殻を作れない。
+  const head = readFileSync(entry, "utf8").split("\n")[0];
+  assert.equal(head, "#!/usr/bin/env node", `bin が node で始まっていない: ${head}`);
+});
+
+// **配るものを絞る。** テストも記録も、使う側には要らない。
+test("配るものに、使う側が要らないものを含めない", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8")) as { files?: string[] };
+  assert.ok(pkg.files, "files が宣言されていない");
+
+  for (const needed of ["bin", "src", "templates"]) {
+    assert.ok(pkg.files.includes(needed), `${needed} を配っていない`);
+  }
+  for (const unneeded of ["test", "telemetry", "docs"]) {
+    assert.equal(pkg.files.includes(unneeded), false, `${unneeded} を配っている`);
+  }
+});
+
+// **公開は固定条件である**（定義§9：外部への不可逆な公開）。下ごしらえだけを
+// 済ませ、公開そのものは人が決める。private を外すのは、その判断の場である。
+test("下ごしらえだけで、公開はしない", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8")) as { private?: boolean };
+  assert.equal(pkg.private, true, "公開を止める印が外れている。**これは人の判断を要する**");
+});
+
+// **判定できる形にしておく。** ここが緩むと、要る版に届いていないことに気づけず
+// 黙って落ちる。**確認そのものが型注釈を必要としてはいけない。**
+test("要る版に届いていなければ、断る", async () => {
+  const { NEEDS, tooOld, tooOldMessage } = await import("../bin/node-version.js");
+
+  for (const old of ["18.20.0", "20.11.0", "22.0.0", "22.17.9", "22.17"]) {
+    assert.equal(tooOld(old), true, `${old} を通している`);
+  }
+  for (const ok of [NEEDS, "22.18.0", "22.19.0", "23.0.0", "24.1.0"]) {
+    assert.equal(tooOld(ok), false, `${ok} を弾いている`);
+  }
+  // 読めない値は、通さない側へ倒す。
+  assert.equal(tooOld("わからない"), true);
+
+  // **なぜ・どうすれば・詰まったらどうするか**（配布物「停止するときの作法」）。
+  const said = tooOldMessage("20.0.0");
+  assert.ok(said.includes(NEEDS), said);
+  assert.ok(said.includes("型注釈"), "なぜ要るのかが無い");
+  assert.ok(said.includes("nvm"), "どうすればよいかが無い");
+  assert.ok(said.includes("案内します"), "詰まったときの受け皿が無い");
+});
+
+// **確認の手前で落ちない形であること。** 入口が型注釈を含むと、要る版に届いて
+// いない人には、確認そのものが動かない。
+test("入口だけは、型注釈を使わない", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8")) as {
+    bin: Record<string, string>;
+  };
+  for (const file of [pkg.bin["autodrive-dev-kit"], "bin/node-version.js"]) {
+    const body = readFileSync(join(KIT, file), "utf8");
+    for (const typed of [": string", ": number", "as const", "interface ", "import type"]) {
+      assert.equal(body.includes(typed), false, `${file} に型注釈がある: ${typed}`);
+    }
+  }
+
+  // **確認が入口に繋がっていること。** 関数があっても、呼ばれなければ意味がない。
+  // ここだけは中身を読んで確かめる。**古い Node を用意して動かすことができない**
+  // ため、他に確かめる手段が無い。
+  const entry = readFileSync(join(KIT, pkg.bin["autodrive-dev-kit"]), "utf8");
+  assert.ok(entry.includes("tooOld(process.versions.node)"), "入口が版を確かめていない");
+
+  // **「直接実行されたか」で分岐しない。** npx は別名を経由するため、分岐を置くと
+  // npx 経由で何も起きなくなる。実際にそうなった（AUT-96）。
+  assert.equal(entry.includes("invokedDirectly"), false, "npx 経由で動かなくなる分岐がある");
 });
