@@ -20,6 +20,8 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
+import { envExample } from "./credentials.js";
+import { defaults } from "./config.js";
 
 
 /** 複製先。**追跡する。** 版を固定するには、履歴に載っている必要がある。 */
@@ -155,7 +157,9 @@ export function init(root , kitRoot , config = null) {
   placed.push({ path: `${VENDOR_DIR}/`, placement: "managed" });
 
   // 管理下 --------------------------------------------------------------------
-  managed(root, ".env.example", template(kitRoot, ".env.example"), placed);
+  // **構成から作る。** 雛形を写すと、使わないポートの資格情報を求めることになり、
+  // 使うポートのものが抜けても気づけない。実際に GH_TOKEN が抜けていた（AUT-98）。
+  managed(root, ".env.example", envExample(config ?? defaults()), placed);
   managed(root, ".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), placed);
   managed(root, "docs/autodrive.md", template(kitRoot, "autodrive.md"), placed);
 
