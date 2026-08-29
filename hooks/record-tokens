@@ -4,5 +4,5 @@
 # 実装言語を呼び出し側（フック設定）に漏らさないための殻。
 # 記録の失敗でエージェントを止めないため、常に 0 で終わる。
 dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-node "$dir/src/recordTokens.ts" || true
+node "$dir/src/recordTokens.js" || true
 exit 0
