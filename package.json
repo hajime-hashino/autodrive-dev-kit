@@ -20,7 +20,7 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "verify": "node src/main.ts",
-    "test": "node --test \"test/**/*.test.ts\""
+    "verify": "node src/main.js",
+    "test": "node --test \"test/**/*.test.js\""
   }
 }
