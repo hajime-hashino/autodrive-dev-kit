@@ -1,5 +1,28 @@
-#!/bin/sh
-# 入口。実装言語を呼び出し側に漏らさないための殻。
-set -e
-dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec node "$dir/src/cli.ts" "$@"
+#!/usr/bin/env node
+// 入口。
+//
+// **JS にしているのは、Windows でも動く殻を npm に作らせるため。** シェルスクリプト
+// を bin にすると、Windows では実行できない。
+//
+// **ここだけは型注釈を使わない。** 型注釈をそのまま実行するには Node 22.18 以上が
+// 要る。要るかどうかを確かめる場所が、その条件を満たさないと動かないのでは意味が
+// ない。**確認の手前で落ちる。**
+//
+// **「直接実行されたか」で分岐しない。** npx は別名を経由して呼ぶため、分岐を
+// 置くと npx 経由で何も起きなくなる。実際にそうなった（AUT-96）。
+
+import { spawnSync } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { tooOld, tooOldMessage } from "./node-version.js";
+
+if (tooOld(process.versions.node)) {
+  process.stderr.write(tooOldMessage(process.versions.node));
+  process.exit(1);
+}
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const result = spawnSync(process.execPath, [join(root, "src", "cli.ts"), ...process.argv.slice(2)], {
+  stdio: "inherit",
+});
+process.exit(result.status ?? 1);
