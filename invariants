@@ -5,4 +5,4 @@
 # 言語を差し替えても、CI の呼び出しと各リポジトリの配線は書き換えずに済む。
 set -e
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec node "$dir/src/main.ts" "$@"
+exec node "$dir/src/main.js" "$@"

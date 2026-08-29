@@ -1,0 +1,207 @@
+/**
+ * 不変条件の状態を判定する。
+ *
+ * 定義§9の4つの不変条件それぞれについて、有効であるか、有効でないなら、何が手で
+ * 代替しているかを判定して出力する。
+ *
+ * 使い方は README.md、判定基準の全文は docs/invariants.md を参照。
+ */
+
+import { parseArgs } from "node:util";
+import { resolve } from "node:path";
+import { CHECKS, hookRegistered } from "./checks.js";
+
+import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
+import { createRepoApi } from "./repoApi.js";
+import { LinearTracker } from "./adapters/trackerLinear.js";
+import { discoverRepos } from "./repos.js";
+
+import { renderJson, renderText } from "./report.js";
+import { ACTIVE, INVARIANTS, Result } from "./state.js";
+
+import { loadEvents } from "./telemetry.js";
+
+const USAGE = `不変条件の状態を判定する
+
+  invariants [--root PATH] [--scope cross|self] [--format text|json]
+  invariants --enact <不変条件のキー> [--root PATH]
+  invariants --substitute <不変条件のキー> --by <主体> --detail <内容> [--root PATH]
+
+  --root    判定の起点。既定はカレントディレクトリ
+  --scope   cross: 起点と直下のリポジトリを横断して判定（既定）
+            self:  起点のリポジトリのみ
+  --format  text（既定）または json
+  --enact   有効境界を進める。これ以降の記録が判定の対象になる。
+            記録を自動で残す仕掛けが登録されていなければ拒否する。
+            印はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
+  --substitute
+            有効になっていない不変条件について、何が手で代替しているかを記録する。
+            定義§9の立ち上げ期の例外は、この記録があることを条件としている。
+            既に有効である不変条件に対しては拒否する。
+
+終了コード 0=失敗なし / 1=代替の記録が無い、または判定できない / 2=対象が無い
+判定基準の全文は docs/invariants.md を参照。`;
+
+/**
+ * 有効境界を進める。
+ *
+ * 仕掛けが登録されていることを先に確かめる。登録が無い状態で印だけ進めると、
+ * 記録が続く保証が無いまま有効を名乗ることになる。
+ *
+ * 印はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
+ * 証明になる。壊れていれば印を進められず、直書きのまま有効を名乗れない。
+ */
+function enact(invariant , root , repos) {
+  const known = INVARIANTS.map((i) => i.key);
+  if (!known.includes(invariant)) {
+    return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
+  }
+  const registeredIn = hookRegistered(repos);
+  if (registeredIn === null) {
+    return {
+      output: "記録を自動で残す仕掛けが .claude/settings.json に登録されていない。\n" +
+        "登録しないまま境界を進めると、記録が続く保証が無いまま有効を名乗ることになる。",
+      code: 1,
+    };
+  }
+  const telemetry = new JsonlTelemetry(resolve(root));
+  const boundary = new Date().toISOString();
+  telemetry.recordEnactment(
+    invariant,
+    `有効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
+    boundary,
+  );
+  const written = telemetry.lastWrite;
+  if (written === null || !written.attributed) {
+    return {
+      output: "境界の記録が作業単位に紐づかなかった。着手してから実行すること。",
+      code: 1,
+    };
+  }
+  return {
+    output:
+      `${invariant} の有効境界を進めた: ${written.path}\n` +
+      `${boundary} 以前の記録は判定の対象から外れる（履歴としては残る）`,
+    code: 0,
+  };
+}
+
+/**
+ * 有効になっていない不変条件について、何が手で代替しているかを記録する。
+ *
+ * 定義§9の立ち上げ期の例外は「代替した事実を記録に残すこと」を条件としている。
+ * 手段が無ければ条件を満たしようがない。
+ *
+ * **既に有効である不変条件に対しては拒否する。** 代替が要らない状態に代替の
+ * 記録を足すと、有効が落ちたときに古い記録が残って判定を誤らせる。
+ *
+ * 記録はアダプタ経由で書く。手で書けば有効が落ちる形は保つ。
+ */
+async function substitute(
+  invariant ,
+  by ,
+  detail ,
+  root ,
+  input ,
+) {
+  const known = INVARIANTS.map((i) => i.key);
+  if (!known.includes(invariant)) {
+    return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
+  }
+  if ((by ?? "").trim() === "") return { output: "--by は必須（何が代替しているか）", code: 2 };
+  if ((detail ?? "").trim() === "") return { output: "--detail は必須", code: 2 };
+
+  const check = CHECKS.find((c) => c.key === invariant);
+  if (check !== undefined) {
+    const current = await check.run(input);
+    if (current.state === ACTIVE) {
+      return {
+        output: `${invariant} は既に有効である。代替の記録は要らない。`,
+        code: 2,
+      };
+    }
+  }
+
+  const telemetry = new JsonlTelemetry(resolve(root));
+  telemetry.recordSubstitution(invariant, by , detail);
+  const written = telemetry.lastWrite;
+  if (written === null || !written.attributed) {
+    return { output: "代替の記録が作業単位に紐づかなかった。着手してから実行すること。", code: 1 };
+  }
+  return { output: `${invariant} の代替を記録した: ${written.path}`, code: 0 };
+}
+
+export async function run(argv) {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      root: { type: "string", default: "." },
+      scope: { type: "string", default: "cross" },
+      format: { type: "string", default: "text" },
+      enact: { type: "string" },
+      substitute: { type: "string" },
+      by: { type: "string" },
+      detail: { type: "string" },
+      help: { type: "boolean", default: false },
+    },
+    strict: true,
+  });
+
+  if (values.help) return { output: USAGE, code: 0 };
+  if (values.scope !== "cross" && values.scope !== "self") {
+    return { output: `--scope は cross か self（受け取った値: ${values.scope}）`, code: 2 };
+  }
+  if (values.format !== "text" && values.format !== "json") {
+    return { output: `--format は text か json（受け取った値: ${values.format}）`, code: 2 };
+  }
+  const scope = values.scope;
+
+  // 印を進める操作も代替の記録も、リポジトリをまたいだ状態に対して行う。
+  const writing = values.enact !== undefined || values.substitute !== undefined;
+  const repos = discoverRepos(values.root, writing ? "cross" : scope);
+  if (repos.length === 0) {
+    return { output: `判定対象のリポジトリが見つからない: ${resolve(values.root)}`, code: 2 };
+  }
+
+  const { events, broken } = loadEvents(repos);
+  const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
+  const trackerToken = process.env.LINEAR_API_KEY;
+  const tracker =
+    trackerToken === undefined
+      ? null
+      : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
+  const input = { repos, events, broken, api, tracker, scope };
+
+  if (values.enact !== undefined) return enact(values.enact, values.root, repos);
+  if (values.substitute !== undefined) {
+    return await substitute(values.substitute, values.by, values.detail, values.root, {
+      ...input,
+      scope: "cross",
+    });
+  }
+
+  const results = [];
+  for (const { key, label } of INVARIANTS) {
+    const check = CHECKS.find((c) => c.key === key);
+    if (check === undefined) throw new Error(`判定が登録されていない不変条件: ${key}`);
+    if (!check.scopes.has(scope)) {
+      results.push(
+        new Result(key, label).skip(
+          "リポジトリをまたいで初めて成立するため、--scope cross でのみ判定する",
+        ),
+      );
+      continue;
+    }
+    results.push(await check.run(input));
+  }
+
+  const render = values.format === "json" ? renderJson : renderText;
+  return { output: render(results, repos, scope), code: results.some((r) => r.failing) ? 1 : 0 };
+}
+
+const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
+if (invokedDirectly) {
+  const { output, code } = await run(process.argv.slice(2));
+  (code === 2 ? console.error : console.log)(output);
+  process.exit(code);
+}

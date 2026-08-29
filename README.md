@@ -205,7 +205,9 @@ autodrive/invariants --root . --scope self
 npm test    # node:test。テストフレームワークの依存は無い
 ```
 
-TypeScript を Node で直接実行する。ビルド手順は無い。
+**素の JS を Node で直接実行する。ビルド手順は無い。** 型は JSDoc で書く。
+
+型注釈をそのまま実行する形は採れない。**Node は `node_modules` の下にあるファイルの型注釈を剥がさないため**、`npx` で配れなくなる（[ADR 0001](docs/adr/0001-implementation-language.md)）。
 
 **`dependencies` を置かないこと。** 依存ゼロであることが、dev-kit のサプライチェーン上の防御である。追加が必要になった場合は [ADR 0001](docs/adr/0001-implementation-language.md) を読み、必要なら更新の提案から始める。
 
