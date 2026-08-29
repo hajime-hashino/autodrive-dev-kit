@@ -1,0 +1,35 @@
+{
+  "name": "{{NAME}}",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+
+  // 外向き通信を絞るために要る。これが無いと出口を閉じられない。
+  "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+
+  // 環境を作り直しても認証と設定が残るようにする。
+  // ${devcontainerId} を含めることで、他のプロジェクトと混ざらない。
+  "mounts": [
+    "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    // 機能フラグの取得を止める。許可する宛先を減らせる。
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+
+  // 出口を閉じるには root が要る。エージェントは root では動かさない。
+  "postCreateCommand": "sudo bash .devcontainer/init-firewall.sh && bash .devcontainer/post-create.sh",
+  "remoteUser": "vscode",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"]
+    }
+  }
+}
