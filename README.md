@@ -36,9 +36,16 @@
 導入するプロジェクトのディレクトリで実行する。
 
 ```sh
-export PATH="$PATH:<この参照実装の置き場所>/bin"
-
 cd <あなたのプロジェクト>
+npx github:hajimegane/autodrive-dev-kit init
+```
+
+**clone も PATH の設定も要らない。** Node 22.18 以上があれば動く（型注釈をそのまま実行するため）。
+
+打つのが長いので、置き場所を決めて PATH へ通してもよい。
+
+```sh
+export PATH="$PATH:<この参照実装の置き場所>/bin"
 autodrive-dev-kit init
 ```
 
