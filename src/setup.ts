@@ -191,7 +191,7 @@ export function setup(
   }
 
   // 置く ----------------------------------------------------------------------
-  const result = init(root, kitRoot);
+  const result = init(root, kitRoot, config);
   if (result.message !== null) return { ...result, config: null, decisions: [] };
 
   // **入れ替えでは触らない。** 決めた内容はプロジェクトのものである。読んだものを
