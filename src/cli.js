@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { setup } from "./setup.js";
 
 import { terminalInterview } from "./adapters/interviewTerminal.js";
+import { say } from "./messages.js";
 
 
 const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -47,35 +48,30 @@ export function delegateFor(command) {
 
 export const MODES = new Set (["init", "apply", "update"]);
 
-const HEADLINE = {
-  init: "土台を置いた",
-  apply: "既にあるものへ土台を入れた",
-  update: "道具を入れ替えた",
-};
+
 
 export function renderSetup(mode , result) {
   if (result.message !== null) return { output: result.message, code: result.code };
 
-  const label = {
-    managed: "置いた（参照実装が管理する。次に入れ替えると上書きされる）",
-    seeded: "置いた（このプロジェクトのものになる）",
-    merged: "足した",
-    skipped: "そのままにした（既にある）",
-  };
+  // **決まった言語で出す。** 決まっていなければ既定で出す。
+  const language = result.config?.language ?? "ja";
+  const t = (key, values) => say(language, key, values);
 
-  const lines = [`${HEADLINE[mode]}（版 ${result.version ?? "不明"}）。`, ""];
-  for (const p of result.placed) lines.push(`  ${p.path.padEnd(34)} ${label[p.placement]}`);
+  const lines = [t(`headline.${mode}`, { version: result.version ?? "?" }), ""];
+  for (const p of result.placed) {
+    lines.push(`  ${p.path.padEnd(34)} ${t(`placement.${p.placement}`)}`);
+  }
 
   // **何をどう決めたかを出す。** 出さないと、聞かれなかった項目が決まっている
   // ことに気づけない。
   if (result.decisions.length > 0) {
-    lines.push("", "構成:", "");
+    lines.push("", t("section.config"), "");
     for (const d of result.decisions) lines.push(`  ${d}`);
   }
 
   if (result.todo.length > 0) {
-    lines.push("", "**ここから先は人にしかできない。**", "");
-    result.todo.forEach((t, i) => lines.push(`  ${i + 1}. ${t}`));
+    lines.push("", t("section.todo"), "");
+    result.todo.forEach((t2, i) => lines.push(`  ${i + 1}. ${t2}`));
   }
 
   return { output: lines.join("\n"), code: 0 };
