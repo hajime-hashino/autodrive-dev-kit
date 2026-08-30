@@ -22,6 +22,7 @@ import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
 import { envExample } from "./credentials.js";
+import { say } from "./messages.js";
 import { defaults } from "./config.js";
 
 
@@ -221,7 +222,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   const claude = join(root, "CLAUDE.md");
   const pointer =
     existsSync(claude) && !readFileSync(claude, "utf8").includes("docs/autodrive.md")
-      ? "CLAUDE.md に次の1行を足すこと: 「作業の進め方は docs/autodrive.md に従う」"
+      ? say(config?.language ?? "ja", "todo.pointer")
       : null;
   seeded(root, "CLAUDE.md", template(kitRoot, "CLAUDE.md"), placed);
 
@@ -230,6 +231,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **済んでいることを頼まない。** 毎回同じ一覧を出すと、読まれなくなる。読まれ
   // なくなった一覧は、本当に要るものが出たときにも読まれない。
   const todo = [];
+  const t = (key) => say(config?.language ?? "ja", key);
 
   // **AIにできることを、ここに書かない。** この一覧は Claude Code を開く前に
   // 読まれるため、書いたものはすべて人の作業になる。置き場所の作成もシークレットの
@@ -240,7 +242,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   //   資格情報の発行    外部サービスでの操作
   //   作業場を開き直す  そこにAIがまだ動いていない。立ち上げそのもの
   if (!existsSync(join(root, ".env"))) {
-    todo.push(".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）");
+    todo.push(t("todo.env"));
   }
   // **置いたものを使えと言う。** 開き直さなければ、隔離されていない場所でAIが
   // 動く。構成は隔離すると記録しているのに、実際には隔離されない。
@@ -250,10 +252,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   //
   // **既に中にいるなら言わない。** 済んでいることを頼まない。
   if (sandboxPlaced && !inside) {
-    todo.push(
-      "作業場を開き直す（VS Code なら「Reopen in Container」）。" +
-        "**.env を作ってから行うこと。** 環境を作るときに読まれる",
-    );
+    todo.push(t("todo.reopen"));
   }
 
   if (pointer !== null) todo.push(pointer);
@@ -263,13 +262,10 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // いる可能性があるため、消すのは人に任せ、残っている事実だけを出す。
   const stale = join(root, ".github", "workflows", "verify.yml");
   if (existsSync(stale) && readFileSync(stale, "utf8").includes(`${VENDOR_DIR}/verify`)) {
-    todo.push(
-      ".github/workflows/verify.yml を削除する（invariants.yml に置き換わった。" +
-        "残すと同じ判定が二重に走る）",
-    );
+    todo.push(t("todo.staleWorkflow"));
   }
   // **覚えることを増やさない。** どこから始めるかはAIが状態を見て決める（AUT-80）。
-  todo.push("Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める");
+  todo.push(t("todo.start"));
 
   return { placed, todo, version, code: 0, message: null };
 }

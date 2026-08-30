@@ -12,6 +12,7 @@
  */
 
 import { closeSync, openSync, readSync } from "node:fs";
+import { say } from "../messages.js";
 
 /**
  * 端末を、待てる形で開く。
@@ -101,12 +102,22 @@ export function chosen(question , line) {
   return { value: question.choices[n - 1].value, retry: false };
 }
 
+/**
+ * 問いを出す。
+ *
+ * **言語は問いが持つ。** 出す側が決めると、言語を選ぶ前の問い（言語そのものを
+ * 聞くもの）を出せない。
+ */
 export function render(question) {
+  // **言語は問いが持つ。** 出す側が決めると、言語を選ぶ前の問い（言語そのものを
+  // 聞くもの）を出せない。
+  const language = question.language ?? "ja";
   const lines = [``, question.ask, `  ${question.why}`, ``];
   question.choices.forEach((c, i) => {
-    lines.push(`  ${i + 1}. ${c.label}${c.value === question.recommended ? "  ← 推奨" : ""}`);
+    const mark = c.value === question.recommended ? say(language, "ask.recommended") : "";
+    lines.push(`  ${i + 1}. ${c.label}${mark}`);
   });
-  lines.push(``, `番号を入れる（そのまま Enter で推奨）: `);
+  lines.push(``, say(language, "ask.prompt"));
   return lines.join("\n");
 }
 
@@ -138,7 +149,7 @@ export function terminalInterview(
           write(render(question));
           const { value, retry } = chosen(question, read(fd));
           if (!retry) return value;
-          write(`\n  それは選択肢に無い。もう一度。\n`);
+          write(say(question.language ?? "ja", "ask.notAChoice"));
         }
       } finally {
         try {
