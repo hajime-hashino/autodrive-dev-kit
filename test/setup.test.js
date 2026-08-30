@@ -15,7 +15,13 @@ import { test } from "node:test";
 import { QUESTIONS, setup } from "../src/setup.js";
 
 import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, infer, readConfig } from "../src/config.js";
-import { chosen, render } from "../src/adapters/interviewTerminal.js";
+import {
+  chosen,
+  howToHandle,
+  openTerminal,
+  render,
+  terminalInterview,
+} from "../src/adapters/interviewTerminal.js";
 import { useRecommended } from "../src/ports/interview.js";
 
 
@@ -345,4 +351,78 @@ test("3つとも入口から打てる", () => {
   for (const m of ["init", "apply", "update"]) {
     assert.ok(out.includes(`autodrive-dev-kit ${m}`), `${m} が案内に無い`);
   }
+});
+
+// ---------------------------------------------------------------- 端末で聞く
+
+// **聞けないなら、質問を出さない。** 出しておいて待たないと、画面には聞いている
+// ように見えて、答えを受け取っていない状態になる。実際にそうなった（AUT-101）。
+test("端末を開けないなら、質問を出さない", () => {
+  const written = [];
+  const port = terminalInterview(
+    () => null,
+    () => "1",
+    (s) => written.push(s),
+  );
+
+  assert.equal(port.answer(QUESTIONS[0]), null, "聞けないのに答えを返している");
+  assert.deepEqual(written, [], `聞けないのに質問を出している:\n${written.join("")}`);
+});
+
+test("端末を開けるなら、質問を出して待つ", () => {
+  const written = [];
+  const port = terminalInterview(
+    () => 9,
+    () => "2",
+    (s) => written.push(s),
+    () => {},
+  );
+
+  assert.equal(port.answer(QUESTIONS[0]), QUESTIONS[0].choices[1].value);
+  assert.ok(written.join("").includes(QUESTIONS[0].ask), "質問を出していない");
+});
+
+// **開けた端末は閉じる。** 開いたままにすると、次に開けなくなる余地ができる。
+test("聞き終えたら、端末を閉じる", () => {
+  const opened = [];
+  const closed = [];
+  const port = terminalInterview(
+    () => {
+      opened.push(9);
+      return 9;
+    },
+    () => "1",
+    () => {},
+    (fd) => closed.push(fd),
+  );
+  port.answer(QUESTIONS[0]);
+  port.answer(QUESTIONS[1]);
+
+  assert.equal(opened.length, 2, "開き直していない");
+  assert.deepEqual(closed, opened, "開いたものを閉じていない");
+});
+
+// **すべての失敗を終端として扱わない。** EAGAIN は「まだ入力が無い」であって、
+// 「もう来ない」ではない。待てばよいものを諦めると、聞いたつもりで聞けていない。
+test("まだ入力が無いだけなら、諦めない", () => {
+  assert.equal(howToHandle({ code: "EAGAIN" }), "また試す");
+  assert.equal(howToHandle({ code: "EWOULDBLOCK" }), "また試す");
+
+  for (const code of ["EOF", "EBADF", "EIO", undefined]) {
+    assert.equal(howToHandle({ code }), "終わり", `${code} を待ち続けている`);
+  }
+});
+
+// **標準入力（fd 0）をそのまま読まない。** 非ブロッキングで開かれていることが
+// あり、macOS では EAGAIN が返る。**待てばよいものを諦めていた**（AUT-101）。
+//
+// 端末があるかは実行する場所で変わるため、**開けたかどうかは見ない。**
+// 開けた場合に、それが標準入力でないことだけを見る。
+test("端末は、標準入力とは別に開く", async () => {
+  const { closeSync } = await import("node:fs");
+  const fd = openTerminal();
+
+  if (fd === null) return; // 端末が無い場所。ここでは何も言えない
+  assert.ok(fd > 2, `標準入力や標準出力をそのまま返している: fd=${fd}`);
+  closeSync(fd);
 });
