@@ -9,7 +9,14 @@
  * 求めていなかった。**この作業場では起きない。** 既にある `.env` に入っているため。
  */
 
-/** @typedef {{ name: string, why: string, lost: string }} Credential */
+/**
+ * @typedef {{
+ *   name: string,
+ *   why: string,
+ *   lost: string,
+ *   needs?: Array<{ permission: string, level: string, why: string }>
+ * }} Credential
+ */
 
 /**
  * どの構成でも要るもの。
@@ -41,11 +48,34 @@ const FOR_IMPLEMENTATION = {
       name: "GH_TOKEN",
       why: "提出と push。**無いと push が通らない**（作業場の支度が git の資格情報ヘルパに使う）",
       lost: "再発行する。古い値は使えなくなる",
+      // **要る権限を先に全部言う。** 足りないまま作ると、作業が進んでから止まる。
+      // 足すたびにまた止まる。**同じ停止が2つのプロジェクトで起きた**（AUT-108）。
+      needs: [
+        { permission: "Contents", level: "Read and write", why: "push" },
+        {
+          permission: "Pull requests",
+          level: "Read and write",
+          why: "提出の作成と、統合されたかの読取",
+        },
+        { permission: "Actions", level: "Read", why: "CI が動いたか・通ったかの確認" },
+        { permission: "Checks", level: "Read", why: "判定結果の読取" },
+        {
+          permission: "Administration",
+          level: "Read and write",
+          why: "既定ブランチの保護設定の読取。**書き込みは置き場所の作成に要る**",
+        },
+        { permission: "Workflows", level: "Read and write", why: "CI 定義を置く・変える" },
+        { permission: "Secrets", level: "Read and write", why: "CI が使う資格情報の登録" },
+      ],
     },
     {
       name: "AUTODRIVE_CI_TOKEN",
-      why: "判定が Repo を読む。**提出の読取（Pull requests: Read）を含めること。** 無いと「外側ループが起動したか」を判定できない",
+      why: "判定が Repo を読む。無いと「外側ループが起動したか」を判定できない",
       lost: "再発行する",
+      needs: [
+        { permission: "Pull requests", level: "Read", why: "統合されたかの読取" },
+        { permission: "Administration", level: "Read", why: "保護設定の読取" },
+      ],
     },
   ],
   linear: [
@@ -110,7 +140,18 @@ export function envExample(config) {
   ];
 
   for (const c of credentialsFor(config)) {
-    lines.push("", `# ${c.why}`, `# 失ったとき: ${c.lost}`, `${c.name}=`);
+    lines.push("", `# ${c.why}`);
+    // **要る権限を先に全部並べる。** 足りないまま作ると、作業が進んでから止まり、
+    // 足すたびにまた止まる。**一度で済む形にする。**
+    if (c.needs !== undefined) {
+      lines.push("#", "# 要る権限（作るときに、まとめて付けること）:");
+      const width = Math.max(...c.needs.map((n) => n.permission.length));
+      for (const n of c.needs) {
+        lines.push(`#   ${n.permission.padEnd(width)}  ${n.level.padEnd(14)} ${n.why}`);
+      }
+      lines.push("#");
+    }
+    lines.push(`# 失ったとき: ${c.lost}`, `${c.name}=`);
   }
   return `${lines.join("\n")}\n`;
 }
