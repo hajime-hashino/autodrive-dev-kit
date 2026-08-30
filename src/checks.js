@@ -162,6 +162,12 @@ export function observeStops(r , events) {
   }
 }
 
+/** 値が入っているか。**空文字は「無い」とみなす。** */
+function hasValue(event, attr) {
+  const value = event[attr];
+  return typeof value === "string" && value.trim() !== "";
+}
+
 const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker }) => {
   const r = resultFor("telemetry_recorded");
 
@@ -202,12 +208,25 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   // 扱うと、正しく動いた記録が失敗として現れ続け、遡って付与できないため二度と
   // 消せない。
   //
-  // **免除するのは work_item_id だけ。** model / kit_version / emitter は
-  // ランタイム由来であり、帰属できなくても必ず付く。
+  // **model は、いつでも付くわけではない。** 値の出どころはセッションの記録であり、
+  // それを書くのはターンの終わりに走る仕掛けである。**セッション最初のターンには
+  // まだ無い**（AUT-107）。
+  //
+  // 記録する側が守れない条件を、判定する側が要求してはいけない。**遡って付与
+  // できない以上、失敗にすると二度と消せない。** work_item_id と同じ型である。
+  //
+  // したがって、**アダプタが書いた記録で model が欠けている場合は失敗にしない。**
+  // 手で書いた記録は対象外である（emitter が adapter でないものは、そもそも
+  // 直書きとして別に扱われる）。
+  //
+  // **見えなくはしない。** 件数を観測として出す。増えたなら、仕掛けが壊れている。
   const unattributed = allEvents.filter(isUnattributed);
   const missing = [];
   for (const event of allEvents) {
-    const exempt = isUnattributed(event) ? new Set(["work_item_id"]) : new Set ();
+    const exempt = isUnattributed(event) ? new Set(["work_item_id"]) : new Set();
+    // アダプタが書いたのに model が無い記録は、壊れているのではなく
+    // 「分からなかった」である。
+    if (event.emitter === "adapter" && !hasValue(event, "model")) exempt.add("model");
     for (const attr of REQUIRED_EVENT_ATTRS) {
       if (exempt.has(attr)) continue;
       const value = event[attr];
@@ -222,7 +241,16 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
     // 遡って付与できない属性が欠けている。代替では埋められない。
     return r.conclude(UNSUBSTITUTED);
   }
-  r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} は全イベントが持つ`);
+  r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} に、壊れているものは無い`);
+
+  // **見えなくはしない。** model が付かないのはセッション最初のターンだけのはずで
+  // あり、増えたなら仕掛けが壊れている。**失敗にはしないが、数は出す。**
+  const noModel = allEvents.filter((e) => e.emitter === "adapter" && !hasValue(e, "model"));
+  if (noModel.length > 0) {
+    r.observe(`model を特定できなかった記録が ${noModel.length} 件ある（いずれもアダプタが書いたもの）`);
+    const reasons = [...new Set(noModel.map((e) => String(e.model_unavailable_reason ?? "理由が残っていない")))];
+    for (const reason of reasons.slice(0, 3)) r.observe(`  特定できなかった理由: ${reason}`);
+  }
 
   // **見えなくしない。** 件数は、帰属しないやり取りがどれだけあるかの信号であり、
   // 量が無視できなくなったときに§6の判断をやり直す材料になる。

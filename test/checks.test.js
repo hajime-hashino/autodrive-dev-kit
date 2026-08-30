@@ -382,15 +382,70 @@ test("帰属できなかった記録の件数と理由を出す", async () => {
 });
 
 // 免除するのは work_item_id だけ。ランタイム由来の属性は帰属できなくても付く。
-test("帰属できなかった記録でも、model が欠ければ失敗する", async () => {
-  const r = await check("telemetry_recorded").run(input({ events: [unattributed({ model: "" })] }));
+// **アダプタが書いたのに model が無いのは、壊れているのではなく「分からなかった」。**
+// 値の出どころはセッションの記録であり、それを書くのはターンの終わりに走る仕掛け
+// である。**セッション最初のターンにはまだ無い**（AUT-107）。
+//
+// 記録する側が守れない条件を、判定する側が要求してはいけない。遡って付与できない
+// 以上、失敗にすると二度と消せない。
+test("アダプタが書いた記録の model の欠けは、失敗にしない", async () => {
+  const without = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ model: "", emitter: "adapter" })] }),
+  );
+  assert.equal(
+    without.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("model")),
+    false,
+    `失敗として扱っている: ${JSON.stringify(without.observations)}`,
+  );
+
+  // **model の有無で結論が変わらないこと。** この土台では別の理由で結論が
+  // 決まるため、状態だけを見ても分からない。**同じ土台で比べる。**
+  const with_ = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ model: "claude-opus-5", emitter: "adapter" })] }),
+  );
+  assert.equal(without.state, with_.state, "model の有無で結論が変わっている");
+});
+
+// **見えなくはしない。** 増えたなら、仕掛けが壊れている。
+test("model を特定できなかった記録の件数を出す", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({
+      events: [
+        unattributed({ model: "", emitter: "adapter", model_unavailable_reason: "最初のターン" }),
+        unattributed({ model: "", emitter: "adapter", model_unavailable_reason: "最初のターン" }),
+      ],
+    }),
+  );
+  assert.ok(
+    r.observations.some((o) => o.includes("model を特定できなかった記録が 2 件")),
+    JSON.stringify(r.observations),
+  );
+  // **なぜ特定できなかったかまで出す。** 件数だけでは、直せるものか判断できない。
+  assert.ok(r.observations.some((o) => o.includes("最初のターン")), JSON.stringify(r.observations));
+});
+
+// **手で書いた記録は別である。** アダプタを通っていないものまで免除すると、
+// 直書きの抜け道になる。
+test("手で書いた記録の model の欠けは、失敗のまま", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ model: "", emitter: "manual" })] }),
+  );
   assert.equal(r.state, UNSUBSTITUTED);
-  // **「model」を含むかだけでは足りない。** 正常時の観測にも
-  // 「必須属性 work_item_id/model/... は全イベントが持つ」という行が出るため、
-  // それで通ってしまう。欠けたことを言う行そのものを見る。
   assert.ok(
     r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("model")),
     `欠落を言う観測が無い: ${JSON.stringify(r.observations)}`,
+  );
+});
+
+// **model 以外は免除しない。** アダプタが書いたなら必ず付く。
+test("アダプタが書いても、kit_version の欠けは失敗", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [unattributed({ kit_version: "", emitter: "adapter" })] }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(
+    r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("kit_version")),
+    JSON.stringify(r.observations),
   );
 });
 
