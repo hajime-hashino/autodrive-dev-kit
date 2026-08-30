@@ -217,6 +217,9 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
   seeded(root, "docs/what-why.md", template(kitRoot, "what-why.md"), placed);
   seeded(root, ".gitignore", template(kitRoot, "gitignore"), placed);
+  // **README だけ置く。** 中身は追跡しないが、置き場所と、置いてはいけないものは
+  // クローンした先にも残る必要がある。
+  seeded(root, "notes/README.md", template(kitRoot, "notes/README.md"), placed);
 
   // **既にある規約を上書きしない。** ただし、繋がっていなければそう言う。
   const claude = join(root, "CLAUDE.md");
