@@ -50,11 +50,13 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
 
 /** @typedef {"tracker" | "repo" | "runner" | "sandbox" | "preview" | "telemetry" | "flag"} PortName */
 
-/** @typedef {{ version: 1, ports: Record<PortName, string>, app: { screen: "yes" | "no" | "unknown"; } }} Config */
+/** @typedef {{ version: 1, language: "ja" | "en", ports: Record<PortName, string>, app: { screen: "yes" | "no" | "unknown"; } }} Config */
 /** 既定。**推奨であって、決定ではない。** */
 export function defaults() {
   return {
     version: 1,
+    // **セットアップの表示だけに効く。** 開発の会話はAIが相手の言語で行う。
+    language: "ja",
     ports: {
       tracker: "linear",
       repo: "github",
@@ -104,8 +106,9 @@ export function readConfig(root) {
   const base = defaults();
   const ports = { ...base.ports, ...raw.ports };
   const screen = raw.app?.screen ?? UNKNOWN;
+  const language = raw.language === "en" || raw.language === "ja" ? raw.language : base.language;
 
-  return { config: { version: 1, ports, app: { screen } }, error: null };
+  return { config: { version: 1, language, ports, app: { screen } }, error: null };
 }
 
 export function writeConfig(root , config) {
