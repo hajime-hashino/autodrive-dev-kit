@@ -89,6 +89,8 @@ my-app/
 ├── CLAUDE.md                        プロジェクト固有の規約
 ├── .env.example                     必要な資格情報の一覧。**構成から作られる**
 ├── .gitignore
+├── notes/
+│   └── README.md                    **人が使う置き場所。** 中身は追跡しない
 ├── .claude/
 │   └── settings.json                記録の仕掛けの登録
 ├── .github/
@@ -117,6 +119,7 @@ my-app/
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
 | `CLAUDE.md` | init | プロジェクト | プロジェクト固有の規約 |
 | `.gitignore` | init | プロジェクト | 資格情報と作業状態を除外する |
+| `notes/README.md` | init | プロジェクト | **人が使う置き場所。** 考えをまとめる。中身は追跡しない |
 | `.claude/settings.json` | init | プロジェクト | 記録の仕掛けを**追記**する。既存の登録は保持される |
 | `telemetry/<作業単位ID>.jsonl` | 着手したとき | プロジェクト | 停止、手戻り、トークン消費の記録 |
 | `test/` | 実装したとき | プロジェクト | テスト |
