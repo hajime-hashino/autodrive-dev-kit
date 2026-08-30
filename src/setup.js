@@ -13,6 +13,7 @@
 
 import { execFileSync } from "node:child_process";
 import { init } from "./init.js";
+import { LANGUAGES, say } from "./messages.js";
 
 import {
   CONFIG_FILE,
@@ -36,28 +37,62 @@ import {
  * **専門語で聞かない。** 前提知識を要求する問いかけは、人のスキルレベルに
  * よらず開発できるという前提を損なう。
  */
-export const QUESTIONS = [
-  {
-    port: "preview",
-    ask: "提出のたびに、動くものを見られる場所を用意しますか？",
-    why: "画面の見え方は、動くものを見ないと決められません。用意すると、提出ごとに URL が出ます。",
-    choices: [
-      { value: "cloudflare-workers", label: "用意する（Cloudflare Workers）" },
-      { value: NONE, label: "用意しない（画面の無いものを作る、あとで決める）" },
-    ],
-    recommended: "cloudflare-workers",
-  },
-  {
-    port: "sandbox",
-    ask: "AIを、隔離された作業場の中で動かしますか？",
-    why: "手元の環境から切り離すと、消してはいけないものへ手が届かなくなります。",
-    choices: [
-      { value: "devcontainer", label: "隔離する（devcontainer）" },
-      { value: NONE, label: "隔離しない" },
-    ],
-    recommended: "devcontainer",
-  },
-];
+/**
+ * 聞くこと。**言語ごとに組み立てる。**
+ *
+ * **選択肢が1つしか無いものは聞かない。** 聞いても選べないものを並べると、
+ * 人は答えを持たない問いに時間を使うことになる。選べるようになったら、
+ * ここに増える（`PORT_CHOICES`）。
+ *
+ * **専門語で聞かない。** 前提知識を要求する問いかけは、人のスキルレベルに
+ * よらず開発できるという前提を損なう。
+ *
+ * @param {"ja" | "en"} language
+ */
+export function questionsFor(language) {
+  const t = (key, values) => say(language, key, values);
+  return [
+    {
+      port: "preview",
+      language,
+      ask: t("ask.preview"),
+      why: t("ask.preview.why"),
+      choices: [
+        { value: "cloudflare-workers", label: t("ask.preview.cloudflare") },
+        { value: NONE, label: t("ask.preview.none") },
+      ],
+      recommended: "cloudflare-workers",
+    },
+    {
+      port: "sandbox",
+      language,
+      ask: t("ask.sandbox"),
+      why: t("ask.sandbox.why"),
+      choices: [
+        { value: "devcontainer", label: t("ask.sandbox.devcontainer") },
+        { value: NONE, label: t("ask.sandbox.none") },
+      ],
+      recommended: "devcontainer",
+    },
+  ];
+}
+
+/**
+ * 言語を聞く。**いちばん先に聞く。** ここで決まった言語で、以降の質問を出す。
+ *
+ * **どの言語でも読める形で出す。** まだ相手の言語が分からないため、選択肢は
+ * それぞれの言語で書く。
+ */
+export const LANGUAGE_QUESTION = {
+  ask: `${say("ja", "ask.language")} / ${say("en", "ask.language")}`,
+  why: `${say("ja", "ask.language.why")}\n  ${say("en", "ask.language.why")}`,
+  choices: LANGUAGES.map((l) => ({ value: l, label: say(l, `ask.language.${l}`) })),
+  recommended: "ja",
+};
+
+/** 既定の言語で聞くこと。**古い呼び出しのために残す。** */
+export const QUESTIONS = questionsFor("ja");
+
 
 /**
  * 聞かなかったポートを記録する。
@@ -66,10 +101,14 @@ export const QUESTIONS = [
  * 決めることになる。見て分かったならその根拠、そうでなければ選択肢が1つだから。
  */
 function fixedPorts(config , because) {
-  const asked = new Set(QUESTIONS.map((q) => q.port));
+  const language = config.language;
+  const asked = new Set(questionsFor(language).map((q) => q.port));
   return PORT_NAMES.filter((p) => !asked.has(p)).map((p) => {
-    const why = because[p] !== undefined ? `見て分かった: ${because[p]}` : "選択肢が1つ";
-    return `${p}: ${config.ports[p]}（${why}）`;
+    const how =
+      because[p] !== undefined
+        ? say(language, "decided.seen", { because: because[p] })
+        : say(language, "decided.onlyOne");
+    return `${p}: ${config.ports[p]}${how}`;
   });
 }
 
@@ -91,7 +130,11 @@ function interview(
   const config = defaults();
   const decisions = [];
 
-  for (const q of QUESTIONS) {
+  // **いちばん先に言語を聞く。** ここで決まった言語で、以降の質問を出す。
+  const language = interviewer.answer(LANGUAGE_QUESTION) ?? LANGUAGE_QUESTION.recommended;
+  config.language = language;
+
+  for (const q of questionsFor(language)) {
     const seen = known[q.port];
     const inferred = seen !== undefined && q.choices.some((c) => c.value === seen);
     const recommended = inferred ? (seen) : q.recommended;
@@ -103,9 +146,9 @@ function interview(
     // **どう決まったかを、決まった値の隣に置く。** 別の一覧に分けると、どの行が
     // どれの理由なのかを読む側が突き合わせることになる。
     let how = "";
-    if (answered !== null) how = "（選んだもの）";
-    else if (inferred) how = `（見て分かったものを採った: ${because[q.port] ?? "推測"}）`;
-    else how = "（聞けなかったため推奨のまま）";
+    if (answered !== null) how = say(language, "decided.chosen");
+    else if (inferred) how = say(language, "decided.inferred", { because: because[q.port] ?? "" });
+    else how = say(language, "decided.recommended");
 
     decisions.push(`${q.port}: ${config.ports[q.port]}${how}`);
   }
@@ -158,7 +201,9 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
       return refuse(`${read.error}\n\n直してから、もう一度実行すること。`);
     }
     config = read.config;
-    decisions = PORT_NAMES.map((p) => `${p}: ${config.ports[p]}（記録されたもの）`);
+    decisions = PORT_NAMES.map(
+      (p) => `${p}: ${config.ports[p]}${say(config.language, "decided.recorded")}`,
+    );
   } else if (mode === "apply") {
     const { config: guessed, because } = infer(root, gitRemote(root));
     // **見て分かったものだけを推奨にする。** 見て分からなかったものまで渡すと、
