@@ -42,8 +42,12 @@ function answering(answers) {
   };
 }
 
-const run = (mode , root , port = useRecommended) =>
-  setup(mode, root, KIT, port);
+/**
+ * **中にいるかを必ず差し込む。** 差し込まないと、実行する場所で案内が変わり、
+ * 手元では通って CI で落ちる。実際にそうなった（AUT-100）。
+ */
+const run = (mode , root , port = useRecommended, inside = true) =>
+  setup(mode, root, KIT, port, inside);
 
 const configOf = (root) => readConfig(root).config;
 
@@ -229,13 +233,29 @@ test("入れ替えは、構成を読むだけで書き換えない", () => {
 test("済んでいる手続きを、もう一度頼まない", () => {
   const root = project();
   const first = run("init", root);
-  assert.ok(first.todo.some((t) => t.includes(".env")), first.todo.join(" / "));
+
+  // **頼んでいる項目そのものを見る。** 部分一致で見ると、別の項目に同じ語が
+  // 出てきたときに当たる。実際に「.env を作ってから開き直す」に当たった。
+  const asksForEnv = (r) => r.todo.some((t) => t.startsWith(".env を作り"));
+  assert.equal(asksForEnv(first), true, first.todo.join(" / "));
 
   writeFileSync(join(root, ".env"), "LINEAR_API_KEY=x\n", "utf8");
   const again = run("update", root);
-  assert.equal(again.todo.some((t) => t.includes(".env")), false, again.todo.join(" / "));
+  assert.equal(asksForEnv(again), false, again.todo.join(" / "));
   // 入れ替えは、既に動いているプロジェクトに打つ。始め方の案内も要らない。
   assert.equal(again.todo.some((t) => t.includes("はじめる")), false, again.todo.join(" / "));
+});
+
+// **実行する場所で案内が変わってよいのは、1つだけである。** 他が変われば、
+// 手元では通って CI で落ちる。実際にそうなった（AUT-100）。
+test("実行する場所で変わるのは、開き直せと言うかどうかだけ", () => {
+  const outside = run("init", project(), useRecommended, false).todo;
+  const inside = run("init", project(), useRecommended, true).todo;
+
+  const only = outside.filter((t) => !inside.includes(t));
+  assert.equal(only.length, 1, `場所で変わる項目が多すぎる:\n${only.join("\n")}`);
+  assert.ok(only[0].includes("Reopen in Container"), only[0]);
+  assert.deepEqual(inside.filter((t) => !outside.includes(t)), [], "中にいるときだけ出る項目がある");
 });
 
 test("入れ替えは何も聞かない", () => {

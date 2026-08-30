@@ -128,12 +128,7 @@ function refuse(message) {
   return { placed: [], todo: [], version: null, code: 1, message, config: null, decisions: [] };
 }
 
-export function setup(
-  mode ,
-  root ,
-  kitRoot ,
-  interviewer ,
-) {
+export function setup(mode , root , kitRoot , interviewer , inside = undefined) {
   const present = hasConfig(root);
 
   // 前提 ----------------------------------------------------------------------
@@ -182,7 +177,7 @@ export function setup(
   }
 
   // 置く ----------------------------------------------------------------------
-  const result = init(root, kitRoot, config);
+  const result = init(root, kitRoot, config, inside);
   if (result.message !== null) return { ...result, config: null, decisions: [] };
 
   // **入れ替えでは触らない。** 決めた内容はプロジェクトのものである。読んだものを

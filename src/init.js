@@ -18,6 +18,7 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
 import { envExample } from "./credentials.js";
@@ -121,8 +122,40 @@ export function vendor(root , kitRoot) {
  * **許可する宛先は構成から組み立てる**（`sandbox.ts`）。使わないものへの穴を
  * 開けない。
  */
+/**
+ * いま隔離された作業場の中にいるか。
+ *
+ * **確かめられない場合は「外にいる」とする。** 中にいるのに言われるのは冗長なだけ
+ * だが、外にいるのに言われないと、隔離されないまま動く。
+ *
+ * @returns {boolean}
+ */
+/**
+ * 置き場所（Repo）が既にあるか。
+ *
+ * **無い状態を前提にする。** `init` は素のディレクトリで打たれる。置き場所を
+ * 作る前に「シークレットを登録せよ」と言われても、登録する先が無い（AUT-99）。
+ *
+ * @param {string} root
+ * @returns {boolean}
+ */
+export function hasRemote(root) {
+  try {
+    return execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim() !== "";
+  } catch {
+    return false;
+  }
+}
+
+export function insideSandbox() {
+  return existsSync("/.dockerenv") || process.env.REMOTE_CONTAINERS === "true";
+}
+
 function placeSandbox(root , kitRoot , config , placed) {
-  if (config.ports.sandbox === "none") return;
+  if (config.ports.sandbox === "none") return false;
 
   const name = basename(root) || "project";
   const inside = [];
@@ -135,9 +168,10 @@ function placeSandbox(root , kitRoot , config , placed) {
   // **1つにまとめて報告する。** 中の1つ1つを並べると、出力の大半が
   // サンドボックスで埋まり、何が置かれたのかが読みにくくなる。
   placed.push({ path: ".devcontainer/", placement: "managed" });
+  return true;
 }
 
-export function init(root , kitRoot , config = null) {
+export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   const placed = [];
 
   if (!existsSync(join(root, ".git"))) {
@@ -176,7 +210,7 @@ export function init(root , kitRoot , config = null) {
 
   // サンドボックス --------------------------------------------------------------
   // **構成が要ると言っているものを、置かないままにしない。**
-  if (config !== null) placeSandbox(root, kitRoot, config, placed);
+  const sandboxPlaced = config !== null && placeSandbox(root, kitRoot, config, placed);
 
   // 播種 ----------------------------------------------------------------------
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
@@ -196,10 +230,32 @@ export function init(root , kitRoot , config = null) {
   // **済んでいることを頼まない。** 毎回同じ一覧を出すと、読まれなくなる。読まれ
   // なくなった一覧は、本当に要るものが出たときにも読まれない。
   const todo = [];
+
+  // **AIにできることを、ここに書かない。** この一覧は Claude Code を開く前に
+  // 読まれるため、書いたものはすべて人の作業になる。置き場所の作成もシークレットの
+  // 登録も API の呼び出しであり、AIが動き始めてから行えばよい（AUT-100）。
+  //
+  // 残すのは、AIに実行できないものだけである。
+  //
+  //   資格情報の発行    外部サービスでの操作
+  //   作業場を開き直す  そこにAIがまだ動いていない。立ち上げそのもの
   if (!existsSync(join(root, ".env"))) {
     todo.push(".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）");
-    todo.push("Repo の Actions シークレットに AUTODRIVE_CI_TOKEN を登録する（提出の読取を含めること）");
   }
+  // **置いたものを使えと言う。** 開き直さなければ、隔離されていない場所でAIが
+  // 動く。構成は隔離すると記録しているのに、実際には隔離されない。
+  //
+  // **`.env` の後に言う。** 支度は環境を作るときに `.env` を読む。先に開き直すと、
+  // 資格情報が入らないまま作業場ができる。
+  //
+  // **既に中にいるなら言わない。** 済んでいることを頼まない。
+  if (sandboxPlaced && !inside) {
+    todo.push(
+      "作業場を開き直す（VS Code なら「Reopen in Container」）。" +
+        "**.env を作ってから行うこと。** 環境を作るときに読まれる",
+    );
+  }
+
   if (pointer !== null) todo.push(pointer);
 
   // **前の版が置いた CI 定義を、黙って消さない。** 判定は `invariants` に改名した
