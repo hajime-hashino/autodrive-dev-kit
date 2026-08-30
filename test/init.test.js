@@ -62,10 +62,20 @@ test("固有のものは生成しない", () => {
   }
 });
 
-test("人にしかできないことを最後に出す", () => {
+// **AIにできることを、ここに書かない。** この一覧は Claude Code を開く前に
+// 読まれるため、書いたものはすべて人の作業になる（AUT-100）。
+test("人にしかできないことだけを出す", () => {
   const r = init(project(), KIT);
-  assert.ok(r.todo.some((t) => t.includes(".env")), r.todo.join(" / "));
-  assert.ok(r.todo.some((t) => t.includes("AUTODRIVE_CI_TOKEN")), r.todo.join(" / "));
+  const said = r.todo.join("\n");
+
+  // AIに実行できないもの。
+  assert.ok(said.includes(".env"), said);
+  assert.ok(said.includes("Claude Code"), said);
+
+  // **API を呼べば済むものを、人に振らない。**
+  for (const ai of ["AUTODRIVE_CI_TOKEN を登録", "gh repo create", "置き場所を作り"]) {
+    assert.equal(said.includes(ai), false, `AIにできることを人に振っている: ${ai}`);
+  }
 });
 
 // ------------------------------------------------------------ 2回目

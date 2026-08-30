@@ -243,15 +243,37 @@ test("作業場の中で打ったなら、開き直せと言わない", () => {
   assert.equal(said.includes("Reopen in Container"), false, said);
 });
 
-// **置き場所が無ければ、まずそれを作る。** 無い先にシークレットは登録できない。
-test("置き場所が無ければ、作れと言う。しかも先に言う", () => {
+// **置き場所の作成とシークレットの登録は、AIの仕事である**（AUT-100）。
+// 人の一覧に書くと、AIが動き始める前に読まれ、人の作業になる。
+test("AIにできることを、人の一覧に書かない", () => {
   const said = setup("init", project(), KIT, useRecommended, false).todo.join("\n");
 
-  assert.ok(said.includes("Repo に置き場所を作り"), said);
+  for (const ai of ["置き場所を作り", "gh repo create", "AUTODRIVE_CI_TOKEN を登録"]) {
+    assert.equal(said.includes(ai), false, `AIにできることを人に振っている: ${ai}`);
+  }
+  // 残るのは、AIに実行できないものだけ。
+  assert.ok(said.includes(".env"), said);
+  assert.ok(said.includes("Reopen in Container"), said);
+});
+
+// **代わりに、配る規約がAIに指示していること。** 人の一覧から外しただけで
+// どこにも書かれていなければ、誰もやらない。
+test("置き場所とシークレットは、AIの手順として配られている", () => {
+  const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
+  const section = rules.slice(rules.indexOf("### 4. "), rules.indexOf("### 5. "));
+
+  // **表の行として在ること。** 本文で触れているだけでは、確かめる手順にならない。
+  const rows = section.split("\n").filter((l) => l.startsWith("|"));
   assert.ok(
-    said.indexOf("Repo に置き場所を作り") < said.indexOf("Actions シークレット"),
-    `登録する先が無いのに、先に登録しろと言っている:\n${said}`,
+    rows.some((l) => l.includes("置き場所") && l.includes("遠隔")),
+    `置き場所を確かめる行が無い:\n${rows.join("\n")}`,
   );
-  // **打てる形で出す。** 「作ってください」だけでは、何をすればよいか分からない。
-  assert.ok(said.includes("gh repo create"), said);
+  assert.ok(
+    rows.some((l) => l.includes("資格情報が登録されているか")),
+    `資格情報を確かめる行が無い:\n${rows.join("\n")}`,
+  );
+  // **名前は人が決める。作るのは手順である。**
+  assert.ok(section.includes("名前は人が決める"), section.slice(0, 900));
+  // **API を呼べば済むものを人に振らない**という指示があること。
+  assert.ok(section.includes("API を呼べば済むもの"), section.slice(0, 900));
 });
