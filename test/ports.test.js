@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { KIT_VERSION } from "../src/kitVersion.js";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -250,4 +250,29 @@ test("修正の有無は件数ではなく真偽で持つ。修正率を算出�
   const [event] = readEvents(join(r, "kit", "telemetry", "AUT-23.jsonl"));
   assert.equal(typeof event.fixed, "boolean");
   assert.equal("fixed_count" in event, false);
+});
+
+// **分からなかったことを、そう書く。** null だけ残すと、壊れた記録と見分けが
+// つかない。セッション最初のターンでは、まだセッションの記録が無い（AUT-107）。
+test("model を特定できなければ、その理由を残す", () => {
+  const r = withWorkItem("AUT-12", "kit");
+  // **セッションの記録を消す。** これがセッション最初のターンの状態である。
+  rmSync(join(r, ".autodrive", "session.json"));
+
+  const res = telemetryRun(
+    ["停止を記録する", "--kind", "test", "--type", "入力", "--detail", "初日", "--root", r],
+    r,
+  );
+  assert.equal(res.code, 0);
+
+  const [event] = readEvents(join(r, "kit", "telemetry", "AUT-12.jsonl"));
+  // この土台にはセッションの記録が無い。
+  assert.equal(event.model, null);
+  assert.ok(
+    typeof event.model_unavailable_reason === "string" &&
+      event.model_unavailable_reason.trim() !== "",
+    `理由が残っていない: ${JSON.stringify(event)}`,
+  );
+  // **書き込みは自動である。** 手書きに見せない。
+  assert.equal(event.emitter, "adapter");
 });

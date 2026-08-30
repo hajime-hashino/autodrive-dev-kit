@@ -112,6 +112,12 @@ export class JsonlTelemetry {
       // 紐づく先が無いのか、仕掛けが壊れているのかを後から読める。
       work_item_id: item?.workItemId ?? null,
       model: session.last_model,
+      // **分からなかったことを、そう書く。** null だけ残すと、壊れた記録と
+      // 見分けがつかない。**欠けているのは事実であって、偽りではない。**
+      // セッション最初のターンでは、まだ session.json が無い（AUT-107）。
+      ...(session.last_model === null
+        ? { model_unavailable_reason: "セッションの記録がまだ無い。最初のターンで書かれた" }
+        : {}),
       kit_version: KIT_VERSION,
       emitter: "adapter",
       ...body,
