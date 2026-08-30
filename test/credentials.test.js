@@ -138,3 +138,58 @@ test("置かれた雛形が、構成に従う", () => {
   assert.ok(b.includes("autodrive.json"), b.slice(0, 400));
   assert.ok(existsSync(join(with_, ".env.example")));
 });
+
+// ---------------------------------------------------------------- 要る権限
+
+// **足りないまま作ると、作業が進んでから止まる。足すたびにまた止まる。**
+// 同じ種別の停止が2つのプロジェクトで起きた（AUT-108）。定義§6は
+// 「繰り返し出る種別はスキル化・自動化の候補」としている。
+test("トークンに要る権限を、先に全部言う", () => {
+  const github = credentialsFor(defaults()).filter((c) => c.needs !== undefined);
+  assert.ok(github.length > 0, "要る権限を言っている資格情報が1つも無い");
+
+  const text = envExample(defaults());
+  for (const c of github) {
+    for (const n of c.needs) {
+      assert.ok(text.includes(n.permission), `${c.name} に ${n.permission} が出ていない`);
+      assert.ok(n.level.trim().length > 0, `${n.permission} に強さが無い`);
+      assert.ok(n.why.trim().length > 0, `${n.permission} に理由が無い`);
+      assert.ok(text.includes(n.why), `${n.permission} の理由が雛形に無い`);
+    }
+  }
+});
+
+// **実際に止まった2つを、必ず含むこと。** ここが抜けると、また同じ場所で止まる。
+test("実際に止まった権限が、含まれている", () => {
+  const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
+  const has = (p) => token.needs.some((n) => n.permission === p);
+
+  // この作業場で止まった: シークレットを登録できなかった
+  assert.ok(has("Secrets"), "Secrets が抜けている");
+  // 題材アプリ2で止まった: CI の結果と提出を読めなかった
+  assert.ok(has("Actions"), "Actions が抜けている");
+  assert.ok(has("Checks"), "Checks が抜けている");
+  assert.ok(has("Pull requests"), "Pull requests が抜けている");
+});
+
+// **判定が実際に呼ぶものと、求める権限が食い違わないこと。**
+test("判定が呼ぶ API に要る権限を、求めている", async () => {
+  const { readFileSync } = await import("node:fs");
+  const api = readFileSync(join(KIT, "src", "repoApi.js"), "utf8");
+
+  const token = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
+  const has = (p) => token.needs.some((n) => n.permission === p);
+
+  // 保護設定を読むなら Administration が要る。
+  if (api.includes("rulesets")) assert.ok(has("Administration"), "rulesets を読むのに権限を求めていない");
+  // 統合されたかを読むなら Pull requests が要る。
+  if (api.includes("/pulls")) assert.ok(has("Pull requests"), "pulls を読むのに権限を求めていない");
+});
+
+// **使わないポートの権限を並べない。** 要らないものを人に付けさせない。
+test("使わないポートの権限は、並べない", () => {
+  const config = defaults();
+  config.ports.repo = NONE;
+  const text = envExample(config);
+  assert.equal(text.includes("Pull requests"), false, "使わない Repo の権限が出ている");
+});
