@@ -207,3 +207,51 @@ test("環境の定義が呼ぶ手順が、すべて置かれている", () => {
     assert.ok(existsSync(join(dir, script)), `devcontainer.json が呼ぶ ${script} が置かれていない`);
   }
 });
+
+// ---------------------------------------------------------------- 使えと言う
+
+// **置いたものを使えと言う。** 開き直さなければ、隔離されていない場所でAIが動く。
+// 構成は隔離すると記録しているのに、実際には隔離されない（AUT-99）。
+test("作業場を置いたなら、開き直せと言う", () => {
+  // **中にいるかを差し込む。** 実行する場所で結果が変わると、判定にならない。
+  const result = setup("init", project(), KIT, useRecommended, false);
+  const said = result.todo.join("\n");
+
+  assert.ok(said.includes("Reopen in Container"), said);
+  // **`.env` の後に言う。** 支度は環境を作るときに .env を読む。先に開き直すと、
+  // 資格情報が入らないまま作業場ができる。
+  assert.ok(said.indexOf(".env を作り") < said.indexOf("Reopen in Container"), said);
+  assert.ok(said.includes(".env を作ってから"), "順序の理由が書かれていない");
+});
+
+// **Claude Code を開くのは、開き直した後である。**
+test("開き直してから、AIに話しかける順で言う", () => {
+  const said = setup("init", project(), KIT, useRecommended, false).todo.join("\n");
+  assert.ok(said.indexOf("Reopen in Container") < said.indexOf("Claude Code"), said);
+});
+
+// **使わないと決めたなら、言わない。** 置いていないものを開けとは言えない。
+test("作業場を使わないなら、開き直せと言わない", () => {
+  const port = answering({ "AIを、隔離された作業場の中で動かしますか？": NONE });
+  const said = setup("init", project(), KIT, port, false).todo.join("\n");
+  assert.equal(said.includes("Reopen in Container"), false, said);
+});
+
+// **中にいるなら言わない。** 済んでいることを頼まない。
+test("作業場の中で打ったなら、開き直せと言わない", () => {
+  const said = setup("init", project(), KIT, useRecommended, true).todo.join("\n");
+  assert.equal(said.includes("Reopen in Container"), false, said);
+});
+
+// **置き場所が無ければ、まずそれを作る。** 無い先にシークレットは登録できない。
+test("置き場所が無ければ、作れと言う。しかも先に言う", () => {
+  const said = setup("init", project(), KIT, useRecommended, false).todo.join("\n");
+
+  assert.ok(said.includes("Repo に置き場所を作り"), said);
+  assert.ok(
+    said.indexOf("Repo に置き場所を作り") < said.indexOf("Actions シークレット"),
+    `登録する先が無いのに、先に登録しろと言っている:\n${said}`,
+  );
+  // **打てる形で出す。** 「作ってください」だけでは、何をすればよいか分からない。
+  assert.ok(said.includes("gh repo create"), said);
+});

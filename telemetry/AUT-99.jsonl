@@ -1,0 +1,1 @@
+{"ts":"2026-08-30T07:03:32.417Z","work_item_id":"AUT-99","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"src/init.js の案内","detail":"置いたサンドボックスを開き直せと言っておらず、置き場所（Repo）がまだ無い前提も持っていなかった。人が実際に素のディレクトリで試して見つけた","cause":"要件のズレ","found_in":"人の確認"}
