@@ -231,27 +231,17 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // なくなった一覧は、本当に要るものが出たときにも読まれない。
   const todo = [];
 
-  // **置き場所が無ければ、まずそれを作る。** 無い先にシークレットは登録できない。
-  if (!hasRemote(root)) {
-    const how =
-      config?.ports.repo === "github"
-        ? "\n       gh repo create <名前> --private --source=. --remote=origin --push"
-        : "";
-    todo.push(
-      "Repo に置き場所を作り、遠隔として登録する。" +
-        "**提出を経て統合する形が、この手法の前提である**（判定が検出する）" +
-        how,
-    );
-  }
-
+  // **AIにできることを、ここに書かない。** この一覧は Claude Code を開く前に
+  // 読まれるため、書いたものはすべて人の作業になる。置き場所の作成もシークレットの
+  // 登録も API の呼び出しであり、AIが動き始めてから行えばよい（AUT-100）。
+  //
+  // 残すのは、AIに実行できないものだけである。
+  //
+  //   資格情報の発行    外部サービスでの操作
+  //   作業場を開き直す  そこにAIがまだ動いていない。立ち上げそのもの
   if (!existsSync(join(root, ".env"))) {
     todo.push(".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）");
   }
-
-  // **置き場所ができてから登録する。** 先に言われても、登録する先が無い。
-  todo.push(
-    "Repo の Actions シークレットに AUTODRIVE_CI_TOKEN を登録する（提出の読取を含めること）",
-  );
   // **置いたものを使えと言う。** 開き直さなければ、隔離されていない場所でAIが
   // 動く。構成は隔離すると記録しているのに、実際には隔離されない。
   //
