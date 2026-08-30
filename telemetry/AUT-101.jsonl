@@ -1,0 +1,1 @@
+{"ts":"2026-08-30T07:41:28.836Z","work_item_id":"AUT-101","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"src/adapters/interviewTerminal.js","detail":"質問を出しておいて待たずに推奨で進んでいた。読めない理由を見分けておらず EAGAIN を終端として扱っていたこと、聞けるか確かめる前に質問を出していたことの2つ。人が実機で気づいた","cause":"実装バグ","found_in":"人の確認"}
