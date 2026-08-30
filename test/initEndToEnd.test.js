@@ -226,3 +226,15 @@ test("この作業場に固有のものは配らない", () => {
     assert.equal(rules.includes(local), false, `配る規約に、この作業場のもの「${local}」が入っている`);
   }
 });
+
+// **人の言語で話すこと。** この文書は日本語で書かれているが、それはAIが読むため
+// である。人に向けて出すものは相手の言語で書く（AUT-102）。
+test("配る規約が、人の言語で話すことを求めている", () => {
+  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
+
+  assert.ok(rules.includes("人の言語で話す"), "人の言語で話すことが書かれていない");
+  // **規約を訳して置き直さないこと。** 訳が古くなると、AIが従う規約と人が読む
+  // 規約が食い違う。
+  assert.ok(rules.includes("訳して置き直さない"), rules.slice(rules.indexOf("人の言語"), 600));
+  assert.ok(rules.includes("その場で言い直す"), "どうするかが書かれていない");
+});
