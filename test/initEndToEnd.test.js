@@ -238,3 +238,62 @@ test("配る規約が、人の言語で話すことを求めている", () => {
   assert.ok(rules.includes("訳して置き直さない"), rules.slice(rules.indexOf("人の言語"), 600));
   assert.ok(rules.includes("その場で言い直す"), "どうするかが書かれていない");
 });
+
+// ------------------------------------------------------------ 人の置き場所
+
+// **人が考えをまとめる場所を配る。** AIに指示する前に使うものであり、
+// 置き場所が無ければ、人はプロジェクトの外に散らすことになる（AUT-104）。
+test("人が使う置き場所を置き、中身は追跡しない", () => {
+  const root = initialized();
+
+  assert.ok(existsSync(join(root, "notes", "README.md")), "置き場所が無い");
+
+  const ignore = readFileSync(join(root, ".gitignore"), "utf8");
+  assert.ok(ignore.includes("notes/*"), ignore);
+  // **README だけは追跡する。** 全部を無視すると、クローンした先にディレクトリ
+  // 自体が無くなり、「何を置いてはいけないか」が消える。
+  assert.ok(ignore.includes("!notes/README.md"), ignore);
+});
+
+// **誰のものかを書く。** 曖昧だと、人が整理した資料をAIが上書きしうる。
+test("置き場所が、誰のものかを言っている", () => {
+  const notes = readFileSync(join(initialized(), "notes", "README.md"), "utf8");
+
+  assert.ok(notes.includes("あなたのもの"), notes.slice(0, 400));
+  assert.ok(notes.includes("自分から書き換えない"), "AIが書かないことが書かれていない");
+});
+
+// **置いてはいけないものを書く。** 追跡しないことと、守られていることは別である。
+test("置き場所が、置いてはいけないものを言っている", () => {
+  const notes = readFileSync(join(initialized(), "notes", "README.md"), "utf8");
+
+  // **節として在ること。** どこかに語が出ているだけでは、読む人が辿り着けない。
+  const start = notes.indexOf("## 置いてはいけないもの");
+  assert.ok(start >= 0, "置いてはいけないものの節が無い");
+
+  const section = notes.slice(start, notes.indexOf("## 値はどこに置く"));
+
+  // **何が駄目なのかを、具体的に挙げること。** 「資格情報」とだけ言われても、
+  // 読む人は自分の持っているものがそれに当たるか判断できない。
+  const named = ["シークレット", "署名鍵", "トークン", "パスワード"].filter((k) =>
+    section.includes(k),
+  );
+  assert.ok(named.length >= 2, `具体的に挙げていない（${named.join(", ") || "なし"}）`);
+  assert.ok(
+    section.includes("追跡しないことと、守られていることは別"),
+    "追跡と保護を取り違えさせない説明が無い",
+  );
+  // 代わりにどこへ置くかまで書く。**置くなと言うだけでは、行き先が無い。**
+  assert.ok(notes.includes(".env"), "値の置き場所が書かれていない");
+});
+
+// **作業状態は共有しない。** 共有すると、クローンした人が他人の作業単位に
+// 着手している状態で始まる。
+test("作業状態を追跡しない。理由も書いてある", () => {
+  const ignore = readFileSync(join(initialized(), ".gitignore"), "utf8");
+
+  assert.ok(ignore.includes(".autodrive/"), ignore);
+  assert.ok(ignore.includes("共有すると壊れる"), "なぜ追跡しないのかが書かれていない");
+  // **無い状態が黙って通らないこと**も、ここで伝える。
+  assert.ok(ignore.includes("unattributed"), ignore);
+});
