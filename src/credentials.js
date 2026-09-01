@@ -14,8 +14,27 @@
  *   name: string,
  *   why: string,
  *   lost: string,
- *   needs?: Array<{ permission: string, level: string, why: string }>
+ *   needs?: Array<{ permission: string, level: string, why: string, via: string }>,
+ *   note?: string
  * }} Credential
+ */
+
+/**
+ * ## 権限は推測しない。実装に聞く
+ *
+ * `via` は、その権限を要求している口である。**GitHub 自身が答えを返す。**
+ *
+ * ```sh
+ * curl -sD - -o /dev/null -H "Authorization: Bearer $GH_TOKEN" \
+ *   https://api.github.com/repos/<所有者>/<名前>/pulls | grep -i x-accepted-github
+ * # x-accepted-github-permissions: pull_requests=read
+ * ```
+ *
+ * **推測で並べて、実際に人を止めた**（AUT-110）。存在すると思った権限を並べ、
+ * 要ると思った権限を並べた。判定も同じ思い込みから書いたため、思い込みを確かめる
+ * 代わりに固定した。**同じ前提から書いた判定は、その前提を検査しない。**
+ *
+ * 権限を足す・変えるときは、上を叩いてから書くこと。
  */
 
 /**
@@ -50,31 +69,68 @@ const FOR_IMPLEMENTATION = {
       lost: "再発行する。古い値は使えなくなる",
       // **要る権限を先に全部言う。** 足りないまま作ると、作業が進んでから止まる。
       // 足すたびにまた止まる。**同じ停止が2つのプロジェクトで起きた**（AUT-108）。
+      //
+      // **ただし、要らないものを並べない。** 並べると、探しても見つからない項目や、
+      // 渡す必要のない強い権限を人に求めることになり、**別の停止を作る**（AUT-110）。
       needs: [
-        { permission: "Contents", level: "Read and write", why: "push" },
+        {
+          permission: "Contents",
+          level: "Read and write",
+          why: "push",
+          via: "git push（HTTPS）",
+        },
         {
           permission: "Pull requests",
           level: "Read and write",
           why: "提出の作成と、統合されたかの読取",
+          via: "POST /repos/{repo}/pulls, GET /repos/{repo}/pulls",
         },
-        { permission: "Actions", level: "Read", why: "CI が動いたか・通ったかの確認" },
-        { permission: "Checks", level: "Read", why: "判定結果の読取" },
         {
-          permission: "Administration",
-          level: "Read and write",
-          why: "既定ブランチの保護設定の読取。**書き込みは置き場所の作成に要る**",
+          permission: "Actions",
+          level: "Read",
+          why: "CI が動いたか・通ったかの確認",
+          via: "GET /repos/{repo}/actions/runs",
         },
-        { permission: "Workflows", level: "Read and write", why: "CI 定義を置く・変える" },
-        { permission: "Secrets", level: "Read and write", why: "CI が使う資格情報の登録" },
+        {
+          permission: "Workflows",
+          level: "Read and write",
+          why: "CI 定義を置く・変える",
+          via: "git push（.github/workflows/ を含む変更）",
+        },
+        {
+          permission: "Secrets",
+          level: "Read and write",
+          why: "CI が使う資格情報の登録",
+          via: "PUT /repos/{repo}/actions/secrets/{name}",
+        },
       ],
+      // **置き場所の作成は、あえて渡さない。**
+      //
+      // GitHub は `POST /user/repos` に `administration=write` を要求する。しかし
+      // まだ無いリポジトリを「選んだリポジトリ」に含めることはできないため、渡すには
+      // **すべてのリポジトリに対する管理権限**を渡すしかない。それは、持っている
+      // 置き場所を丸ごと消せる鍵である。
+      //
+      // **1つ作るために、全部を消せる鍵を渡さない。** 定義§9が固定条件として挙げる
+      // 「外部への不可逆な操作」に、常時手が届く状態を作らないためでもある。
+      note:
+        "置き場所（リポジトリ）そのものの作成は、この権限では行えない。" +
+        "作成には全リポジトリへの管理権限が要るため、**あえて求めていない。** " +
+        "置き場所は人が作り、このトークンをそこへ絞ること。",
     },
     {
       name: "AUTODRIVE_CI_TOKEN",
       why: "判定が Repo を読む。無いと「外側ループが起動したか」を判定できない",
       lost: "再発行する",
+      // **保護設定の読取に Administration は要らない。** GitHub が要求するのは
+      // Metadata: Read であり、これは選ばなくても必ず付く（AUT-110 で実測）。
       needs: [
-        { permission: "Pull requests", level: "Read", why: "統合されたかの読取" },
-        { permission: "Administration", level: "Read", why: "保護設定の読取" },
+        {
+          permission: "Pull requests",
+          level: "Read",
+          why: "統合されたかの読取",
+          via: "GET /repos/{repo}/commits/{sha}/pulls",
+        },
       ],
     },
   ],
@@ -151,6 +207,9 @@ export function envExample(config) {
       }
       lines.push("#");
     }
+    // **求めていない権限について、求めていない理由を書く。** 書かないと、足りないと
+    // 思った人が自分で足す。足せば、渡す必要のない権限が渡る。
+    if (c.note !== undefined) lines.push(`# ${c.note}`, "#");
     lines.push(`# 失ったとき: ${c.lost}`, `${c.name}=`);
   }
   return `${lines.join("\n")}\n`;

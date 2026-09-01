@@ -159,7 +159,7 @@ test("トークンに要る権限を、先に全部言う", () => {
   }
 });
 
-// **実際に止まった2つを、必ず含むこと。** ここが抜けると、また同じ場所で止まる。
+// **実際に止まった権限を、必ず含むこと。** ここが抜けると、また同じ場所で止まる。
 test("実際に止まった権限が、含まれている", () => {
   const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
   const has = (p) => token.needs.some((n) => n.permission === p);
@@ -168,8 +168,33 @@ test("実際に止まった権限が、含まれている", () => {
   assert.ok(has("Secrets"), "Secrets が抜けている");
   // 題材アプリ2で止まった: CI の結果と提出を読めなかった
   assert.ok(has("Actions"), "Actions が抜けている");
-  assert.ok(has("Checks"), "Checks が抜けている");
   assert.ok(has("Pull requests"), "Pull requests が抜けている");
+});
+
+// **要らない権限を並べないこと。** 並べると、別の停止を作る（AUT-110）。
+//
+// Checks は、この道具が一度も叩かない口の権限である。人が GitHub の一覧で探して
+// 見つからず、そこで止まった。**求める理由が無い権限は、書いた側の思い込みである。**
+test("使わない口の権限は、並べない", () => {
+  for (const name of ["GH_TOKEN", "AUTODRIVE_CI_TOKEN"]) {
+    const token = credentialsFor(defaults()).find((c) => c.name === name);
+    const listed = token.needs.map((n) => n.permission);
+    assert.equal(listed.includes("Checks"), false, `${name}: 叩かない口の権限を求めている`);
+  }
+});
+
+// **どの権限にも、それを要求している口があること。**
+//
+// 推測で並べたものは、ここで書く手が止まる。**書けないなら、要らない。**
+test("求める権限には、それを要求している口が書いてある", () => {
+  for (const c of credentialsFor(defaults())) {
+    for (const n of c.needs ?? []) {
+      assert.ok(
+        typeof n.via === "string" && n.via.trim() !== "",
+        `${c.name} の ${n.permission} に、要求している口が書かれていない`,
+      );
+    }
+  }
 });
 
 // **判定が実際に呼ぶものと、求める権限が食い違わないこと。**
@@ -180,10 +205,20 @@ test("判定が呼ぶ API に要る権限を、求めている", async () => {
   const token = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
   const has = (p) => token.needs.some((n) => n.permission === p);
 
-  // 保護設定を読むなら Administration が要る。
-  if (api.includes("rulesets")) assert.ok(has("Administration"), "rulesets を読むのに権限を求めていない");
   // 統合されたかを読むなら Pull requests が要る。
   if (api.includes("/pulls")) assert.ok(has("Pull requests"), "pulls を読むのに権限を求めていない");
+  // **保護設定の読取に Administration は要らない。** GitHub が要求するのは
+  // Metadata: Read であり、選ばなくても必ず付く（AUT-110 で実測）。
+  assert.equal(has("Administration"), false, "要らない管理権限を求めている");
+});
+
+// **求めていない理由が、雛形に出ること。**
+//
+// 書かないと、足りないと思った人が自分で足す。足せば、渡す必要のない権限が渡る。
+test("置き場所の作成を求めていない理由が、雛形に出る", () => {
+  const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
+  assert.ok(token.note !== undefined, "理由が書かれていない");
+  assert.ok(envExample(defaults()).includes(token.note), "理由が雛形に出ていない");
 });
 
 // **使わないポートの権限を並べない。** 要らないものを人に付けさせない。
