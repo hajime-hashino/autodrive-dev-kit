@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { QUESTIONS, setup } from "../src/setup.js";
 
-import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, infer, readConfig } from "../src/config.js";
+import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig } from "../src/config.js";
 import {
   chosen,
   howToHandle,
@@ -425,4 +425,83 @@ test("端末は、標準入力とは別に開く", async () => {
   if (fd === null) return; // 端末が無い場所。ここでは何も言えない
   assert.ok(fd > 2, `標準入力や標準出力をそのまま返している: fd=${fd}`);
   closeSync(fd);
+});
+
+// -------------------------------------- アプリ自身の資格情報（AUT-112）
+
+/** 構成を直接書く。**AIが書く形をそのまま試す。** */
+function writeRawConfig(root, app) {
+  writeFileSync(
+    join(root, CONFIG_FILE),
+    JSON.stringify({ version: 1, language: "ja", ports: defaults().ports, app }, null, 2),
+    "utf8",
+  );
+}
+
+const GOOD = { name: "ANTHROPIC_API_KEY", why: "モデルを叩く", lost: "再発行する" };
+
+test("入れ替えても、アプリ自身の資格情報は残る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", credentials: [GOOD] });
+
+  const result = run("update", root);
+
+  assert.equal(result.message, null, result.message ?? "");
+  assert.deepEqual(configOf(root).app.credentials, [GOOD], "入れ替えで消えている");
+  // **雛形にも出ること。** 構成に残っていても、出なければ役目を果たさない。
+  assert.ok(
+    readFileSync(join(root, ".env.example"), "utf8").includes("ANTHROPIC_API_KEY="),
+    "雛形に出ていない",
+  );
+});
+
+// **欠けていたら、既定で埋めずに止まる。** 名前だけの一覧は役に立たない。
+test("何に使うのかが無ければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", credentials: [{ name: "X_KEY", lost: "再発行" }] });
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("why"), result.message);
+  assert.ok(result.message.includes("X_KEY"), `どれが悪いのかを出していない: ${result.message}`);
+});
+
+test("失ったときの影響が無ければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", credentials: [{ name: "X_KEY", why: "何か" }] });
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("lost"), result.message);
+});
+
+test("環境変数にならない名前は、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", credentials: [{ name: "x key", why: "あ", lost: "い" }] });
+
+  assert.equal(run("update", root).code, 1);
+});
+
+test("配列でなければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", credentials: { name: "X_KEY" } });
+
+  assert.equal(run("update", root).code, 1);
+});
+
+// **無いことは、壊れていることではない。** 大半のプロジェクトは持たない。
+test("持っていなくても、そのまま通る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes" });
+
+  assert.equal(run("update", root).message, null);
+  assert.deepEqual(configOf(root).app.credentials, []);
 });

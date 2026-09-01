@@ -228,3 +228,60 @@ test("使わないポートの権限は、並べない", () => {
   const text = envExample(config);
   assert.equal(text.includes("Pull requests"), false, "使わない Repo の権限が出ている");
 });
+
+// ------------------------------------------------ アプリ自身の資格情報（AUT-112）
+
+/** アプリ自身の資格情報を1つ持つ構成。 */
+function withApp(credentials) {
+  const config = defaults();
+  config.app.credentials = credentials;
+  return config;
+}
+
+const APP_KEY = {
+  name: "ANTHROPIC_API_KEY",
+  why: "モデルを叩く。無いと会話が成立しない",
+  lost: "再発行する。古い値は使えなくなる",
+};
+
+test("アプリ自身の資格情報が、一覧に入る", () => {
+  const found = credentialsFor(withApp([APP_KEY])).find((c) => c.name === APP_KEY.name);
+  assert.ok(found !== undefined, "アプリの資格情報が落ちている");
+  assert.equal(found.ofApp, true, "アプリのものだと分かる印が無い");
+});
+
+test("アプリ自身の資格情報が、雛形に出る", () => {
+  const text = envExample(withApp([APP_KEY]));
+  assert.ok(text.includes("ANTHROPIC_API_KEY="), "名前が出ていない");
+  assert.ok(text.includes(APP_KEY.why), "何に使うのかが出ていない");
+  assert.ok(text.includes(APP_KEY.lost), "失ったときの影響が出ていない");
+});
+
+// **どこまでが道具の都合で、どこからが作っているものの都合かを分ける。**
+test("アプリ自身のものは、道具のものと混ざらない", () => {
+  const text = envExample(withApp([APP_KEY]));
+  assert.ok(text.includes("このプロジェクト自身のもの"), "見出しが無い");
+  // 見出しより後に出ること。前に出ると、道具のものとして読まれる。
+  assert.ok(
+    text.indexOf("ANTHROPIC_API_KEY=") > text.indexOf("このプロジェクト自身のもの"),
+    "見出しより前に出ている",
+  );
+  assert.ok(text.indexOf("GH_TOKEN=") < text.indexOf("このプロジェクト自身のもの"));
+});
+
+// **直接書くなと言うこと。** 言わないと書かれ、入れ替えで黙って消える。
+test("雛形へ直接書いても消えることを、雛形自身が言う", () => {
+  const text = envExample(withApp([APP_KEY]));
+  assert.ok(text.includes("app.credentials"), "どこに書けばよいかが出ていない");
+  assert.ok(text.includes("消える"), "直接書いたものが消えることを言っていない");
+});
+
+test("1つも無ければ、見出しも出さない", () => {
+  assert.equal(envExample(defaults()).includes("このプロジェクト自身のもの"), false);
+});
+
+test("道具の資格情報と同じ名前は、二重に出さない", () => {
+  const config = withApp([{ name: "GH_TOKEN", why: "重なった", lost: "重なった" }]);
+  const names = credentialsFor(config).map((c) => c.name);
+  assert.equal(names.filter((n) => n === "GH_TOKEN").length, 1, "同じ名前が2行出る");
+});

@@ -173,6 +173,15 @@ export function credentialsFor(config) {
       out.push(c);
     }
   }
+
+  // **アプリ自身のものを、最後に足す。** ポートの資格情報はどのプロジェクトでも
+  // 同じだが、これはこのプロジェクト固有である。分けて並べると、どこまでが道具の
+  // 都合で、どこからが作っているものの都合かが読み取れる。
+  for (const c of config.app?.credentials ?? []) {
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    out.push({ ...c, ofApp: true });
+  }
   return out;
 }
 
@@ -195,7 +204,19 @@ export function envExample(config) {
     "# 入っていない。構成を変えたら `autodrive-dev-kit update` を打ち直すこと。",
   ];
 
+  let started = false;
   for (const c of credentialsFor(config)) {
+    // **アプリ自身のものは、見出しを立てて分ける。** 混ぜると、道具のために要るのか
+    // 作っているもののために要るのかが読み取れない。
+    if (c.ofApp === true && !started) {
+      started = true;
+      lines.push(
+        "",
+        "# ここから下は、このプロジェクト自身のもの。",
+        "# **足すときは autodrive.json の app.credentials に書き、`update` を打つこと。**",
+        "# ここへ直接書いても、入れ替えのときに消える。",
+      );
+    }
     lines.push("", `# ${c.why}`);
     // **要る権限を先に全部並べる。** 足りないまま作ると、作業が進んでから止まり、
     // 足すたびにまた止まる。**一度で済む形にする。**
