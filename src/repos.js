@@ -7,6 +7,21 @@ import { basename, join, resolve } from "node:path";
 
 const BOUNDARY_HISTORY_NAMES = ["boundary-changes.md", "境界変更履歴.md"];
 
+/**
+ * origin の URL から owner/repo を取り出す。取れなければ null。
+ *
+ * **git の呼び出しから切り離してある。** 呼ぶ側によって git の入手経路が違う
+ * （判定器は自前、`begin` は差し込まれたもの）。読み方まで二重に持つと、片方だけ
+ * 直る。
+ */
+export function slugFromUrl(raw) {
+  let url = (raw ?? "").trim();
+  if (url === "") return null;
+  if (url.startsWith("git@")) url = url.split(":").slice(1).join(":");
+  else if (url.includes("://")) url = url.split("://")[1].split("/").slice(1).join("/");
+  return url.endsWith(".git") ? url.slice(0, -4) : url;
+}
+
 export class Repo {
            path;
            name;
@@ -31,12 +46,7 @@ export class Repo {
 
   /** origin の URL から owner/repo を取り出す。取れなければ null。 */
   remoteSlug() {
-    const raw = (this.git("remote", "get-url", "origin") ?? "").trim();
-    if (!raw) return null;
-    let url = raw;
-    if (url.startsWith("git@")) url = url.split(":").slice(1).join(":");
-    else if (url.includes("://")) url = url.split("://")[1].split("/").slice(1).join("/");
-    return url.endsWith(".git") ? url.slice(0, -4) : url;
+    return slugFromUrl(this.git("remote", "get-url", "origin"));
   }
 
   telemetryFiles() {
