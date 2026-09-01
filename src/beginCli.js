@@ -21,21 +21,25 @@ import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { LinearTracker } from "./adapters/trackerLinear.js";
-
+import { createRepoApi } from "./repoApi.js";
+import { describe, reconcile } from "./reconcile.js";
+import { slugFromUrl } from "./repos.js";
 import { writeMarker } from "./trackerCli.js";
 
 const USAGE = `作業単位に着手する
 
   begin <作業単位ID> --repo <対象リポジトリ> [--branch <枝の名前>]
 
-次の3つをまとめて行う。どれかが成り立たなければ、進めずに止める。
+次をまとめて行う。1〜3のどれかが成り立たなければ、進めずに止める。
 
   1. 作業単位を取得し、対象リポジトリを確かめる
   2. 作業空間を用意する（既定ブランチを最新にし、枝を切る）
-  3. 状態を started へ進め、記録の紐づけ先を設置する
+  3. 状態を started へ進め、対象リポジトリを記し、記録の紐づけ先を設置する
+  4. 統合済みなのに着手中のままの作業単位を閉じる
 
 枝の名前を省略すると、作業単位のIDから作る。
-資格情報は環境変数 LINEAR_API_KEY から読む。`;
+資格情報は環境変数 LINEAR_API_KEY から読む。4 には Repo の資格情報も要る
+（GH_TOKEN / AUTODRIVE_CI_TOKEN）。無ければ 4 は飛ばす。着手は成立する。`;
 
 /** @typedef {{ (repoPath: string, args: string[]): string }} Git */
 /** 既定の git。失敗は例外にせず、呼び出し側が文言を組み立てられるようにする。 */
@@ -55,6 +59,11 @@ export function branchNameFor(workItemId , given) {
 
 function fail(lines) {
   return { output: lines.join("\n"), code: 1 };
+}
+
+/** 例外から読める文を取り出す。 */
+export function message(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -96,6 +105,7 @@ export async function run(
   root ,
   tracker ,
   git = runGit,
+  api = undefined,
 ) {
   if (argv.length === 0 || argv[0] === "--help") return { output: USAGE, code: argv.length === 0 ? 0 : 0 };
 
@@ -128,9 +138,8 @@ export async function run(
   try {
     item = await tracker.get(id);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!/not found|見つから/i.test(message)) {
-      return fail([`Tracker を読めない: ${message}`, "資格情報と通信を確かめること。"]);
+    if (!/not found|見つから/i.test(message(error))) {
+      return fail([`Tracker を読めない: ${message(error)}`, "資格情報と通信を確かめること。"]);
     }
     item = null;
   }
@@ -188,7 +197,7 @@ export async function run(
     git(repoPath, ["pull", "--ff-only", "origin", defaultBranch]);
   } catch (error) {
     return fail([
-      `${repo} の ${defaultBranch} を最新にできない: ${error instanceof Error ? error.message : String(error)}`,
+      `${repo} の ${defaultBranch} を最新にできない: ${message(error)}`,
       "既定ブランチに手元だけのコミットが残っている可能性がある。",
       `  git -C ${repo} log --oneline origin/${defaultBranch}..${defaultBranch}`,
       "出てきたコミットは、枝へ移して提出すること。",
@@ -200,18 +209,52 @@ export async function run(
     git(repoPath, ["checkout", "-b", branch]);
   } catch (error) {
     return fail([
-      `枝 ${branch} を作れない: ${error instanceof Error ? error.message : String(error)}`,
+      `枝 ${branch} を作れない: ${message(error)}`,
       "同じ名前の枝が既にある場合は --branch で別の名前を渡すこと。",
     ]);
   }
 
   // 3. マーカー -------------------------------------------------------------
-  await tracker.advance(item.id, "started");
+  //
+  // **対象リポジトリを Tracker にも記す。** 手元のマーカーだけに書いていたため、
+  // 一覧を見てもどれがどのリポジトリの作業か分からなかった（AUT-114）。
+  await tracker.advance(item.id, "started", repo);
   writeMarker(root, item.id, repo);
 
   // 手元に残っている変更は、そのまま新しい枝へ移る。消さないが、黙らない。
   const dirty = git(repoPath, ["status", "--short"]).trim();
   const carried = dirty === "" ? [] : ["", "手元の変更を枝へ持ってきた:", ...dirty.split("\n").map((l) => `  ${l}`)];
+
+  // 4. 片付け ---------------------------------------------------------------
+  //
+  // **着手のついでに閉じる。** 閉じるための手順を別に置くと、思い出す必要が増える。
+  // ここは必ず通るため、思い出さなくても片付く。
+  //
+  // **失敗しても着手は成立させる。** 片付けられないことを理由に着手できなくなるのは
+  // 本末転倒である。ただし黙らない。
+  let tidied = [];
+  if (api !== undefined) {
+    try {
+      // **置き場所も、差し込まれた git から引く。** ここで自前の git を呼ぶと、
+      // 差し込みが効かず、判定できない経路が残る。
+      let origin = null;
+      try {
+        origin = git(repoPath, ["remote", "get-url", "origin"]);
+      } catch {
+        origin = null;
+      }
+      tidied = describe(
+        await reconcile({
+          repos: [{ name: repo, slug: slugFromUrl(origin) }],
+          tracker,
+          api,
+          except: item.id,
+        }),
+      );
+    } catch (error) {
+      tidied = ["", `統合済みの作業単位を片付けられなかった: ${message(error)}`];
+    }
+  }
 
   return {
     output: [
@@ -222,6 +265,7 @@ export async function run(
       `枝              ${branch}（${defaultBranch} から）`,
       `記録の紐づけ先  ${repo} の ${item.id}`,
       ...carried,
+      ...tidied,
     ].join("\n"),
     code: 0,
   };
@@ -237,12 +281,14 @@ if (invokedDirectly) {
     process.exit(2);
   }
   const tracker = new LinearTracker(token ?? "", process.env.AUTODRIVE_TRACKER_TEAM);
+  // 片付けは提出を読むだけである。**読取で足りるものに、書ける資格情報を要求しない。**
+  const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN ?? process.env.GH_TOKEN);
   try {
-    const { output, code } = await run(argv, root, tracker);
+    const { output, code } = await run(argv, root, tracker, runGit, api);
     (code === 0 ? console.log : console.error)(output);
     process.exit(code);
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(message(error));
     process.exit(1);
   }
 }

@@ -19,17 +19,21 @@ const item = {
   url: "https://example.invalid/AUT-99",
   body: "本文",
   state: "todo",
+  repo: null,
 };
 
 /** 進めた先を記録する Tracker。 */
 function fakeTracker(found = item) {
   const advanced = [];
+  const marked = [];
   return {
     advanced,
+    marked,
     async get() { return found; },
     async list() { return found === null ? [] : [found]; },
     async create() { return item; },
-    async advance(id, to) { advanced.push(`${id}:${to}`); return { ...item, state: to }; },
+    async advance(id, to, repo) { advanced.push(`${id}:${to}:${repo ?? "-"}`); return { ...item, state: to }; },
+    async mark(id, repo) { marked.push(`${id}:${repo}`); },
     async note() {},
   };
 }
@@ -41,6 +45,7 @@ function fakeGit(over = {}, fails = []) {
     "branch --show-current": "main",
     "symbolic-ref --short refs/remotes/origin/HEAD": "origin/main",
     "status --short": "",
+    "remote get-url origin": "git@github.com:me/agent-playground.git",
     ...over,
   };
   const git = ((_repoPath , args) => {
@@ -131,7 +136,7 @@ test("3つをまとめて行う。枝を切り、状態を進め、マーカー�
   assert.equal(code, 0);
   assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b aut-99"), "枝を切っていない");
   assert.ok(git.calls.some((a) => a[0] === "pull"), "既定ブランチを最新にしていない");
-  assert.deepEqual(tracker.advanced, ["AUT-99:started"]);
+  assert.deepEqual(tracker.advanced, ["AUT-99:started:agent-playground"]);
   assert.deepEqual(marker(root), { work_item_id: "AUT-99", repo: "agent-playground" });
   assert.ok(output.includes("aut-99"));
 });
@@ -249,4 +254,72 @@ test("対象リポジトリを渡さなければ着手しない", async () => {
 
   assert.equal(code, 2);
   assert.ok(output.includes("--repo"), output);
+});
+
+// -------------------------------------------------------------- 対象リポジトリ
+
+test("着手のとき、対象リポジトリを Tracker にも記す", async () => {
+  // **手元のマーカーだけに書くと、一覧を見てもどのリポジトリの作業か分からない。**
+  // 実際に、1つの対象へ4つのリポジトリの作業単位が混ざって読めなくなった（AUT-114）。
+  const root = workspace();
+  const tracker = fakeTracker();
+
+  await run(["AUT-99", "--repo", "agent-playground"], root, tracker, fakeGit());
+
+  assert.deepEqual(tracker.advanced, ["AUT-99:started:agent-playground"]);
+  assert.equal(marker(root).repo, "agent-playground");
+});
+
+// ------------------------------------------------------------------ 片付け
+
+/** 提出を返す Repo。 */
+function fakeApi(submissions) {
+  return {
+    available: true,
+    async submissionsIn() { return { status: 200, body: submissions }; },
+  };
+}
+
+test("統合済みなのに着手中のままの作業単位を、着手のついでに閉じる", async () => {
+  const root = workspace();
+  const stale = { ...item, id: "AUT-1", state: "started" };
+  const tracker = fakeTracker(item);
+  tracker.list = async () => [item, stale];
+
+  const { code, output } = await run(
+    ["AUT-99", "--repo", "agent-playground"],
+    root,
+    tracker,
+    fakeGit(),
+    fakeApi([{ merged_at: "2026-08-30", head: { ref: "aut-1" }, title: "AUT-1" }]),
+  );
+
+  assert.equal(code, 0);
+  assert.ok(tracker.advanced.includes("AUT-1:done:agent-playground"), tracker.advanced.join(","));
+  assert.ok(output.includes("AUT-1"), `何を閉じたか出していない: ${output}`);
+});
+
+test("片付けに失敗しても、着手は成立する", async () => {
+  // **片付けられないことを理由に着手できなくなるのは本末転倒である。**
+  const root = workspace();
+  const tracker = fakeTracker();
+  const api = {
+    available: true,
+    async submissionsIn() { throw new Error("繋がらない"); },
+  };
+
+  const { code, output } = await run(
+    ["AUT-99", "--repo", "agent-playground"], root, tracker, fakeGit(), api,
+  );
+
+  assert.equal(code, 0);
+  assert.equal(marker(root).work_item_id, "AUT-99");
+  // **ただし黙らない。**
+  assert.ok(output.includes("繋がらない"), `失敗を黙っている: ${output}`);
+});
+
+test("Repo を読めなくても、着手は成立する", async () => {
+  const root = workspace();
+  const { code } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), fakeGit());
+  assert.equal(code, 0);
 });
