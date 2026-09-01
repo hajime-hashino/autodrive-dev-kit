@@ -19,6 +19,23 @@ const STATE_TYPE = {
 };
 
 
+/**
+ * 対象リポジトリの持たせ方。
+ *
+ * **実装側にリポジトリの欄は無い。** 印（ラベル）で持たせる。接頭辞を付けるのは、
+ * 人が付けた印と混ざらないようにするためと、**外して読めるようにするため**である。
+ *
+ * 題名の先頭に付ける案は採らなかった。付け忘れても誰も気づかず、後から直すと
+ * 題名が二重になる。印なら着手のときに機械的に付けられ、絞り込みにも使える。
+ */
+const REPO_MARK = "repo:";
+
+/** 印の並びから、対象リポジトリを読む。無ければ null。 */
+export function repoFrom(names) {
+  const found = names.find((n) => n.startsWith(REPO_MARK));
+  return found === undefined ? null : found.slice(REPO_MARK.length);
+}
+
 function toView(raw) {
   const entry = Object.entries(STATE_TYPE).find(([, type]) => type === raw.state.type);
   return {
@@ -27,10 +44,11 @@ function toView(raw) {
     url: raw.url,
     body: raw.description ?? "",
     state: (entry?.[0] ?? "backlog") ,
+    repo: repoFrom((raw.labels?.nodes ?? []).map((l) => l.name)),
   };
 }
 
-const ISSUE_FIELDS = "identifier title url description state { type }";
+const ISSUE_FIELDS = "id identifier title url description state { type } labels { nodes { id name } }";
 
 export class LinearTracker {
            #token;
@@ -126,7 +144,63 @@ export class LinearTracker {
     return toView(data.issueCreate.issue);
   }
 
-  async advance(id , to) {
+  /**
+   * 印のIDを引く。無ければ作る。
+   *
+   * **作るところまでやる。** 使う側に「先に印を用意しておくこと」を課すと、用意
+   * されていない対象で着手が落ちる。落ちる先は、規約を知らない人の手元である。
+   */
+  async #markId(repo) {
+    const name = `${REPO_MARK}${repo}`;
+    const teamId = await this.#team();
+    const data = await this.#call(
+      "query($id:String!){ team(id:$id){ labels(first:250){ nodes { id name } } } }",
+      { id: teamId },
+    );
+    const found = data.team.labels.nodes.find((l) => l.name === name);
+    if (found !== undefined) return found.id;
+    const made = await this.#call(
+      "mutation($n:String!,$t:String!){ issueLabelCreate(input:{name:$n, teamId:$t}){ issueLabel { id } } }",
+      { n: name, t: teamId },
+    );
+    return made.issueLabelCreate.issueLabel.id;
+  }
+
+  /**
+   * 対象リポジトリを記す。
+   *
+   * **付け替えられるようにする。** 古い印を残したまま新しい印を足すと、どちらが
+   * 本当か読む側から分からない。**間違った印は、印が無いより悪い。**
+   */
+  async mark(id , repo) {
+    const raw = (
+      await this.#call(`query($id:String!){ issue(id:$id){ ${ISSUE_FIELDS} } }`, { id })
+    ).issue;
+    const stale = (raw.labels?.nodes ?? []).filter(
+      (l) => l.name.startsWith(REPO_MARK) && l.name !== `${REPO_MARK}${repo}`,
+    );
+    for (const l of stale) {
+      await this.#call(
+        "mutation($i:String!,$l:String!){ issueRemoveLabel(id:$i, labelId:$l){ success } }",
+        { i: raw.id, l: l.id },
+      );
+    }
+    if (repoFrom((raw.labels?.nodes ?? []).map((l) => l.name)) === repo) return toView(raw);
+    const data = await this.#call(
+      `mutation($i:String!,$l:String!){ issueAddLabel(id:$i, labelId:$l){ issue { ${ISSUE_FIELDS} } } }`,
+      { i: raw.id, l: await this.#markId(repo) },
+    );
+    return toView(data.issueAddLabel.issue);
+  }
+
+  /**
+   * 状態を進める。着手のときは、対象リポジトリも記す。
+   *
+   * **印を先に付ける。** 後にすると、状態だけ進んで印の無い作業単位が残る。それは
+   * いま散らかっているものと同じ形であり、**直したはずの状態に戻る。**
+   */
+  async advance(id , to, repo = undefined) {
+    if (repo !== undefined && repo !== "") await this.mark(id, repo);
     const stateId = await this.#stateId(to);
     const data = await this.#call(
       `mutation($id:String!,$s:String!){

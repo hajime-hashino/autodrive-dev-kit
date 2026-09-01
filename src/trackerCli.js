@@ -112,7 +112,9 @@ export async function run(
     return { output: "started へ進めるには --repo が要る（記録の書き込み先になる）", code: 2 };
   }
 
-  const item = await tracker.advance(id, target);
+  // **対象リポジトリを Tracker にも渡す。** 手元のマーカーにしか書かないと、
+  // 一覧を見てもどれがどのリポジトリの作業か分からない（AUT-114）。
+  const item = await tracker.advance(id, target, values.repo);
   let note = "";
   if (target === "started") {
     writeMarker(root, item.id, values.repo);
