@@ -71,6 +71,10 @@ export function renderSetup(mode , result) {
     for (const d of result.decisions) lines.push(`  ${d}`);
   }
 
+  // **確かめられなかったことを、置いたものの直後に出す。** 後ろに回すと、
+  // 人にしかできないことの一覧に紛れて読み飛ばされる。
+  for (const note of result.notes ?? []) lines.push("", note);
+
   if (result.todo.length > 0) {
     lines.push("", t("section.todo"), "");
     result.todo.forEach((t2, i) => lines.push(`  ${i + 1}. ${t2}`));
