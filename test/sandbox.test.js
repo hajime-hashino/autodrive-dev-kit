@@ -277,3 +277,63 @@ test("置き場所とシークレットは、AIの手順として配られてい
   // **API を呼べば済むものを人に振らない**という指示があること。
   assert.ok(section.includes("API を呼べば済むもの"), section.slice(0, 900));
 });
+
+// -------------------------------------------- アプリ自身の宛先（AUT-115）
+
+/** アプリ自身の宛先を持つ構成。 */
+function withDest(destinations) {
+  const config = defaults();
+  config.app.destinations = destinations;
+  return config;
+}
+
+const STRIPE = { host: "api.stripe.com", why: "決済。このアプリが叩く" };
+
+test("アプリ自身の宛先が、一覧に入る", () => {
+  const found = destinationsFor(withDest([STRIPE])).find((d) => d.host === STRIPE.host);
+  assert.ok(found !== undefined, "アプリの宛先が落ちている");
+  assert.equal(found.ofApp, true, "アプリのものだと分かる印が無い");
+});
+
+test("アプリ自身の宛先が、許可一覧に出る", () => {
+  const text = allowedDomains(withDest([STRIPE]));
+  assert.ok(text.includes("api.stripe.com"), "宛先が出ていない");
+  assert.ok(text.includes(STRIPE.why), "なぜ要るのかが出ていない");
+});
+
+// **どこまでが道具の都合で開いている穴かを分ける。**
+test("アプリ自身のものは、道具のものと混ざらない", () => {
+  const text = allowedDomains(withDest([STRIPE]));
+  assert.ok(text.includes("このプロジェクト自身の宛先"), "見出しが無い");
+  assert.ok(
+    text.indexOf("api.stripe.com") > text.indexOf("このプロジェクト自身の宛先"),
+    "見出しより前に出ている",
+  );
+  assert.ok(text.indexOf("api.github.com") < text.indexOf("このプロジェクト自身の宛先"));
+});
+
+test("1つも無ければ、見出しも出さない", () => {
+  assert.equal(allowedDomains(defaults()).includes("このプロジェクト自身の宛先"), false);
+});
+
+// **書けと言った場所が、書いたものを消していた。** 二度と言わないこと。
+test("許可一覧へ直接足せ、とは言わない", () => {
+  const text = allowedDomains(defaults());
+  assert.equal(text.includes("ここへ足すこと"), false, "消える場所へ足せと言っている");
+  assert.ok(text.includes("直接編集しないこと"), "直接編集するなと言っていない");
+  assert.ok(text.includes("app.destinations"), "どこに書けばよいかが出ていない");
+});
+
+test("道具の宛先と同じものは、二重に出さない", () => {
+  const config = withDest([{ host: "api.github.com", why: "重なった" }]);
+  const hosts = destinationsFor(config).map((d) => d.host);
+  assert.equal(hosts.filter((h) => h === "api.github.com").length, 1, "同じ宛先が2行出る");
+});
+
+// **説明の側も直っていること。** 仕掛けを入れても、古い指示が残れば人はそれに従う。
+test("配る説明が、消える場所へ足せと言っていない", () => {
+  const readme = readFileSync(join(KIT, "templates", "devcontainer", "README.md"), "utf8");
+  assert.equal(readme.includes("決まった時点で人が足す"), false, "消える場所へ足せと言っている");
+  assert.ok(readme.includes("app.destinations"), "どこに書けばよいかが出ていない");
+  assert.ok(readme.includes("直接編集しないこと"), "直接編集するなと言っていない");
+});

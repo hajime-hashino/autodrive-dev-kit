@@ -13,6 +13,15 @@
  * **ワイルドカードは書けない。** 規則は名前解決した IP に対して置かれるため、
  * `*.workers.dev` のような書き方はできない。宛先ごとに1行が要る。配布先が増える
  * たびに手が要るが、**そこが判断の機会になる。**
+ *
+ * ## アプリ自身の宛先も、構成から来る
+ *
+ * ポートの宛先はどのプロジェクトでも同じだが、作っているものが自分で叩く先は
+ * プロジェクト固有である。`app.destinations` がそれにあたる。
+ *
+ * **以前は「ここへ足すこと」と書いていた。そして `update` で消していた**（AUT-115）。
+ * 許可一覧は `managed` であり、丸ごと書き直される。消えると出口が閉じるため、
+ * **動いていたものが入れ替えで止まり、止まった理由が結びつかない。**
  */
 
 /** @typedef {{ host: string, why: string }} Destination */
@@ -66,6 +75,15 @@ export function destinationsFor(config) {
       out.push(d);
     }
   }
+
+  // **アプリ自身の宛先を、最後に足す。** ポートの宛先はどのプロジェクトでも同じだが、
+  // これはこのプロジェクト固有である。分けて並べると、どこまでが道具の都合で、
+  // どこからが作っているものの都合かが読み取れる。
+  for (const d of config.app?.destinations ?? []) {
+    if (seen.has(d.host)) continue;
+    seen.add(d.host);
+    out.push({ ...d, ofApp: true });
+  }
   return out;
 }
 
@@ -90,15 +108,31 @@ export function allowedDomains(config) {
     "",
   ];
 
-  const width = Math.max(...destinationsFor(config).map((d) => d.host.length));
-  for (const d of destinationsFor(config)) {
+  const all = destinationsFor(config);
+  const width = Math.max(...all.map((d) => d.host.length));
+
+  let started = false;
+  for (const d of all) {
+    // **アプリ自身のものは、見出しを立てて分ける。** 混ぜると、道具のために開いて
+    // いる穴なのか、作っているもののために開いている穴なのかが読み取れない。
+    if (d.ofApp === true && !started) {
+      started = true;
+      lines.push("", "# ここから下は、このプロジェクト自身の宛先。");
+    }
     lines.push(`${d.host.padEnd(width)}  # ${d.why}`);
   }
 
+  // **ここへ直接書けと言わないこと。** 言っていた。そして `update` で消していた。
+  // 書けと言った場所が、書いたものを消していた（AUT-115）。
   lines.push(
     "",
-    "# 配布された先の疎通確認。**配布先が決まったら、ここへ足すこと。**",
-    "# 宛先ごとに1行が要る。手が要るが、**そこが判断の機会になる。**",
+    "# 配布先や、このアプリが叩く先を足すときは、**このファイルを直接編集しないこと。**",
+    "# ここは構成から作られており、`update` のたびに書き直される。",
+    "#",
+    "# autodrive.json の app.destinations に足して、`autodrive-dev-kit update` を打つこと。",
+    "#   { \"host\": \"example.workers.dev\", \"why\": \"配布先の疎通確認\" }",
+    "#",
+    "# **宛先ごとに1行が要る。** 手が要るが、そこが判断の機会になる。",
   );
   return `${lines.join("\n")}\n`;
 }
