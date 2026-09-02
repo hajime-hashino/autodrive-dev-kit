@@ -168,7 +168,7 @@ function gitRemote(root) {
 }
 
 function refuse(message) {
-  return { placed: [], todo: [], version: null, code: 1, message, config: null, decisions: [] };
+  return { placed: [], todo: [], notes: [], version: null, code: 1, message, config: null, decisions: [] };
 }
 
 export function setup(mode , root , kitRoot , interviewer , inside = undefined) {
@@ -223,7 +223,7 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
 
   // 置く ----------------------------------------------------------------------
   const result = init(root, kitRoot, config, inside);
-  if (result.message !== null) return { ...result, config: null, decisions: [] };
+  if (result.message !== null) return { ...result, notes: result.notes ?? [], config: null, decisions: [] };
 
   // **入れ替えでは触らない。** 決めた内容はプロジェクトのものである。読んだものを
   // 書き戻すだけでも、整形の違いや、この版が知らない項目の欠落が入りうる。
