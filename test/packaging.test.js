@@ -100,8 +100,12 @@ test("参照されている型が、すべて定義されている", async () =>
       }
       if (!name.endsWith(".js")) continue;
       const body = readFileSync(path, "utf8");
-      for (const m of body.matchAll(/@typedef \{[\s\S]*?\} (\w+) \*\//g)) defined.add(m[1]);
-      for (const m of body.matchAll(/@typedef \{([\s\S]*?)\} \w+ \*\//g)) {
+      // **コメントの塊をまたがないこと。** またぐと、1つ目の型の名前を読み飛ばし、
+      // 間にある文章を型の中身として読む。**落ちるが、落ちる理由が嘘になる。**
+      // 実際に、そう読んだ（AUT-112）。
+      const TYPEDEF = /@typedef \{((?:(?!\*\/)[\s\S])*?)\} (\w+)/g;
+      for (const m of body.matchAll(TYPEDEF)) {
+        defined.add(m[2]);
         for (const t of m[1].matchAll(/\b([A-Z]\w+)\b/g)) used.add(t[1]);
       }
     }
