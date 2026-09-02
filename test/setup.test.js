@@ -505,3 +505,64 @@ test("持っていなくても、そのまま通る", () => {
   assert.equal(run("update", root).message, null);
   assert.deepEqual(configOf(root).app.credentials, []);
 });
+
+// -------------------------------------- アプリ自身の宛先（AUT-115）
+
+const DEST = { host: "example.workers.dev", why: "配布先の疎通確認" };
+
+// **これが本体。** 手で足したものが消えるのが元の欠陥であり、構成に書けば残ること。
+test("入れ替えても、アプリ自身の宛先は残る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", destinations: [DEST] });
+
+  const result = run("update", root);
+
+  assert.equal(result.message, null, result.message ?? "");
+  assert.deepEqual(configOf(root).app.destinations, [DEST], "入れ替えで消えている");
+  assert.ok(
+    readFileSync(join(root, ".devcontainer", "allowed-domains.txt"), "utf8").includes(DEST.host),
+    "許可一覧に出ていない",
+  );
+});
+
+test("なぜ要るのかが無ければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", destinations: [{ host: "example.com" }] });
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("why"), result.message);
+  assert.ok(result.message.includes("example.com"), `どれが悪いのかを出していない: ${result.message}`);
+});
+
+// **書ければ通ると思わせない。** 規則は名前解決した IP に対して置かれる。
+test("ワイルドカードは、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", destinations: [{ host: "*.workers.dev", why: "配布先" }] });
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("ワイルドカード"), `理由を出していない: ${result.message}`);
+});
+
+test("宛先の形になっていなければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", destinations: [{ host: "ここ", why: "あ" }] });
+
+  assert.equal(run("update", root).code, 1);
+});
+
+test("宛先を持っていなくても、そのまま通る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes" });
+
+  assert.equal(run("update", root).message, null);
+  assert.deepEqual(configOf(root).app.destinations, []);
+});

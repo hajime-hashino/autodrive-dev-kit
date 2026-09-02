@@ -57,7 +57,11 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
  *   version: 1,
  *   language: "ja" | "en",
  *   ports: Record<PortName, string>,
- *   app: { screen: "yes" | "no" | "unknown", credentials: AppCredential[] },
+ *   app: {
+ *     screen: "yes" | "no" | "unknown",
+ *     credentials: AppCredential[],
+ *     destinations: AppDestination[],
+ *   },
  * }} Config
  */
 
@@ -114,6 +118,64 @@ function readAppCredentials(raw) {
   }
   return { credentials, error: null };
 }
+
+/** @typedef {{ host: string, why: string }} AppDestination */
+
+/**
+ * 名前解決できる形か。**ワイルドカードは通さない。**
+ *
+ * 規則は名前解決した IP に対して置かれるため、`*.workers.dev` のような書き方は
+ * できない。書ければ通ると思わせないために、ここで弾く。
+ */
+const HOST_NAME = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/**
+ * アプリ自身が叩く宛先を読む。
+ *
+ * **ポートとは別に、作っているものが自分で叩く先を持つ。** 外部サービス、配布した
+ * 先の疎通確認など。ポートから組み立てるだけでは置く方法が無かった（AUT-115）。
+ *
+ * **手で足せば済む話ではない。** 許可一覧は入れ替えのたびに丸ごと書き直される。
+ * それどころか、**足せと書いてあった。** 書けと言った場所が、書いたものを消していた。
+ *
+ * 消えると出口が閉じる。**動いていたものが `update` で止まり、止まった理由が
+ * 結びつかない。**
+ */
+function readAppDestinations(raw) {
+  if (raw === undefined || raw === null) return { destinations: [], error: null };
+  if (!Array.isArray(raw)) {
+    return { destinations: [], error: `${CONFIG_FILE} の app.destinations が配列ではない` };
+  }
+
+  const destinations = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `app.destinations[${i}]`;
+    if (typeof entry !== "object" || entry === null) {
+      return { destinations: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
+    }
+    const { host, why } = entry;
+    if (typeof host !== "string" || !HOST_NAME.test(host)) {
+      return {
+        destinations: [],
+        error:
+          `${CONFIG_FILE} の ${at}.host が宛先の形になっていない` +
+          (typeof host === "string" && host.includes("*")
+            ? `（${host}）。**ワイルドカードは書けない。** 規則は名前解決した IP に対して置かれる。宛先ごとに1行が要る`
+            : "（小文字の英数字とハイフン、ドット区切り）"),
+      };
+    }
+    if (typeof why !== "string" || why.trim() === "") {
+      return {
+        destinations: [],
+        error:
+          `${CONFIG_FILE} の ${at}.why が空である（${host}）。` +
+          "なぜ要るのかを書くこと。**書けないなら要らない可能性が高い。**",
+      };
+    }
+    destinations.push({ host, why: why.trim() });
+  }
+  return { destinations, error: null };
+}
 /** 既定。**推奨であって、決定ではない。** */
 export function defaults() {
   return {
@@ -129,9 +191,9 @@ export function defaults() {
       telemetry: "jsonl",
       flag: NONE,
     },
-    // **アプリ自身の資格情報は、聞かない。** 何を作るかが決まる前には分からない。
-    // 何を作るかを聞き終えたあとで、AIがここへ足す。
-    app: { screen: UNKNOWN, credentials: [] },
+    // **アプリ自身の資格情報も宛先も、聞かない。** 何を作るかが決まる前には
+    // 分からない。何を作るかを聞き終えたあとで、AIがここへ足す。
+    app: { screen: UNKNOWN, credentials: [], destinations: [] },
   };
 }
 
@@ -173,10 +235,21 @@ export function readConfig(root) {
   const screen = raw.app?.screen ?? UNKNOWN;
   const language = raw.language === "en" || raw.language === "ja" ? raw.language : base.language;
 
-  const { credentials, error } = readAppCredentials(raw.app?.credentials);
-  if (error !== null) return { config: null, error };
+  const app = readAppCredentials(raw.app?.credentials);
+  if (app.error !== null) return { config: null, error: app.error };
 
-  return { config: { version: 1, language, ports, app: { screen, credentials } }, error: null };
+  const out = readAppDestinations(raw.app?.destinations);
+  if (out.error !== null) return { config: null, error: out.error };
+
+  return {
+    config: {
+      version: 1,
+      language,
+      ports,
+      app: { screen, credentials: app.credentials, destinations: out.destinations },
+    },
+    error: null,
+  };
 }
 
 export function writeConfig(root , config) {
