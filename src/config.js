@@ -50,7 +50,70 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
 
 /** @typedef {"tracker" | "repo" | "runner" | "sandbox" | "preview" | "telemetry" | "flag"} PortName */
 
-/** @typedef {{ version: 1, language: "ja" | "en", ports: Record<PortName, string>, app: { screen: "yes" | "no" | "unknown"; } }} Config */
+/** @typedef {{ name: string, why: string, lost: string }} AppCredential */
+
+/**
+ * @typedef {{
+ *   version: 1,
+ *   language: "ja" | "en",
+ *   ports: Record<PortName, string>,
+ *   app: { screen: "yes" | "no" | "unknown", credentials: AppCredential[] },
+ * }} Config
+ */
+
+/** 環境変数として通る名前か。**雛形に書き出す行になるため、形を確かめる。** */
+const CREDENTIAL_NAME = /^[A-Z][A-Z0-9_]*$/;
+
+/**
+ * アプリ自身の資格情報を読む。
+ *
+ * **ポートとは別に、アプリが自分の資格情報を持つ。** 題材アプリ2では、モデルを
+ * 叩くための鍵がそれにあたる。ポートから組み立てるだけでは、この種のものを
+ * `.env.example` に載せる方法が無かった（AUT-112）。
+ *
+ * **手で足せば済む話ではない。** `.env.example` は入れ替えのたびに丸ごと書き直される。
+ * `.env` に値が残っている限りアプリは動き続けるため、**消えたことに気づけない。**
+ * 新しく入った人が雛形を見ても、その資格情報の存在を知れない。
+ *
+ * **欠けていたら、既定で埋めずに止まる。** 名前だけの一覧は役に立たない。何に使う
+ * のか、失ったらどうなるのかが書かれていなければ、人は何を取りに行けばよいか
+ * 分からない。
+ */
+function readAppCredentials(raw) {
+  if (raw === undefined || raw === null) return { credentials: [], error: null };
+  if (!Array.isArray(raw)) {
+    return { credentials: [], error: `${CONFIG_FILE} の app.credentials が配列ではない` };
+  }
+
+  const credentials = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `app.credentials[${i}]`;
+    if (typeof entry !== "object" || entry === null) {
+      return { credentials: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
+    }
+    const { name, why, lost } = entry;
+    if (typeof name !== "string" || !CREDENTIAL_NAME.test(name)) {
+      return {
+        credentials: [],
+        error: `${CONFIG_FILE} の ${at}.name が環境変数の名前になっていない（英大文字・数字・_）`,
+      };
+    }
+    for (const [key, value] of [["why", why], ["lost", lost]]) {
+      if (typeof value !== "string" || value.trim() === "") {
+        return {
+          credentials: [],
+          error:
+            `${CONFIG_FILE} の ${at}.${key} が空である（${name}）。` +
+            (key === "why"
+              ? "何に使うのかを書くこと。書かないと、人は何を取りに行けばよいか分からない"
+              : "失ったらどうなるかを書くこと。書かないと、扱いの重さを判断できない"),
+        };
+      }
+    }
+    credentials.push({ name, why: why.trim(), lost: lost.trim() });
+  }
+  return { credentials, error: null };
+}
 /** 既定。**推奨であって、決定ではない。** */
 export function defaults() {
   return {
@@ -66,7 +129,9 @@ export function defaults() {
       telemetry: "jsonl",
       flag: NONE,
     },
-    app: { screen: UNKNOWN },
+    // **アプリ自身の資格情報は、聞かない。** 何を作るかが決まる前には分からない。
+    // 何を作るかを聞き終えたあとで、AIがここへ足す。
+    app: { screen: UNKNOWN, credentials: [] },
   };
 }
 
@@ -108,7 +173,10 @@ export function readConfig(root) {
   const screen = raw.app?.screen ?? UNKNOWN;
   const language = raw.language === "en" || raw.language === "ja" ? raw.language : base.language;
 
-  return { config: { version: 1, language, ports, app: { screen } }, error: null };
+  const { credentials, error } = readAppCredentials(raw.app?.credentials);
+  if (error !== null) return { config: null, error };
+
+  return { config: { version: 1, language, ports, app: { screen, credentials } }, error: null };
 }
 
 export function writeConfig(root , config) {
