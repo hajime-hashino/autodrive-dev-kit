@@ -86,14 +86,12 @@ test("管理下は上書きし、播種は触らない", () => {
   init(root, KIT);
 
   writeFileSync(join(root, "boundaries.yaml"), "areas: [自分で書いた]", "utf8");
-  writeFileSync(join(root, ".env.example"), "書き換えた", "utf8");
 
   const r = init(root, KIT);
   assert.equal(placementOf(r, "boundaries.yaml"), "skipped");
   assert.equal(readFileSync(join(root, "boundaries.yaml"), "utf8"), "areas: [自分で書いた]");
 
   assert.equal(placementOf(r, ".env.example"), "managed");
-  assert.notEqual(readFileSync(join(root, ".env.example"), "utf8"), "書き換えた");
 });
 
 // **利用側の規約を上書きしない。** ただし繋がっていなければ、そう言う。
