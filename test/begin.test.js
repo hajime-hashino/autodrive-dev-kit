@@ -219,6 +219,17 @@ test("別の枝の上からは始めない", async () => {
   assert.equal(code, 1);
   assert.ok(output.includes("aut-98-前の作業"), output);
   assert.ok(output.includes("checkout main"), `戻り方を案内していない: ${output}`);
+  // **先に既定ブランチを進める案内であること。** 進めずに切り替えると、統合済みの
+  // 記録と手元の記録が食い違い、未コミットの追記があると切り替えられない。
+  // トークン消費の記録は提出のあとにも届くため、これは毎回起きる（AUT-118）。
+  assert.ok(
+    output.includes("fetch origin main:main"),
+    `古い既定ブランチへの切り替えを勧めている: ${output}`,
+  );
+  assert.ok(
+    output.indexOf("fetch origin main:main") < output.indexOf("checkout main"),
+    `進めるより先に切り替えさせている: ${output}`,
+  );
   assert.ok(!git.calls.some((a) => a[0] === "checkout" && a[1] === "-b"), "枝を切ってしまっている");
   assert.deepEqual(tracker.advanced, [], "状態を進めてしまっている");
 });
