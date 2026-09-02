@@ -18,6 +18,14 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  describeEdits,
+  describeUnchecked,
+  findEdits,
+  manifestPath,
+  readManifest,
+  writeManifest,
+} from "./manifest.js";
 import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
@@ -37,11 +45,17 @@ function write(full , body) {
   mkdirSync(dirname(full), { recursive: true });
   writeFileSync(full, body, "utf8");
 }
-/** @typedef {{ placed: Placed[], todo: string[], version: string | null, code: number, message: string | null }} InitResult */
-/** 管理下。上書きする。**ローカルの編集は参照実装への起票の契機である。** */
-function managed(root , path , body , out) {
-  write(join(root, path), body);
-  out.push({ path, placement: "managed" });
+/** @typedef {{ placed: Placed[], todo: string[], notes: string[], version: string | null, code: number, message: string | null }} InitResult */
+/**
+ * 管理下。上書きする。**ローカルの編集は参照実装への起票の契機である。**
+ *
+ * **ここでは書かない。溜めるだけにする。** 手で変えられているかを先に全部
+ * 確かめてから書く。書きながら確かめると、**一部だけ新しい状態**ができる
+ * （AUT-116）。
+ */
+function managed(path , body , plan) {
+  plan.writes.push({ path, body });
+  plan.placed.push({ path, placement: "managed" });
 }
 
 /** 播種。**既にあれば触らない。** 中身はプロジェクトのものになる。 */
@@ -155,25 +169,29 @@ export function insideSandbox() {
   return existsSync("/.dockerenv") || process.env.REMOTE_CONTAINERS === "true";
 }
 
-function placeSandbox(root , kitRoot , config , placed) {
+function placeSandbox(root , kitRoot , config , plan) {
   if (config.ports.sandbox === "none") return false;
 
   const name = basename(root) || "project";
-  const inside = [];
+  // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
+  const folded = { placed: [], writes: plan.writes };
   for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "devcontainer-lock.json", "README.md"]) {
-    managed(root, `.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`, { NAME: name }), inside);
+    managed(`.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`, { NAME: name }), folded);
   }
   // **一覧は構成から作る。** 雛形を写すと、使わないポートの宛先が付いてくる。
-  managed(root, ".devcontainer/allowed-domains.txt", allowedDomains(config), inside);
+  managed(".devcontainer/allowed-domains.txt", allowedDomains(config), folded);
 
   // **1つにまとめて報告する。** 中の1つ1つを並べると、出力の大半が
   // サンドボックスで埋まり、何が置かれたのかが読みにくくなる。
-  placed.push({ path: ".devcontainer/", placement: "managed" });
+  plan.placed.push({ path: ".devcontainer/", placement: "managed" });
   return true;
 }
 
 export function init(root , kitRoot , config = null, inside = insideSandbox()) {
-  const placed = [];
+  // **置くものと、置いた記録を一緒に運ぶ。** 管理下のものは溜めるだけにして、
+  // 手で変えられていないかを確かめてから、まとめて書く。
+  const plan = { placed: [], writes: [] };
+  const placed = plan.placed;
 
   if (!existsSync(join(root, ".git"))) {
     return {
@@ -181,22 +199,43 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
       todo: [],
       version: null,
       code: 1,
+      notes: [],
       message:
         "ここは git のリポジトリではない。\n" +
         "先に `git init` してから、もう一度実行すること。記録も判定も履歴の上で成り立っている。",
     };
   }
 
+  // 管理下 --------------------------------------------------------------------
+  // **構成から作る。** 雛形を写すと、使わないポートの資格情報を求めることになり、
+  // 使うポートのものが抜けても気づけない。実際に GH_TOKEN が抜けていた（AUT-98）。
+  managed(".env.example", envExample(config ?? defaults()), plan);
+  managed(".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), plan);
+  managed("docs/autodrive.md", template(kitRoot, "autodrive.md"), plan);
+
+  // サンドボックス。**置くものを決めるだけ。書くのはこの後。**
+  const sandboxPlaced = config !== null && placeSandbox(root, kitRoot, config, plan);
+
+  // 手で変えられていないか ------------------------------------------------------
+  //
+  // **書く前に、全部を確かめる。** 見つかったら何も書かずに止まる。書きながら
+  // 確かめると、一部だけ新しい状態ができる（AUT-116）。
+  //
+  // **道具一式を入れ替える前でもある。** 先に入れ替えると、止めたときに
+  // 道具だけ新しく、管理下のファイルが古い状態が残る。
+  const previous = readManifest(manifestPath(root, VENDOR_DIR));
+  const { edited, unchecked } = findEdits(root, plan.writes, previous);
+  if (edited.length > 0) {
+    return { placed: [], todo: [], notes: [], version: null, code: 1, message: describeEdits(edited) };
+  }
+
   // 道具一式 ------------------------------------------------------------------
   const version = vendor(root, kitRoot);
   placed.push({ path: `${VENDOR_DIR}/`, placement: "managed" });
 
-  // 管理下 --------------------------------------------------------------------
-  // **構成から作る。** 雛形を写すと、使わないポートの資格情報を求めることになり、
-  // 使うポートのものが抜けても気づけない。実際に GH_TOKEN が抜けていた（AUT-98）。
-  managed(root, ".env.example", envExample(config ?? defaults()), placed);
-  managed(root, ".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), placed);
-  managed(root, "docs/autodrive.md", template(kitRoot, "autodrive.md"), placed);
+  // 置く。**指紋も残す。** 残さないと、次に確かめられない。
+  for (const w of plan.writes) write(join(root, w.path), w.body);
+  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes);
 
   // 記録の仕掛け。**利用側の設定へ併合する。**
   const settingsPath = join(root, ".claude", "settings.json");
@@ -208,10 +247,6 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   } else {
     placed.push({ path: ".claude/settings.json", placement: "skipped" });
   }
-
-  // サンドボックス --------------------------------------------------------------
-  // **構成が要ると言っているものを、置かないままにしない。**
-  const sandboxPlaced = config !== null && placeSandbox(root, kitRoot, config, placed);
 
   // 播種 ----------------------------------------------------------------------
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
@@ -270,5 +305,8 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **覚えることを増やさない。** どこから始めるかはAIが状態を見て決める（AUT-80）。
   todo.push(t("todo.start"));
 
-  return { placed, todo, version, code: 0, message: null };
+  // **確かめられなかったことは黙らない。** 黙ると、確かめた顔になる。
+  const notes = unchecked.length > 0 ? [describeUnchecked(unchecked)] : [];
+
+  return { placed, todo, notes, version, code: 0, message: null };
 }
