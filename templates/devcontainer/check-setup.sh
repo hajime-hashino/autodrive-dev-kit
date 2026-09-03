@@ -39,4 +39,21 @@ else
   echo "✓ 資格情報は揃っている"
 fi
 
+# 出口が閉じているか。
+#
+# **「閉じているつもり」を残さない。** 規則はコンテナの停止で消えるため、置いた
+# はずでも効いていないことがある。実際に10日間、効かないまま動いていた（AUT-121）。
+#
+# ここでは直さない。**直すのは init-firewall.sh であり、起動のたびに走る。**
+# ここは、それが走らなかったことに気づくための最後の網である。
+if [ -f "$ROOT/.devcontainer/allowed-domains.txt" ]; then
+  if curl -fsS --max-time 5 -o /dev/null https://example.com 2>/dev/null; then
+    echo "⚠ 出口制限が効いていない。許可していない宛先へ出られる。"
+    echo "    sudo bash .devcontainer/init-firewall.sh を打つこと。"
+    echo "    **効かないまま動くと、隔離されていると思ったまま作業することになる。**"
+  else
+    echo "✓ 出口制限が効いている"
+  fi
+fi
+
 exit 0
