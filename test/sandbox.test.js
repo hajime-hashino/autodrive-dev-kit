@@ -337,3 +337,47 @@ test("配る説明が、消える場所へ足せと言っていない", () => {
   assert.ok(readme.includes("app.destinations"), "どこに書けばよいかが出ていない");
   assert.ok(readme.includes("直接編集しないこと"), "直接編集するなと言っていない");
 });
+
+// ------------------------------------------- 出口が起動のたびに閉じるか（AUT-121）
+
+/** 配る devcontainer の設定。**コメント付きなので、素の JSON.parse は使えない。** */
+function devcontainerJson() {
+  const raw = readFileSync(join(KIT, "templates", "devcontainer", "devcontainer.json"), "utf8");
+  return JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
+}
+
+// **規則はコンテナの停止で消える。** 作ったときにしか走らない契機へ置くと、
+// 1回目の起動以降は隔離が無い。実際に10日間そうなっていた。
+test("出口を閉じる手順は、起動のたびに走る契機に置かれている", () => {
+  const dc = devcontainerJson();
+  assert.ok(
+    (dc.postStartCommand ?? "").includes("init-firewall.sh"),
+    `起動のたびに走らない: postStart=${dc.postStartCommand}`,
+  );
+});
+
+test("出口を閉じる手順を、作成時だけの契機に置かない", () => {
+  const dc = devcontainerJson();
+  assert.equal(
+    (dc.postCreateCommand ?? "").includes("init-firewall.sh"),
+    false,
+    "作成時にしか走らない契機に置いている",
+  );
+});
+
+// **root が要る。** エージェントは root で動かさないため、sudo を通す。
+test("出口を閉じる手順は、権限を持って走る", () => {
+  assert.ok(devcontainerJson().postStartCommand.includes("sudo"), "権限が足りない");
+});
+
+// **支度は作ったときだけでよい。** 起動のたびに走らせる必要は無い。
+test("支度は作成時の契機に残っている", () => {
+  assert.ok(devcontainerJson().postCreateCommand.includes("post-create.sh"));
+});
+
+// **効いていないことに気づける最後の網。** 起動時の手順が走らなかった場合に効く。
+test("支度の確認が、出口の状態を見る", () => {
+  const sh = readFileSync(join(KIT, "templates", "devcontainer", "check-setup.sh"), "utf8");
+  assert.ok(sh.includes("出口制限が効いていない"), "効いていないことを言わない");
+  assert.ok(sh.includes("init-firewall.sh"), "どう直すかを出していない");
+});
