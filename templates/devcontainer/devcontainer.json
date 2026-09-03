@@ -23,8 +23,16 @@
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   },
 
+  // 支度は作ったときだけでよい。rc への追記も git の設定も、残る。
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // **出口を閉じるのは、起動のたびに行う。** iptables の規則はコンテナの
+  // ネットワーク名前空間に置かれるため、停止すると消える。postCreateCommand は
+  // 作ったときにしか走らないので、そこへ置くと**1回目の起動以降は隔離が無い。**
+  // 実際にそうなっていた（AUT-121）。
+  //
   // 出口を閉じるには root が要る。エージェントは root では動かさない。
-  "postCreateCommand": "sudo bash .devcontainer/init-firewall.sh && bash .devcontainer/post-create.sh",
+  "postStartCommand": "sudo bash .devcontainer/init-firewall.sh",
   "remoteUser": "vscode",
 
   "customizations": {
