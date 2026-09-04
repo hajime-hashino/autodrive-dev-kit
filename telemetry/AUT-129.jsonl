@@ -1,0 +1,1 @@
+{"ts":"2026-09-04T15:56:13.099Z","work_item_id":"AUT-129","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"templates/autodrive.md","detail":"AUT-123 で配布物に書いた根拠が、この作業場では成り立たなかった。「実際に、検証環境が誰でも到達できる状態で作られた」と断定したが、参照実装は最初から Access の後ろにあった。報告として書く形へ直し、あわせて開閉の確かめ方（転送先まで見る）を配布物に足した。","cause":"要件のズレ","found_in":"本番"}
