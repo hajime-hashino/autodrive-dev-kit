@@ -381,3 +381,33 @@ test("支度の確認が、出口の状態を見る", () => {
   assert.ok(sh.includes("出口制限が効いていない"), "効いていないことを言わない");
   assert.ok(sh.includes("init-firewall.sh"), "どう直すかを出していない");
 });
+
+// --------------------------- 出口制限は閉じる仕掛けではない（AUT-122）
+
+// **「ここに無い宛先へは出られない」と書いていた。嘘だった。**
+// 出口制限が効いている状態で、一覧に無い raw.githubusercontent.com へ出られる。
+// 許可している objects.githubusercontent.com と同じ IP のため。
+test("一覧に無い宛先へ出られないとは、書かない", () => {
+  const text = allowedDomains(defaults());
+  assert.equal(text.includes("ここに無い宛先へは出られない"), false, "嘘を書いている");
+  assert.ok(text.includes("ただし全部ではない"), "限界を書いていない");
+});
+
+test("同じ IP を共有する宛先へは出られることを、実例つきで書く", () => {
+  const text = allowedDomains(defaults());
+  assert.ok(text.includes("同じ IP を"), "理由が無い");
+  assert.ok(text.includes("raw.githubusercontent.com"), "実例が無い");
+});
+
+// **保証として扱わせない。** 扱うと、他の守りを弱める理由に使われる。
+test("データが外へ出ない保証ではない、と書く", () => {
+  const text = allowedDomains(defaults());
+  assert.ok(text.includes("保証として扱わないこと"), "保証でないと言っていない");
+  assert.ok(text.includes("本当に守っているのは"), "何が守っているかを言っていない");
+});
+
+test("配布物と devcontainer の説明も、同じことを言っている", () => {
+  const readme = readFileSync(join(KIT, "templates", "devcontainer", "README.md"), "utf8");
+  assert.equal(readme.includes("無い宛先へは\n出られない"), false, "説明に嘘が残っている");
+  assert.ok(readme.includes("閉じる仕掛けではなく、減らす仕掛け"), "限界を書いていない");
+});
