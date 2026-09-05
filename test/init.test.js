@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { init, mergeHook } from "../src/init.js";
+import { init, mergeHook, vendor } from "../src/init.js";
 import { delegateFor } from "../src/cli.js";
 
 // **本物の参照実装を指す。** 雛形をファイルから読むようになったため、偽の場所では
@@ -218,4 +218,57 @@ test("AIが使う道具は、入口の下にまとめる", () => {
 
   assert.equal(delegateFor("知らない操作"), null);
   assert.equal(delegateFor(undefined), null);
+});
+
+// ------------------------------ 入れ替えは、落ちても道具を消さない（AUT-131）
+
+/** 複製の途中で必ず落ちる道具置き場を作る。**権限に頼らない**（root でも効く）。 */
+function brokenKit() {
+  const kit = mkdtempSync(join(tmpdir(), "autodrive-brokenkit-"));
+  writeFileSync(join(kit, "VERSION"), "9.9.9\n", "utf8");
+  mkdirSync(join(kit, "src"), { recursive: true });
+  writeFileSync(join(kit, "src", "ok.js"), "//\n", "utf8");
+  // 行き先の無いリンク。statSync が落ちる。
+  symlinkSync(join(kit, "src", "無い"), join(kit, "src", "壊れたリンク"));
+  return kit;
+}
+
+// **消してから置いていた。** 途中で落ちると、古い版も新しい版も無い状態が残った。
+test("複製が途中で落ちても、古い道具が残る", () => {
+  const root = project();
+  init(root, KIT);
+  const before = readdirSync(join(root, "autodrive")).sort();
+  assert.ok(before.length > 0, "そもそも置かれていない");
+
+  assert.throws(() => vendor(root, brokenKit()), "落ちていない。試験になっていない");
+
+  assert.deepEqual(readdirSync(join(root, "autodrive")).sort(), before, "道具が消えた");
+  assert.ok(existsSync(join(root, "autodrive", "bin", "autodrive-dev-kit")), "入口が消えた");
+});
+
+test("落ちたあと、作りかけを残さない", () => {
+  const root = project();
+  init(root, KIT);
+  try { vendor(root, brokenKit()); } catch { /* 落ちる想定 */ }
+  assert.equal(existsSync(join(root, "autodrive.new")), false, "作りかけが残っている");
+  assert.equal(existsSync(join(root, "autodrive.old")), false, "古い版が残っている");
+});
+
+// **`copyFileSync` は中身しか写さない。** 権が落ちると打てなくなる。
+test("実行権を写す", () => {
+  const root = project();
+  init(root, KIT);
+  for (const f of ["bin/autodrive-dev-kit", "invariants", "hooks/record-tokens"]) {
+    const p = join(root, "autodrive", ...f.split("/"));
+    if (!existsSync(p)) continue;
+    assert.ok(statSync(p).mode & 0o111, `${f} が実行できない`);
+  }
+});
+
+// **再帰の複製に頼らない。** virtiofs の作業場で EACCES になる。
+test("ディレクトリごとの再帰複製を使わない", () => {
+  const src = readFileSync(join(KIT, "src", "init.js"), "utf8")
+    .split("\n").filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("//")).join("\n");
+  assert.equal(src.includes("cpSync"), false, "再帰複製に頼っている");
+  assert.ok(src.includes("copyFileSync"), "1ファイルずつ写していない");
 });

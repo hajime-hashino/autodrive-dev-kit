@@ -17,7 +17,18 @@
  * **何度実行しても壊れないこと。** 途中で失敗したときに、やり直せる必要がある。
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import {
   describeEdits,
   describeUnchecked,
@@ -113,16 +124,65 @@ export function mergeHook(existing , command) {
  * **入れ替えではなく置き換えにする。** 前の版の残骸が混ざると、どの版で動いて
  * いるのかが読めなくなる。複製先はまるごと捨ててから置く。
  */
+/**
+ * 1ファイルずつ複製する。
+ *
+ * **`cpSync` の再帰に頼らない。** virtiofs（macOS + Lima の作業場）では
+ * ディレクトリごとの再帰複製が `EACCES` で落ちる。1ファイルずつなら通る
+ * （AUT-131）。
+ *
+ * **実行権も写す。** `copyFileSync` は中身しか写さない。`bin/autodrive-dev-kit`・
+ * `invariants`・`verify`・`hooks/*` は実行ファイルであり、権が落ちると打てなくなる。
+ */
+function copyInto(from , to) {
+  const info = statSync(from);
+  if (info.isDirectory()) {
+    mkdirSync(to, { recursive: true });
+    for (const name of readdirSync(from)) copyInto(join(from, name), join(to, name));
+    return;
+  }
+  mkdirSync(dirname(to), { recursive: true });
+  copyFileSync(from, to);
+  chmodSync(to, info.mode);
+}
+
+/**
+ * 道具一式を複製する。
+ *
+ * **置いてから消す。** 以前は消してから置いていたため、複製の途中で落ちると
+ * **古い版も新しい版も無い状態が残った。** 実際に、道具が消えて `invariants` も
+ * 打てなくなった（AUT-131）。git から戻すしかない失敗になっていた。
+ *
+ * いまは別の場所へ組み立て、**出来上がってから入れ替える。** 途中で落ちても、
+ * 古い版はそのまま残る。
+ */
 export function vendor(root , kitRoot) {
   const dest = join(root, VENDOR_DIR);
-  rmSync(dest, { recursive: true, force: true });
-  mkdirSync(dest, { recursive: true });
+  const staging = `${dest}.new`;
+  const previous = `${dest}.old`;
 
-  for (const name of VENDORED) {
-    const from = join(kitRoot, name);
-    if (!existsSync(from)) continue;
-    cpSync(from, join(dest, name), { recursive: true });
+  // 前回の失敗の残骸を片付ける。**入れ替えの対象ではない場所だけを消す。**
+  rmSync(staging, { recursive: true, force: true });
+  rmSync(previous, { recursive: true, force: true });
+
+  try {
+    mkdirSync(staging, { recursive: true });
+    for (const name of VENDORED) {
+      const from = join(kitRoot, name);
+      if (!existsSync(from)) continue;
+      copyInto(from, join(staging, name));
+    }
+  } catch (error) {
+    // **古い版を消さずに戻る。** 打てなくなるより、古いままのほうがよい。
+    rmSync(staging, { recursive: true, force: true });
+    throw error;
   }
+
+  // 入れ替え。**名前の付け替えだけで行う。** 同じ場所にあるため、途中に
+  // 「どちらも無い」瞬間ができない。
+  if (existsSync(dest)) renameSync(dest, previous);
+  renameSync(staging, dest);
+  rmSync(previous, { recursive: true, force: true });
 
   const versionFile = join(dest, "VERSION");
   return existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : "不明";
