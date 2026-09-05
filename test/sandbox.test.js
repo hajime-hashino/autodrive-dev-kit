@@ -16,6 +16,7 @@ import { test } from "node:test";
 import { allowedDomains, destinationsFor } from "../src/sandbox.js";
 import { NONE, defaults } from "../src/config.js";
 import { setup } from "../src/setup.js";
+import { featuresBlock, template } from "../src/init.js";
 import { useRecommended } from "../src/ports/interview.js";
 
 
@@ -340,9 +341,13 @@ test("配る説明が、消える場所へ足せと言っていない", () => {
 
 // ------------------------------------------- 出口が起動のたびに閉じるか（AUT-121）
 
-/** 配る devcontainer の設定。**コメント付きなので、素の JSON.parse は使えない。** */
+/**
+ * 配る devcontainer の設定。
+ *
+ * **コメントと差し込み口を外してから読む。** 素の `JSON.parse` は通らない。
+ */
 function devcontainerJson() {
-  const raw = readFileSync(join(KIT, "templates", "devcontainer", "devcontainer.json"), "utf8");
+  const raw = template(KIT, "devcontainer/devcontainer.json", { NAME: "x", APP_FEATURES: "" });
   return JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
 }
 
@@ -453,4 +458,64 @@ test("引き直す対象が、一覧にある名前に限られている", () =>
   const sh = firewall();
   assert.ok(sh.includes('done < "$ALLOWED"'), "一覧以外から名前を取っている");
   assert.ok(sh.includes("一覧にある名前だけ"), "その意図が書かれていない");
+});
+
+// ------------------------- 作業場に足す道具（AUT-132）
+
+/** 差し込んだ結果の devcontainer.json。**コメントを外して読む。** */
+function rendered(features) {
+  const config = defaults();
+  config.app.devcontainer_features = features;
+  const text = template(KIT, "devcontainer/devcontainer.json", {
+    NAME: "x",
+    APP_FEATURES: featuresBlock(config),
+  });
+  return { text, json: JSON.parse(text.replace(/^\s*\/\/.*$/gm, "")) };
+}
+
+test("足した道具が、作業場の定義に入る", () => {
+  const { json } = rendered([
+    { id: "ghcr.io/devcontainers/features/docker-in-docker:2", options: {}, why: "配布前に確かめる" },
+  ]);
+  assert.ok(
+    json.features["ghcr.io/devcontainers/features/docker-in-docker:2"] !== undefined,
+    "入っていない",
+  );
+  // 元から入っているものを消さない。
+  assert.ok(json.features["ghcr.io/devcontainers/features/node:1"] !== undefined, "元の道具が消えた");
+});
+
+test("値のある options も渡る", () => {
+  const { json } = rendered([{ id: "a/b:1", options: { version: "2" }, why: "理由" }]);
+  assert.deepEqual(json.features["a/b:1"], { version: "2" });
+});
+
+// **JSON として壊さない。** 差し込みは読点の位置を間違えやすい。
+test("足しても足さなくても、読める形になる", () => {
+  for (const feats of [
+    [],
+    [{ id: "a/b:1", options: {}, why: "1つ" }],
+    [{ id: "a/b:1", options: {}, why: "1つ目" }, { id: "c/d:2", options: {}, why: "2つ目" }],
+  ]) {
+    assert.doesNotThrow(() => rendered(feats), `${feats.length} 件で壊れる`);
+  }
+});
+
+// **雛形のコメントを壊さない。** 読んで書き戻すと、判断の理由が消える。
+test("雛形に書かれた理由が残る", () => {
+  const { text } = rendered([{ id: "a/b:1", options: {}, why: "理由" }]);
+  for (const must of ["外向き通信を絞るために要る", "出口を閉じるのは、起動のたびに行う"]) {
+    assert.ok(text.includes(must), `消えた: ${must}`);
+  }
+});
+
+// **なぜ足したかを、置いた場所に残す。** 後から消してよいか判断できる。
+test("なぜ要るのかが、置いた場所に書かれる", () => {
+  const { text } = rendered([{ id: "a/b:1", options: {}, why: "配布前に確かめるため" }]);
+  assert.ok(text.includes("配布前に確かめるため"), "理由が残っていない");
+  assert.ok(text.includes("app.devcontainer_features"), "どこに書けばよいかが出ていない");
+});
+
+test("足していなければ、見出しも出さない", () => {
+  assert.equal(rendered([]).text.includes("このプロジェクトが足したもの"), false);
 });

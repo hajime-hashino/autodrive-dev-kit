@@ -5,7 +5,7 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}{{APP_FEATURES}}
   },
 
   // 外向き通信を絞るために要る。これが無いと出口を閉じられない。

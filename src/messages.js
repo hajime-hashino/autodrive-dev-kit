@@ -26,8 +26,8 @@ export const LANGUAGES = ["ja", "en"];
 /**
  * 表示する文。
  *
- * **鍵は英語にする。** 日本語の鍵にすると、日本語を既定として扱っていることが
- * 構造に出る。ここでは両方が対等である。
+ * **項目名は英語にする。** 日本語の項目名にすると、日本語を既定として扱っている
+ * ことが構造に出る。ここでは両方が対等である。
  */
 const MESSAGES = {
   ja: {
@@ -138,8 +138,8 @@ const MESSAGES = {
 /**
  * 文を引く。
  *
- * **無い鍵を空白で通さない。** 空白が出ると、何が抜けたのか読む側から分からない。
- * 鍵をそのまま返して、抜けが目に見えるようにする。
+ * **無い項目名を空白で通さない。** 空白が出ると、何が抜けたのか読む側から分から
+ * ない。項目名をそのまま返して、抜けが目に見えるようにする。
  *
  * @param {Language} language
  * @param {string} key
@@ -152,7 +152,7 @@ export function say(language, key, values = {}) {
   return Object.entries(values).reduce((out, [k, v]) => out.replaceAll(`{${k}}`, v), text);
 }
 
-/** 判定のために、持っている鍵を出す。 */
+/** 判定のために、持っている項目名を出す。 */
 export function keysOf(language) {
   return Object.keys(MESSAGES[language] ?? {});
 }
