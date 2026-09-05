@@ -293,7 +293,7 @@ test("boundaries.yaml があり履歴が無ければ、変更が残っていな�
   ];
   const r = await check("boundary_change_logged").run(input({ repos: [repo], events }));
   assert.equal(r.state, SUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("境界変更履歴が無い")));
+  assert.ok(r.observations.some((o) => o.includes("委譲範囲の変更履歴が無い")));
 });
 
 test("全変更コミットが履歴から参照されていれば有効", async () => {

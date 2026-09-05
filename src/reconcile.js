@@ -40,7 +40,7 @@ export function workItemOf(submission) {
  * 応答から提出を取り出す。統合されたかどうかも併せて持つ。
  *
  * **統合されたものだけに絞らない。** 提出は、統合されていなくても**どのリポジトリの
- * 作業だったか**を知っている。絞ると、まだ統合されていない作業単位に印を補えない。
+ * 作業だったか**を知っている。絞ると、まだ統合されていない作業単位にラベルを補えない。
  *
  * 読めなかった場合は null を返す。**空と区別する。** 空を返すと「統合された作業単位
  * は無かった」と読めてしまい、読めなかったことが消える。
@@ -77,9 +77,9 @@ export function finished(items, mergedIds, except = undefined) {
 }
 
 /**
- * 印の付いていない着手中の作業単位に、対象リポジトリを補う。
+ * ラベルの付いていない着手中の作業単位に、対象リポジトリを補う。
  *
- * **統合済みの提出が、どのリポジトリの作業だったかを知っている。** 印の仕掛けを
+ * **統合済みの提出が、どのリポジトリの作業だったかを知っている。** ラベルの仕掛けを
  * 入れる前に着手したものは、そこから引き直せる。
  *
  * @param {import("./ports/tracker.js").WorkItemView[]} items
@@ -92,7 +92,7 @@ export function unmarked(items, repoOf) {
 }
 
 /**
- * 対象のリポジトリを見て、統合された作業単位を閉じ、印を補う。
+ * 対象のリポジトリを見て、統合された作業単位を閉じ、ラベルを補う。
  *
  * **失敗しても呼び出し側を止めない。** 片付けは着手のついでに行うものであり、
  * 片付けられないことを理由に着手できなくなるのは本末転倒である。読めなかった場合は
@@ -143,7 +143,7 @@ export async function reconcile({ repos, tracker, api, except = undefined }) {
 
   const items = await tracker.list();
   for (const item of finished(items, mergedIds, except)) {
-    // 閉じるときも対象リポジトリを渡す。**印の無いまま閉じると、履歴として引けない。**
+    // 閉じるときも対象リポジトリを渡す。**ラベルの無いまま閉じると、履歴として引けない。**
     await tracker.advance(item.id, "done", item.repo ?? repoOf.get(item.id));
     out.closed.push(item.id);
   }

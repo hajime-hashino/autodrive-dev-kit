@@ -276,3 +276,21 @@ test("model を特定できなければ、その理由を残す", () => {
   // **書き込みは自動である。** 手書きに見せない。
   assert.equal(event.emitter, "adapter");
 });
+
+// --------------------------- 前の名前も当面は受け付ける（AUT-134）
+
+// **既に配った先の呼び出しが黙って壊れると、記録が落ちる。**
+// 記録は遡って付け直せないため、落ちた分は戻らない。
+test("前の名前で呼んでも記録される", () => {
+  for (const [old, args] of [
+    ["修正を記録する", ["--target", "x", "--detail", "y", "--cause", "実装バグ"]],
+    ["境界変更を記録する", ["--area", "UI", "--from", "観察中", "--to", "委譲済み", "--detail", "d"]],
+  ]) {
+    const r = withWorkItem("AUT-90", "kit");
+    const res = telemetryRun([old, ...args, "--root", r], r);
+    assert.equal(res.code, 0, `${old} が通らない`);
+    assert.equal(readEvents(join(r, "kit", "telemetry", "AUT-90.jsonl")).length, 1, `${old} で記録されない`);
+    // **黙って受け入れない。** 新しい名前を出さないと、2つの名前が生き続ける。
+    assert.ok(res.output.includes("に変わった"), `${old} で新しい名前を案内していない`);
+  }
+});
