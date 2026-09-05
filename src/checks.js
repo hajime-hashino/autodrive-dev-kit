@@ -320,9 +320,9 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
 // ---------------------------------------------------------------------------
 
 /**
- * 境界変更が履歴に残ること。
+ * 委譲範囲の変更が履歴に残ること。
  *
- * boundaries.yaml を動かした全コミットが、境界変更履歴から参照されているか。
+ * boundaries.yaml を動かした全コミットが、委譲範囲の変更履歴から参照されているか。
  * 未参照のコミットが1件でもあれば、残っていない変更があるということ。
  */
 const checkBoundaryChangeLogged = async ({ repos, events }) => {
@@ -341,7 +341,7 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
     const commits = log.split("\n").map((c) => c.trim()).filter(Boolean);
     const historyPath = repo.boundaryHistoryFile();
     if (historyPath === null) {
-      r.observe(`${repo.name}: boundaries.yaml はあるが境界変更履歴が無い`);
+      r.observe(`${repo.name}: boundaries.yaml はあるが委譲範囲の変更履歴が無い`);
       unreferenced.push(...commits);
       continue;
     }
@@ -366,7 +366,7 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
 /**
  * 外側ループが起動し、継続すること。
  *
- * 起動は、境界表のセルが動き、その根拠が履歴に残っていることで判定する（定義§8）。
+ * 起動は、委譲範囲の表のセルが動き、その根拠が履歴に残っていることで判定する（定義§8）。
  * 継続の閾値は定めない。定義§17が緩和しきい値を未確定としており、実データなしに
  * 決め打ちすると根拠の無い数字が残るため。
  */
@@ -399,7 +399,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
       const before = repo.git("show", `${sha}^:boundaries.yaml`);
       if (after === null) continue;
       if (before === null) {
-        r.observe(`${sha.slice(0, 7)}: 境界表の初期設置（動きとして数えない）`);
+        r.observe(`${sha.slice(0, 7)}: 委譲範囲の表の初期設置（動きとして数えない）`);
         continue;
       }
 
@@ -506,7 +506,7 @@ async function directCommitsAcross(
   return found;
 }
 
-/** 当該コミットに触れている境界変更履歴の節。見つからなければ null。 */
+/** 当該コミットに触れている委譲範囲の変更履歴の節。見つからなければ null。 */
 function historySectionFor(history , sha) {
   const short = sha.slice(0, 7);
   const sections = history.split(/^## /m).slice(1);
