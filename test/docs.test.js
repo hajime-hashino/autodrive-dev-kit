@@ -428,7 +428,7 @@ test("本当に守っているものを挙げ、補えないと書く", () => {
 
 test("道具の足し方が配ってある", () => {
   const text = rules();
-  assert.ok(text.includes("app.sandbox.features"), "どこに書けばよいかが無い");
+  assert.ok(text.includes("app.devcontainer_features"), "どこに書けばよいかが無い");
   assert.ok(text.includes("`.devcontainer/` を直接編集しない"), "直接編集するなと言っていない");
 });
 

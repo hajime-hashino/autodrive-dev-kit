@@ -465,7 +465,7 @@ test("引き直す対象が、一覧にある名前に限られている", () =>
 /** 差し込んだ結果の devcontainer.json。**コメントを外して読む。** */
 function rendered(features) {
   const config = defaults();
-  config.app.sandbox = { features };
+  config.app.devcontainer_features = features;
   const text = template(KIT, "devcontainer/devcontainer.json", {
     NAME: "x",
     APP_FEATURES: featuresBlock(config),
@@ -513,7 +513,7 @@ test("雛形に書かれた理由が残る", () => {
 test("なぜ要るのかが、置いた場所に書かれる", () => {
   const { text } = rendered([{ id: "a/b:1", options: {}, why: "配布前に確かめるため" }]);
   assert.ok(text.includes("配布前に確かめるため"), "理由が残っていない");
-  assert.ok(text.includes("app.sandbox.features"), "どこに書けばよいかが出ていない");
+  assert.ok(text.includes("app.devcontainer_features"), "どこに書けばよいかが出ていない");
 });
 
 test("足していなければ、見出しも出さない", () => {

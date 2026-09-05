@@ -201,24 +201,26 @@
 作っているものによって、作業場に要る道具は変わる。**`.devcontainer/` を直接編集しない。**
 道具が管理しており、入れ替えのときに書き直される。
 
-`autodrive.json` の `app.sandbox.features` に足して、`{{KIT}}/bin/autodrive-dev-kit update`
+`autodrive.json` の `app.devcontainer_features` に足して、`{{KIT}}/bin/autodrive-dev-kit update`
 を打つこと。
 
 ```json
 {
   "app": {
-    "sandbox": {
-      "features": [
-        {
-          "id": "ghcr.io/devcontainers/features/docker-in-docker:2",
-          "options": {},
-          "why": "配布するイメージを、出す前に手元で作って確かめる"
-        }
-      ]
-    }
+    "devcontainer_features": [
+      {
+        "id": "ghcr.io/devcontainers/features/docker-in-docker:2",
+        "options": {},
+        "why": "配布するイメージを、出す前に手元で作って確かめる"
+      }
+    ]
   }
 }
 ```
+
+**ここだけ項目名に実装名が入っている。** 中身が Dev Container 仕様のものであり、
+**他のサンドボックスへ持っていけないため。** ポート名の下に置くと、実装を替えても
+使えるかのように読める。`ports.sandbox` が `devcontainer` でなければ `update` が止まる。
 
 **`why` を省略できない。** 作業場に入れたものは、そのままAIが使える道具になる。
 なぜ要るのかが書けないなら、入れる理由が無い。
@@ -402,7 +404,7 @@
 
 **絞っているのは、この機械が出す通信（`OUTPUT`）だけである。** 通り抜ける通信
 （`FORWARD`）は絞っていない。**中でコンテナを動かす道具を足すと、その通信は
-出口制限を通らない**（`app.sandbox.features`）。
+出口制限を通らない**（`app.devcontainer_features`）。
 
 本当に守っているのは別のものである。
 
