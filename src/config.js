@@ -121,28 +121,37 @@ function readAppCredentials(raw) {
 
 /** @typedef {{ host: string, why: string }} AppDestination */
 
-/** @typedef {{ id: string, options: object, why: string }} SandboxFeature */
+/** @typedef {{ id: string, options: object, why: string }} DevcontainerFeature */
 
 /**
  * 作業場に足す道具を読む。
  *
- * **ポートの語彙で持つ。** 項目名は `sandbox`（定義§16のポート名）であり、その
- * 中身をどう解釈するかは実装が決める。`ports.sandbox` の値が `devcontainer` である
- * のと同じ関係になる。**項目名に実装名を入れない。**
+ * **項目名に実装名を入れている。例外である。**
+ *
+ * 定義§16は実装名を扱ってよいのをアダプタ層に限るが、ここで持つ中身（Feature の
+ * ID と options）は **Dev Container 仕様のものであり、他のサンドボックスへ持って
+ * いけない。** 対応しているのは devcontainer CLI・VS Code・Codespaces など、
+ * どれも同じ仕様の実装である。
+ *
+ * `sandbox.features` のようにポート名の下へ置くと、**実装を替えても使えるかのように
+ * 読める。** 使えない。**中身が実装専用なら、名前もそう名乗るべきである**（AUT-132）。
+ *
+ * `destinations`（宛先）や `credentials`（資格情報）とは違う。あちらは形が実装に
+ * 依らない。
  *
  * 作っているものによって、作業場に要る道具は変わる。配布するコンテナのイメージを
  * 手元で作って確かめるには Docker が要る、など。**道具が無いと、出す前に確かめ
  * られず、問題が出るのは統合の後になる**（AUT-132）。
  */
-function readSandboxFeatures(raw) {
+function readDevcontainerFeatures(raw) {
   if (raw === undefined || raw === null) return { features: [], error: null };
   if (!Array.isArray(raw)) {
-    return { features: [], error: `${CONFIG_FILE} の app.sandbox.features が配列ではない` };
+    return { features: [], error: `${CONFIG_FILE} の app.devcontainer_features が配列ではない` };
   }
 
   const features = [];
   for (const [i, entry] of raw.entries()) {
-    const at = `app.sandbox.features[${i}]`;
+    const at = `app.devcontainer_features[${i}]`;
     if (typeof entry !== "object" || entry === null) {
       return { features: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
     }
@@ -238,7 +247,7 @@ export function defaults() {
     },
     // **アプリ自身の資格情報も宛先も、聞かない。** 何を作るかが決まる前には
     // 分からない。何を作るかを聞き終えたあとで、AIがここへ足す。
-    app: { screen: UNKNOWN, credentials: [], destinations: [], sandbox: { features: [] } },
+    app: { screen: UNKNOWN, credentials: [], destinations: [], devcontainer_features: [] },
   };
 }
 
@@ -286,8 +295,20 @@ export function readConfig(root) {
   const out = readAppDestinations(raw.app?.destinations);
   if (out.error !== null) return { config: null, error: out.error };
 
-  const box = readSandboxFeatures(raw.app?.sandbox?.features);
+  const box = readDevcontainerFeatures(raw.app?.devcontainer_features);
   if (box.error !== null) return { config: null, error: box.error };
+
+  // **使えない構成で黙って持たせない。** Feature は Dev Container 仕様のものであり、
+  // 他のサンドボックスでは意味を持たない。書いてあるのに効かない状態を作らない。
+  if (box.features.length > 0 && ports.sandbox !== "devcontainer") {
+    return {
+      config: null,
+      error:
+        `${CONFIG_FILE} に app.devcontainer_features があるが、` +
+        `ports.sandbox が ${ports.sandbox} である。` +
+        "**Feature は Dev Container 仕様のものであり、他のサンドボックスでは効かない。**",
+    };
+  }
 
   return {
     config: {
@@ -298,7 +319,7 @@ export function readConfig(root) {
         screen,
         credentials: app.credentials,
         destinations: out.destinations,
-        sandbox: { features: box.features },
+        devcontainer_features: box.features,
       },
     },
     error: null,

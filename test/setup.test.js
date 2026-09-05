@@ -574,12 +574,12 @@ const FEAT = { id: "ghcr.io/devcontainers/features/docker-in-docker:2", options:
 test("入れ替えても、足した道具は残る", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", sandbox: { features: [FEAT] } });
+  writeRawConfig(root, { screen: "yes", devcontainer_features: [FEAT] });
 
   const result = run("update", root);
 
   assert.equal(result.message, null, result.message ?? "");
-  assert.deepEqual(configOf(root).app.sandbox.features, [FEAT], "入れ替えで消えている");
+  assert.deepEqual(configOf(root).app.devcontainer_features, [FEAT], "入れ替えで消えている");
   assert.ok(
     readFileSync(join(root, ".devcontainer", "devcontainer.json"), "utf8").includes(FEAT.id),
     "作業場の定義に出ていない",
@@ -589,7 +589,7 @@ test("入れ替えても、足した道具は残る", () => {
 test("なぜ要るのかが無ければ、進めずに止まる", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", sandbox: { features: [{ id: "a/b:1" }] } });
+  writeRawConfig(root, { screen: "yes", devcontainer_features: [{ id: "a/b:1" }] });
 
   const result = run("update", root);
 
@@ -601,7 +601,7 @@ test("なぜ要るのかが無ければ、進めずに止まる", () => {
 test("道具の名前が無ければ、進めずに止まる", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", sandbox: { features: [{ why: "理由" }] } });
+  writeRawConfig(root, { screen: "yes", devcontainer_features: [{ why: "理由" }] });
   assert.equal(run("update", root).code, 1);
 });
 
@@ -610,5 +610,23 @@ test("持っていなくても、そのまま通る", () => {
   run("init", root);
   writeRawConfig(root, { screen: "yes" });
   assert.equal(run("update", root).message, null);
-  assert.deepEqual(configOf(root).app.sandbox.features, []);
+  assert.deepEqual(configOf(root).app.devcontainer_features, []);
+});
+
+// **使えない構成で黙って持たせない。** Feature は Dev Container 仕様のものである。
+test("サンドボックスが devcontainer でなければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  const ports = { ...defaults().ports, sandbox: NONE };
+  writeFileSync(
+    join(root, CONFIG_FILE),
+    JSON.stringify({ version: 1, language: "ja", ports, app: { devcontainer_features: [FEAT] } }, null, 2),
+    "utf8",
+  );
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("ports.sandbox"), result.message);
+  assert.ok(result.message.includes("効かない"), `なぜ駄目かを言っていない: ${result.message}`);
 });

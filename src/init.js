@@ -179,10 +179,10 @@ export function insideSandbox() {
  * **なぜ要るのかを、置いた場所に残す。** 後から読む人が、消してよいかを判断できる。
  */
 export function featuresBlock(config) {
-  const features = config.app?.sandbox?.features ?? [];
+  const features = config.app?.devcontainer_features ?? [];
   if (features.length === 0) return "";
 
-  const lines = ["", "", "    // ここから下は、このプロジェクトが足したもの。", "    // autodrive.json の app.sandbox.features にある。"];
+  const lines = ["", "", "    // ここから下は、このプロジェクトが足したもの。", "    // autodrive.json の app.devcontainer_features にある。"];
   features.forEach((f, i) => {
     lines.push(`    // ${f.why}`);
     const options = JSON.stringify(f.options ?? {});
