@@ -5,6 +5,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
 
+// **ファイル名は変えない。** 語彙は「委譲範囲の変更履歴」へ改めたが（定義 v0.14）、
+// 名前を変えると既に配った先で履歴が見つからなくなる。「境界変更履歴.md」も、
+// 既にそう置いた先があるため読み続ける。
 const BOUNDARY_HISTORY_NAMES = ["boundary-changes.md", "境界変更履歴.md"];
 
 /**
