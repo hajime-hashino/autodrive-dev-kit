@@ -1,0 +1,1 @@
+{"ts":"2026-09-05T11:27:12.717Z","work_item_id":"AUT-131","model":"claude-opus-5","kit_version":"0.1.0","emitter":"adapter","type":"miss","target":"src/init.js","detail":"vendor() が消してから置いていたため、複製の途中で落ちると道具が消えたまま残った。題材アプリ2で実害が出て、git から戻して復旧している。別の場所へ組み立ててから名前の付け替えで入れ替える形にし、あわせて cpSync の再帰をやめて1ファイルずつ写す形にした（virtiofs で EACCES になるため）。実行権も写す。","cause":"設計のズレ","found_in":"本番"}
