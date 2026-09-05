@@ -423,3 +423,18 @@ test("本当に守っているものを挙げ、補えないと書く", () => {
   assert.ok(text.includes("手元に資格情報を置かないこと"), "何が守っているかが無い");
   assert.ok(text.includes("補えない"), "補えないと言っていない");
 });
+
+// ------------------------- 作業場に足す道具（AUT-132）
+
+test("道具の足し方が配ってある", () => {
+  const text = rules();
+  assert.ok(text.includes("app.sandbox.features"), "どこに書けばよいかが無い");
+  assert.ok(text.includes("`.devcontainer/` を直接編集しない"), "直接編集するなと言っていない");
+});
+
+// **足すと穴が開くことを、足し方と同じ場所に書く。** 別の場所だと読まれない。
+test("中でコンテナを動かすと出口制限を迂回することを、警告している", () => {
+  const text = rules();
+  assert.ok(text.includes("出口制限を迂回する"), "迂回することを言っていない");
+  assert.ok(text.includes("FORWARD"), "どこが絞られていないかを言っていない");
+});

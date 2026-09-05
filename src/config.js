@@ -121,6 +121,51 @@ function readAppCredentials(raw) {
 
 /** @typedef {{ host: string, why: string }} AppDestination */
 
+/** @typedef {{ id: string, options: object, why: string }} SandboxFeature */
+
+/**
+ * 作業場に足す道具を読む。
+ *
+ * **ポートの語彙で持つ。** 鍵は `sandbox`（定義§16のポート名）であり、その中身を
+ * どう解釈するかは実装が決める。`ports.sandbox` の値が `devcontainer` であるのと
+ * 同じ関係になる。**鍵に実装名を入れない。**
+ *
+ * 作っているものによって、作業場に要る道具は変わる。配布するコンテナのイメージを
+ * 手元で作って確かめるには Docker が要る、など。**道具が無いと、出す前に確かめ
+ * られず、問題が出るのは統合の後になる**（AUT-132）。
+ */
+function readSandboxFeatures(raw) {
+  if (raw === undefined || raw === null) return { features: [], error: null };
+  if (!Array.isArray(raw)) {
+    return { features: [], error: `${CONFIG_FILE} の app.sandbox.features が配列ではない` };
+  }
+
+  const features = [];
+  for (const [i, entry] of raw.entries()) {
+    const at = `app.sandbox.features[${i}]`;
+    if (typeof entry !== "object" || entry === null) {
+      return { features: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
+    }
+    const { id, options, why } = entry;
+    if (typeof id !== "string" || id.trim() === "") {
+      return { features: [], error: `${CONFIG_FILE} の ${at}.id が空である` };
+    }
+    if (typeof why !== "string" || why.trim() === "") {
+      return {
+        features: [],
+        error:
+          `${CONFIG_FILE} の ${at}.why が空である（${id}）。` +
+          "なぜ要るのかを書くこと。**作業場に入れたものは、AIが使える道具になる。**",
+      };
+    }
+    if (options !== undefined && (typeof options !== "object" || options === null || Array.isArray(options))) {
+      return { features: [], error: `${CONFIG_FILE} の ${at}.options が項目になっていない（${id}）` };
+    }
+    features.push({ id: id.trim(), options: options ?? {}, why: why.trim() });
+  }
+  return { features, error: null };
+}
+
 /**
  * 名前解決できる形か。**ワイルドカードは通さない。**
  *
@@ -193,7 +238,7 @@ export function defaults() {
     },
     // **アプリ自身の資格情報も宛先も、聞かない。** 何を作るかが決まる前には
     // 分からない。何を作るかを聞き終えたあとで、AIがここへ足す。
-    app: { screen: UNKNOWN, credentials: [], destinations: [] },
+    app: { screen: UNKNOWN, credentials: [], destinations: [], sandbox: { features: [] } },
   };
 }
 
@@ -241,12 +286,20 @@ export function readConfig(root) {
   const out = readAppDestinations(raw.app?.destinations);
   if (out.error !== null) return { config: null, error: out.error };
 
+  const box = readSandboxFeatures(raw.app?.sandbox?.features);
+  if (box.error !== null) return { config: null, error: box.error };
+
   return {
     config: {
       version: 1,
       language,
       ports,
-      app: { screen, credentials: app.credentials, destinations: out.destinations },
+      app: {
+        screen,
+        credentials: app.credentials,
+        destinations: out.destinations,
+        sandbox: { features: box.features },
+      },
     },
     error: null,
   };
