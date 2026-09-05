@@ -93,14 +93,14 @@ my-app はいま aut-48-begin-work にいる（既定ブランチは main）。
 ```sh
 autodrive-dev-kit tracker 作業単位を取得する [<ID>]
 autodrive-dev-kit tracker 作業単位を起票する --title <題> --body <本文>
-autodrive-dev-kit tracker 状態を進める <ID> --to started --repo <対象リポジトリ>
-autodrive-dev-kit tracker 経過を追記する <ID> --text <内容>
+autodrive-dev-kit tracker ステータスを進める <ID> --to started --repo <対象リポジトリ>
+autodrive-dev-kit tracker 作業ログを追記する <ID> --text <内容>
 
 autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --type <入力|手戻り> --detail <内容>
-autodrive-dev-kit telemetry 修正を記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
+autodrive-dev-kit telemetry 手戻りを記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
 autodrive-dev-kit telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> \
                                      --not-looked <見なかった範囲> --detail <内容> [--fixed]
-autodrive-dev-kit telemetry 境界変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
+autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
 ```
 
 **止まり方は2種類ある**（`--type`）。一括りにしない。入力を得る停止（何を作るかを聞く、見え方を決めてもらう、資格情報の発行を頼む）は**手法が正しく働いている印であり、減らす対象ではない。** 減らすのは手戻りの側である。**同じことを繰り返し聞くのは、入力ではなく手戻り。**
@@ -113,7 +113,7 @@ autodrive-dev-kit telemetry 境界変更を記録する --area <領域> --from <
 
 ### 着手が紐づけの起点になる
 
-`状態を進める --to started` は作業単位マーカーを書く。以降の記録はその作業単位に紐づく。**着手していない状態で記録が発生したら、`work_item_id` が `null` になり `invariants` が落ちる。** 起票せずに作業した事実を、記録から消さずに検出する。
+`ステータスを進める --to started` は作業単位マーカーを書く。以降の記録はその作業単位に紐づく。**着手していない状態で記録が発生したら、`work_item_id` が `null` になり `invariants` が落ちる。** 起票せずに作業した事実を、記録から消さずに検出する。
 
 `--to done` / `--to canceled` はマーカーを外す。別の作業単位の記録が紛れ込まないようにするため。
 
@@ -185,7 +185,7 @@ autodrive-dev-kit invariants --root /path/to/work
 ### 代替を記録する
 
 ```sh
-./invariants --substitute boundary_change_logged --by human --detail "境界表は段階3で置く"
+./invariants --substitute boundary_change_logged --by human --detail "委譲範囲の表は段階3で置く"
 ```
 
 有効になっていない不変条件について、何が手で代替しているかを記録する。**定義§9の立ち上げ期の例外は、この記録があることを条件としている。** 記録が無ければ `invariants` は失敗する。
