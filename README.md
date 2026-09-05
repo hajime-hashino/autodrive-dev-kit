@@ -105,7 +105,7 @@ Claude Code を開いて、**「プロジェクトを始めたい」と伝えて
 my-app/
 ├── autodrive/                       ツールセットの複製
 ├── autodrive.json                   構成
-├── boundaries.yaml                  境界表
+├── boundaries.yaml                  委譲範囲の表
 ├── CLAUDE.md                        プロジェクト固有の規約
 ├── .env.example                     必要な資格情報の一覧。**構成から作られる**
 ├── .gitignore
@@ -135,7 +135,7 @@ my-app/
 | `.devcontainer/` | init | dev-kit | AIを動かす隔離された作業場。**外向き通信は許可制** |
 | `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
-| `boundaries.yaml` | init | プロジェクト | 境界表。どの領域をAIに任せているか |
+| `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
 | `CLAUDE.md` | init | プロジェクト | プロジェクト固有の規約 |
 | `.gitignore` | init | プロジェクト | 資格情報と作業状態を除外する |
@@ -144,7 +144,7 @@ my-app/
 | `telemetry/<作業単位ID>.jsonl` | 着手したとき | プロジェクト | 停止、手戻り、トークン消費の記録 |
 | `test/` | 実装したとき | プロジェクト | テスト |
 | `docs/adr/` | 設計判断が生じたとき | プロジェクト | 設計判断の記録 |
-| `docs/boundary-changes.md` | 境界表を動かしたとき | プロジェクト | 境界変更の履歴 |
+| `docs/boundary-changes.md` | 委譲範囲の表を動かしたとき | プロジェクト | 境界変更の履歴 |
 
 dev-kit が所有するファイルは `update` で上書きされる。プロジェクトが所有するファイルは、既に存在する場合は変更されない。
 
@@ -199,7 +199,7 @@ autodrive/invariants --root . --scope self
 ```
 [有効]    テレメトリが記録されること
 [代替]    AIがこれらを無効化できないこと
-[要対応]  境界変更が履歴に残ること
+[要対応]  委譲範囲の変更が履歴に残ること
 ```
 
 状態は4つある（定義§9）。**どれも「いま何であるか」を言う。**

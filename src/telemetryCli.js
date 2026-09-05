@@ -16,10 +16,10 @@ import { STOP_TYPES } from "./ports/telemetry.js";
 const USAGE = `記録を残す
 
   telemetry 停止を記録する   --kind <種別> --type <入力|手戻り> --detail <内容> [--resolved]
-  telemetry 修正を記録する   --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
+  telemetry 手戻りを記録する   --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
   telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> --not-looked <見なかった範囲>
                                  --detail <内容> [--fixed]
-  telemetry 境界変更を記録する   --area <領域> --from <状態> --to <状態> --detail <内容> [--basis <根拠>]
+  telemetry 委譲範囲の変更を記録する   --area <領域> --from <状態> --to <状態> --detail <内容> [--basis <根拠>]
 
   --root  記録の起点。既定は CLAUDE_PROJECT_DIR かカレントディレクトリ
 
@@ -35,19 +35,38 @@ const USAGE = `記録を残す
 // 語彙は定義§16の操作名で受ける。英語の別名も受けるが、正は日本語の操作名とする。
 export const OPERATIONS = {
   停止を記録する: "stop",
-  修正を記録する: "fix",
+  手戻りを記録する: "fix",
   抜き取り確認を記録する: "sampling",
-  境界変更を記録する: "boundary",
+  委譲範囲の変更を記録する: "boundary",
   stop: "stop",
   fix: "fix",
   sampling: "sampling",
   boundary: "boundary",
 };
 
+/**
+ * 前の名前。**当面は受け付ける。**
+ *
+ * 定義 v0.14 で語彙が変わった（AUT-133）。既に配った先の呼び出しが黙って壊れると、
+ * **記録が落ちる。** 記録は遡って付け直せないため、落ちた分は戻らない。
+ *
+ * **ただし、同じものに名前が2つある状態そのものが、今回直した欠陥である。**
+ * 移行のための措置であり、残し続けない。使われたら、新しい名前を出して知らせる。
+ *
+ * **落とす条件**: 配った先すべてが v0.14 以降の語彙に移ったことを確かめたとき。
+ * いまの配布先は2つ（agent-playground / enaction-platform）。
+ */
+export const RENAMED = {
+  修正を記録する: "手戻りを記録する",
+  境界変更を記録する: "委譲範囲の変更を記録する",
+};
+
 const CAUSES = ["要件のズレ", "設計のズレ", "実装バグ"];
 
 export function run(argv , root) {
-  const operation = OPERATIONS[argv[0] ?? ""];
+  const given = argv[0] ?? "";
+  const renamedTo = RENAMED[given];
+  const operation = OPERATIONS[given] ?? (renamedTo === undefined ? undefined : OPERATIONS[renamedTo]);
   if (operation === undefined) return { output: USAGE, code: argv.length === 0 ? 0 : 2 };
 
   const { values } = parseArgs({
@@ -141,10 +160,16 @@ export function run(argv , root) {
   // **理由をそのまま出す。** 紐づく先が無いのか、マーカーが壊れているのかで、
   // 人がやることが違う。同じ言葉で報告すると、違うところを探すことになる。
   const reason = resolveWorkItem(root).unattributedReason ?? "理由を特定できない";
+  // **古い名前で呼ばれたら、新しい名前を出す。** 黙って受け入れると、いつまでも
+  // 2つの名前が生き続ける。移行のための措置であり、残し続けるものではない。
+  const notice =
+    renamedTo === undefined
+      ? ""
+      : `\n（「${given}」は「${renamedTo}」に変わった。次からはそちらを使うこと）`;
   return {
     output: written.attributed
-      ? `記録した: ${written.path}`
-      : `記録したが作業単位に紐づいていない: ${written.path}\n${reason}`,
+      ? `記録した: ${written.path}${notice}`
+      : `記録したが作業単位に紐づいていない: ${written.path}\n${reason}${notice}`,
     // 紐づかない記録は残すが、成功として返さない。握りつぶさず、気づける形にする。
     code: written.attributed ? 0 : 1,
   };
