@@ -229,6 +229,29 @@ export function insideSandbox() {
   return existsSync("/.dockerenv") || process.env.REMOTE_CONTAINERS === "true";
 }
 
+/**
+ * 作業場に足す道具を、雛形へ差し込む形にする。
+ *
+ * **雛形を丸ごと組み直さない。** `devcontainer.json` は JSONC であり、コメントに
+ * 判断の理由が書いてある。読んで書き戻すとコメントが消える（AUT-132）。`{{NAME}}`
+ * と同じく差し込み口へ入れる。
+ *
+ * **なぜ要るのかを、置いた場所に残す。** 後から読む人が、消してよいかを判断できる。
+ */
+export function featuresBlock(config) {
+  const features = config.app?.devcontainer_features ?? [];
+  if (features.length === 0) return "";
+
+  const lines = ["", "", "    // ここから下は、このプロジェクトが足したもの。", "    // autodrive.json の app.devcontainer_features にある。"];
+  features.forEach((f, i) => {
+    lines.push(`    // ${f.why}`);
+    const options = JSON.stringify(f.options ?? {});
+    lines.push(`    ${JSON.stringify(f.id)}: ${options}${i < features.length - 1 ? "," : ""}`);
+  });
+  // 直前の項目の末尾に読点が要る。**差し込み口は最後の項目の直後にある。**
+  return `,${lines.join("\n")}`;
+}
+
 function placeSandbox(root , kitRoot , config , plan) {
   if (config.ports.sandbox === "none") return false;
 
@@ -236,7 +259,11 @@ function placeSandbox(root , kitRoot , config , plan) {
   // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
   const folded = { placed: [], writes: plan.writes };
   for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "devcontainer-lock.json", "README.md"]) {
-    managed(`.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`, { NAME: name }), folded);
+    managed(
+      `.devcontainer/${file}`,
+      template(kitRoot, `devcontainer/${file}`, { NAME: name, APP_FEATURES: featuresBlock(config) }),
+      folded,
+    );
   }
   // **一覧は構成から作る。** 雛形を写すと、使わないポートの宛先が付いてくる。
   managed(".devcontainer/allowed-domains.txt", allowedDomains(config), folded);
