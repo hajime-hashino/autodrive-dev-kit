@@ -411,3 +411,46 @@ test("配布物と devcontainer の説明も、同じことを言っている", 
   assert.equal(readme.includes("無い宛先へは\n出られない"), false, "説明に嘘が残っている");
   assert.ok(readme.includes("閉じる仕掛けではなく、減らす仕掛け"), "限界を書いていない");
 });
+
+// ------------------------- IP が入れ替わる宛先（AUT-63）
+
+const firewall = () =>
+  readFileSync(join(KIT, "templates", "devcontainer", "init-firewall.sh"), "utf8");
+
+// **置いたままだと静かに出られなくなる。** 19宛先のうち2つが数時間でズレた。
+test("引き直す口がある", () => {
+  const sh = firewall();
+  assert.ok(sh.includes('"${1:-}" = "--refresh"'), "引き直す口が無い");
+  assert.ok(sh.includes("REFRESH_INTERVAL"), "定期的に回す仕掛けが無い");
+});
+
+// **丸ごと置き直さない。** `-F` の瞬間に、通っている接続の戻りを許す規則も消える。
+test("引き直しは足すだけで、置き直さない", () => {
+  const refresh = firewall().split('"${1:-}" = "--refresh"')[1]?.split("\nfi\n")[0] ?? "";
+  assert.equal(refresh.includes("iptables -F"), false, "引き直しで丸ごと消している");
+  assert.ok(firewall().includes("iptables -C OUTPUT"), "既にある規則を確かめていない");
+});
+
+// **閉じていないのに「引き直した」と言わせない。**
+test("閉じていなければ、引き直しを拒む", () => {
+  assert.ok(firewall().includes("出口が閉じていない"), "開いた状態で通してしまう");
+});
+
+// **名前で探して落とす形にしない。** 実際に、確認していたシェルを落とした。
+test("背後の処理は PID で止める。名前で探して落とさない", () => {
+  // **説明の中の言及と、実際の使用を分ける。** 使わない理由を書いてあるだけの行を
+  // 使用として数えると、書けば書くほど落ちる判定になる。
+  const used = firewall()
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("#"))
+    .join("\n");
+  assert.equal(used.includes("pkill"), false, "無関係な処理まで巻き込む形になっている");
+  assert.ok(used.includes("PIDFILE"), "止める相手を特定していない");
+});
+
+// **一覧に無い名前を足す経路を作らない。** そこが絞る目的と衝突する。
+test("引き直す対象が、一覧にある名前に限られている", () => {
+  const sh = firewall();
+  assert.ok(sh.includes('done < "$ALLOWED"'), "一覧以外から名前を取っている");
+  assert.ok(sh.includes("一覧にある名前だけ"), "その意図が書かれていない");
+});
