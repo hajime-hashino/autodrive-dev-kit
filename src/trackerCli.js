@@ -20,8 +20,8 @@ const USAGE = `作業単位を扱う
 
   tracker 作業単位を取得する [<ID>]
   tracker 作業単位を起票する --title <題> --body <本文>
-  tracker 状態を進める <ID> --to <状態> [--repo <対象リポジトリ>]
-  tracker 経過を追記する <ID> --text <内容>
+  tracker ステータスを進める <ID> --to <状態> [--repo <対象リポジトリ>]
+  tracker 作業ログを追記する <ID> --text <内容>
 
   状態: backlog / todo / started / done / canceled
   --repo は started へ進めるときに必須。記録の書き込み先になる。
@@ -32,12 +32,18 @@ AUTODRIVE_TRACKER_TEAM で指定する。`;
 export const OPERATIONS = {
   作業単位を取得する: "get",
   作業単位を起票する: "create",
-  状態を進める: "advance",
-  経過を追記する: "note",
+  ステータスを進める: "advance",
+  作業ログを追記する: "note",
   get: "get",
   create: "create",
   advance: "advance",
   note: "note",
+};
+
+/** 前の名前。**当面は受け付ける。** 理由は telemetryCli.js の RENAMED に書いた。 */
+export const RENAMED = {
+  状態を進める: "ステータスを進める",
+  経過を追記する: "作業ログを追記する",
 };
 
 export function markerPath(root) {
@@ -65,7 +71,9 @@ export async function run(
   root ,
   tracker ,
 ) {
-  const operation = OPERATIONS[argv[0] ?? ""];
+  const given = argv[0] ?? "";
+  const renamedTo = RENAMED[given];
+  const operation = OPERATIONS[given] ?? (renamedTo === undefined ? undefined : OPERATIONS[renamedTo]);
   if (operation === undefined) return { output: USAGE, code: argv.length === 0 ? 0 : 2 };
 
   const { values, positionals } = parseArgs({
