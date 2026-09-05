@@ -566,3 +566,49 @@ test("宛先を持っていなくても、そのまま通る", () => {
   assert.equal(run("update", root).message, null);
   assert.deepEqual(configOf(root).app.destinations, []);
 });
+
+// -------------------------------------- 作業場に足す道具（AUT-132）
+
+const FEAT = { id: "ghcr.io/devcontainers/features/docker-in-docker:2", options: {}, why: "配布前に確かめる" };
+
+test("入れ替えても、足した道具は残る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", sandbox: { features: [FEAT] } });
+
+  const result = run("update", root);
+
+  assert.equal(result.message, null, result.message ?? "");
+  assert.deepEqual(configOf(root).app.sandbox.features, [FEAT], "入れ替えで消えている");
+  assert.ok(
+    readFileSync(join(root, ".devcontainer", "devcontainer.json"), "utf8").includes(FEAT.id),
+    "作業場の定義に出ていない",
+  );
+});
+
+test("なぜ要るのかが無ければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", sandbox: { features: [{ id: "a/b:1" }] } });
+
+  const result = run("update", root);
+
+  assert.equal(result.code, 1);
+  assert.ok(result.message.includes("why"), result.message);
+  assert.ok(result.message.includes("a/b:1"), `どれが悪いのかを出していない: ${result.message}`);
+});
+
+test("道具の名前が無ければ、進めずに止まる", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes", sandbox: { features: [{ why: "理由" }] } });
+  assert.equal(run("update", root).code, 1);
+});
+
+test("持っていなくても、そのまま通る", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, { screen: "yes" });
+  assert.equal(run("update", root).message, null);
+  assert.deepEqual(configOf(root).app.sandbox.features, []);
+});
