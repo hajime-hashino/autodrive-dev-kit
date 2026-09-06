@@ -590,7 +590,8 @@ test("構築例の図が、枠からはみ出さない", () => {
 
   const rects = [...svg.matchAll(/<rect([^>]*?)\/>/g)].map((m) => {
     const at = (k) => Number((new RegExp(`${k}="([-\\d.]+)"`).exec(m[1]) || [])[1]);
-    const holder = /dasharray|class="bg"|width="340" height="372"/.test(m[1]);
+    // 下地と、中に枠を持つ入れ物。**大きさではなく class で見分ける。**
+    const holder = /dasharray|class="bg"|class="bx holder"/.test(m[1]);
     return { x: at("x"), y: at("y"), w: at("width"), h: at("height"), group: holder };
   });
   assert.ok(rects.length > 5, "枠を読み取れていない。判定が空回りしている");
@@ -623,7 +624,10 @@ test("構築例の図が、枠からはみ出さない", () => {
     if (cls === "grp") continue; // 区画の見出しは枠の外に置く
     const size = cls === "ttl" ? 15 : cls === "tag" ? 10.5 : 12;
     const [x, y] = [Number(xs), Number(ys)];
-    const home = boxes.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    // **いちばん小さい枠で見る。** 入れ物のほうで見ると、内側の枠の幅を見逃す。
+    const home = boxes
+      .filter((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0];
     const right = x + widthOf(body, size);
     if (home === undefined) {
       assert.ok(right <= W, `画面からはみ出す文字: ${body}`);

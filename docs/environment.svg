@@ -72,7 +72,7 @@
   <text class="sub" x="568" y="247">作業ログ ／ 意思決定の記録</text>
 
   <!-- GitHub は入れ物。記録はこの中に溜まる -->
-  <rect class="bx" x="548" y="284" width="340" height="372" rx="4" fill="#fafbfb"/>
+  <rect class="bx holder" x="548" y="284" width="340" height="372" rx="4" fill="#fafbfb"/>
   <text class="ttl" x="568" y="312">GitHub（Repo）</text>
 
   <rect class="bx" x="568" y="328" width="300" height="62" rx="3"/>
@@ -104,25 +104,34 @@
 
   <rect class="bx" x="938" y="176" width="330" height="84" rx="3"/>
   <text class="ttl" x="958" y="205">Runner（GitHub Actions）</text>
-  <text class="sub" x="958" y="227">検証の実行</text>
+  <text class="sub" x="958" y="227">検証の実行と配布</text>
   <text class="sub" x="958" y="247">提出を経ない変更を弾く</text>
 
-  <rect class="bx" x="938" y="284" width="330" height="88" rx="3"/>
-  <text class="ttl" x="958" y="313">Preview（既定なし）</text>
-  <text class="sub" x="958" y="335">Cloudflare Workers を選べる</text>
-  <text class="sub" x="958" y="355">見え方を人とAIが確かめる場所</text>
+  <!-- プレビューは検証環境の上に出る。別の環境ではないため、入れ物にする -->
+  <rect class="bx holder" x="938" y="284" width="330" height="196" rx="4" fill="#fafbfb"/>
+  <text class="ttl" x="958" y="312">検証環境</text>
+  <text class="sub" x="958" y="332">Cloudflare Workers（既定）</text>
 
-  <rect class="bx" x="938" y="400" width="330" height="88" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
-  <text class="ttl" x="958" y="429">本番環境</text>
-  <text class="tag" x="1196" y="427">FIXED</text>
-  <text class="sub" x="958" y="451">配布は不可逆。人が発火する</text>
-  <text class="sub" x="958" y="471">実績が積まれても緩めない</text>
+  <rect class="bx" x="956" y="346" width="294" height="80" rx="3"/>
+  <text class="ttl" x="974" y="372">プレビュー</text>
+  <text class="sub" x="974" y="394">検証環境の上に出る。別の環境ではない</text>
+  <text class="sub" x="974" y="414">提出ごとに見え方を確かめる</text>
 
-  <rect class="bx" x="938" y="516" width="330" height="104" rx="3"/>
-  <text class="ttl" x="958" y="545">Flag（既定なし）</text>
-  <text class="sub" x="958" y="567">OpenFeature 準拠の任意の実装</text>
-  <text class="sub" x="958" y="587">見せる範囲を段階的に広げる</text>
-  <text class="sub" x="958" y="607">広げるほうが不可逆。戻すのは可逆</text>
+  <text class="sub" x="958" y="448">本番相当の資格情報とデータを持つ</text>
+  <text class="sub" x="958" y="468">外から見せるのは人の承認</text>
+
+  <rect class="bx" x="938" y="506" width="330" height="104" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
+  <text class="ttl" x="958" y="535">本番環境</text>
+  <text class="tag" x="1196" y="533">FIXED</text>
+  <text class="sub" x="958" y="557">Cloudflare Workers（既定）</text>
+  <text class="sub" x="958" y="577">配布は不可逆。人が発火する</text>
+  <text class="sub" x="958" y="597">実績が積まれても緩めない</text>
+
+  <rect class="bx" x="938" y="636" width="330" height="104" rx="3"/>
+  <text class="ttl" x="958" y="665">Flag（既定なし）</text>
+  <text class="sub" x="958" y="687">OpenFeature 準拠の任意の実装</text>
+  <text class="sub" x="958" y="707">見せる範囲を段階的に広げる</text>
+  <text class="sub" x="958" y="727">広げるほうが不可逆。戻すのは可逆</text>
 
   <!-- ================= 経路 ================= -->
   <path class="ln" d="M 430 96 V 170" marker-end="url(#a)"/>
@@ -143,16 +152,16 @@
   <path class="ln" d="M 888 340 H 920 V 218 H 932" marker-end="url(#a)"/>
 
   <path class="ln" d="M 1103 260 V 278" marker-end="url(#a)"/>
-  <path class="ln" stroke="#b4472f" d="M 1103 372 V 394" marker-end="url(#ar)"/>
-  <path class="ln" d="M 1103 516 V 494" marker-end="url(#a)"/>
+  <path class="ln" stroke="#b4472f" d="M 1103 480 V 500" marker-end="url(#ar)"/>
+  <path class="ln" d="M 1103 636 V 616" marker-end="url(#a)"/>
 
   <!-- ================= フィードバック ================= -->
   <!-- 提出の指摘とCIの結果 -->
   <path class="fb" d="M 868 372 H 902 V 850"/>
   <!-- 検証結果・実動作・本番の異常 -->
   <path class="fb" d="M 1268 218 H 1292"/>
-  <path class="fb" d="M 1268 328 H 1292"/>
-  <path class="fb" d="M 1268 444 H 1292"/>
+  <path class="fb" d="M 1268 386 H 1292"/>
+  <path class="fb" d="M 1268 558 H 1292"/>
   <path class="fb" d="M 1292 218 V 850"/>
   <path class="fb" d="M 1292 850 H 200 V 604" marker-end="url(#at)"/>
   <text class="grp" x="360" y="838" fill="#4a8878">FEEDBACK ／ 提出の指摘・検証結果・実動作・本番の異常</text>
