@@ -157,14 +157,14 @@ test("README は、人が打つものだけを使い方として出す", () => {
 // `update` の存在を知らないまま、どこかで見つけて打つ。
 test("道具の入れ替えは、人が打つものではないと書いてある", () => {
   for (const [file, phrase] of [
-    ["README.md", /not one for you to type/],
-    ["README.ja.md", /これは人が打つものではない/],
+    ["README.md", /Do not run `update` yourself/],
+    ["README.ja.md", /人が直接 `update` を打たないこと/],
   ]) {
     assert.match(readFileSync(join(KIT, file), "utf8"), phrase, `${file}: 断っていない`);
   }
   // **手順は配布物にも要る。** AIが読むのはそちらである。
   const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
-  const at = rules.indexOf("## 道具を新しい版へ入れ替える");
+  const at = rules.indexOf("## autodrive-dev-kit を更新する");
   assert.notEqual(at, -1, "配布物に手順が無い");
   const section = rules.slice(at, rules.indexOf("\n## ", at + 1));
   for (const [pattern, what] of [
