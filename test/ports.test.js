@@ -14,6 +14,10 @@ function root() {
 
 function withWorkItem(id , repo) {
   const r = root();
+  // **対象リポジトリを実際に置く。** これが無くても記録は書けていたが、それは
+  // 無い場所をディレクトリごと作っていたからである（AUT-143）。実際には対象
+  // リポジトリは必ず在るため、**在る前提で判定するのが現実に合う。**
+  mkdirSync(join(r, repo), { recursive: true });
   mkdirSync(join(r, ".autodrive"), { recursive: true });
   writeFileSync(
     join(r, ".autodrive", "current-work-item.json"),

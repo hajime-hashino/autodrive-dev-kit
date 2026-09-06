@@ -9,12 +9,12 @@
 
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { isWorkItemState } from "./ports/tracker.js";
 
-import { STATE_DIR, currentWorkItem } from "./workItem.js";
+import { STATE_DIR } from "./workItem.js";
 
 const USAGE = `作業単位を扱う
 
@@ -57,12 +57,25 @@ export function writeMarker(root , workItemId , repo) {
   writeFileSync(path, `${JSON.stringify({ work_item_id: workItemId, repo })}\n`, "utf8");
 }
 
-/** 閉じた作業単位のマーカーを外す。別の作業単位の記録が紛れ込むのを防ぐ。 */
+/**
+ * 閉じた作業単位のマーカーを外す。別の作業単位の記録が紛れ込むのを防ぐ。
+ *
+ * **マーカーの中身だけを見る。置き場所の解決に依存しない。** 解決は対象リポジトリの
+ * 作業ツリーが在ることを求めるようになった（AUT-143）。それに依存すると、**指す先が
+ * 無いマーカーを外せなくなり、次の作業の記録が前の作業単位へ紛れ込み続ける。**
+ * 外すのに要るのは作業単位IDの一致だけである。
+ */
 export function clearMarker(root , workItemId) {
-  const current = currentWorkItem(root);
-  if (current === null || current.workItemId !== workItemId) return false;
   const path = markerPath(root);
-  if (existsSync(path)) rmSync(path);
+  if (!existsSync(path)) return false;
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return false;
+  }
+  if (parsed?.work_item_id !== workItemId) return false;
+  rmSync(path);
   return true;
 }
 
