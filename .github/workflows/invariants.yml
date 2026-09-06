@@ -18,6 +18,19 @@ jobs:
           node-version: "22.18"
       - run: npm test
 
+  # **判定が本当に判定しているかを見る。** テストが通ることと、テストが誤りを
+  # 捕まえられることは別である。過去に直した誤りを実装へ戻し、そのたびにテストが
+  # 落ちるかを確かめる（AUT-138）。所要は1分弱。
+  mutate:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+      - run: npm run mutate
+
   cross:
     needs: test
     runs-on: ubuntu-latest

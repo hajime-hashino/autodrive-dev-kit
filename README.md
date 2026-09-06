@@ -231,7 +231,8 @@ The full criteria, how to widen delegation, and how to record a substitution are
 ## Working on the kit itself
 
 ```sh
-npm test    # node:test. no test framework dependency
+npm test        # node:test. no test framework dependency
+npm run mutate  # puts past defects back and checks that the tests fail
 ```
 
 **Plain JS, run directly by Node. There is no build step.** Types are written as JSDoc.
@@ -241,3 +242,7 @@ Type annotations cannot be used directly. **Node deliberately does not strip typ
 **Do not add `dependencies`.** Having none is this kit's supply-chain defence. If you think you need one, read [ADR 0001](docs/adr/0001-implementation-language.md) first and start by proposing to change it.
 
 **When you build something that checks, verify the check itself in the same work item.** Write a test where you can. Where you cannot, confirm the behaviour before submitting. **Confirm that the test fails against a broken implementation** — otherwise a passing test is indistinguishable from one that checks nothing.
+
+Do not do that by hand; `npm run mutate` does it. `mutations/regression.json` holds mutations that put previously fixed defects back into the implementation. **When you fix a defect, add the mutation that reintroduces it.** CI runs this too.
+
+**Done by hand, it is the running of it that breaks.** It broke twice here, and both times read as "everything is caught" (AUT-138). The details are at the top of [src/mutate.js](src/mutate.js).

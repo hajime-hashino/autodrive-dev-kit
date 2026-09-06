@@ -1,0 +1,87 @@
+[
+  {
+    "name": "AUT-114 統合の有無を無視して閉じる",
+    "file": "src/reconcile.js",
+    "from": "for (const item of finished(items, mergedIds, except)) {",
+    "to": "for (const item of finished(items, new Set(repoOf.keys()), except)) {"
+  },
+  {
+    "name": "AUT-114 読めなかったことを黙る",
+    "file": "src/reconcile.js",
+    "from": "      out.unreadable.push(`${repo.name}: 提出を読めない`);",
+    "to": "      "
+  },
+  {
+    "name": "AUT-116 手で変えられていても上書きする",
+    "file": "src/init.js",
+    "from": "  if (edited.length > 0) {",
+    "to": "  if (false) {"
+  },
+  {
+    "name": "AUT-116 指紋を残さない",
+    "file": "src/init.js",
+    "from": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes);",
+    "to": "  void 0;"
+  },
+  {
+    "name": "AUT-131 消してから置く形に戻す",
+    "file": "src/init.js",
+    "from": "  rmSync(previous, { recursive: true, force: true });\n\n  try {",
+    "to": "  rmSync(previous, { recursive: true, force: true });\n  rmSync(dest, { recursive: true, force: true });\n\n  try {"
+  },
+  {
+    "name": "AUT-131 実行権を写さない",
+    "file": "src/init.js",
+    "from": "  copyFileSync(from, to);\n  chmodSync(to, info.mode);",
+    "to": "  writeFileSync(to, readFileSync(from));",
+    "why": "行を消すだけでは、copyFileSync が権限を写すため差が出ない。複製の仕方ごと変える"
+  },
+  {
+    "name": "AUT-112 資格情報の why が空でも通す",
+    "file": "src/config.js",
+    "from": "    for (const [key, value] of [[\"why\", why], [\"lost\", lost]]) {",
+    "to": "    for (const [key, value] of []) {"
+  },
+  {
+    "name": "AUT-115 ワイルドカードの宛先を通す",
+    "file": "src/config.js",
+    "from": "if (typeof host !== \"string\" || !HOST_NAME.test(host)) {",
+    "to": "if (typeof host !== \"string\") {"
+  },
+  {
+    "name": "AUT-132 使えない構成でも features を通す",
+    "file": "src/config.js",
+    "from": "  if (box.features.length > 0 && ports.sandbox !== \"devcontainer\") {",
+    "to": "  if (false) {"
+  },
+  {
+    "name": "AUT-135 英語の設定を読まない",
+    "file": "src/main.js",
+    "from": "readConfig(values.root).config?.language ?? \"ja\"",
+    "to": "\"ja\""
+  },
+  {
+    "name": "AUT-135 観測が日本語だと断らない",
+    "file": "src/report.js",
+    "from": "  if (language !== \"ja\" && hasDetail) lines.push(t(\"report.evidence.ja\"));",
+    "to": "  void hasDetail;"
+  },
+  {
+    "name": "AUT-135 見出しの無い表を見逃す",
+    "file": "src/emphasis.js",
+    "from": "    if (cells.length > 0 && cells.every((c) => c === \"\")) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "AUT-118 案内から fetch を落とす",
+    "file": "src/beginCli.js",
+    "from": "fetch origin ${defaultBranch}:${defaultBranch} && git -C ${repo} checkout ${defaultBranch}",
+    "to": "checkout ${defaultBranch}"
+  },
+  {
+    "name": "AUT-137 コアダンプを見逃す",
+    "file": "src/tracked.js",
+    "from": "{ test: (n) => /^core(\\.\\d+)?$/.test(n), why: \"コアダンプ。実行時のメモリがそのまま入る\" },",
+    "to": ""
+  }
+]
