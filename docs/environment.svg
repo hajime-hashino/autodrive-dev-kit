@@ -125,7 +125,7 @@
   <text class="sub" x="958" y="607">広げるほうが不可逆。戻すのは可逆</text>
 
   <!-- ================= 経路 ================= -->
-  <path class="ln" d="M 267 96 V 170" marker-end="url(#a)"/>
+  <path class="ln" d="M 430 96 V 170" marker-end="url(#a)"/>
 
   <path class="ln" d="M 474 222 H 524"/>
   <path class="ln" d="M 524 222 V 596"/>
@@ -140,7 +140,7 @@
   <path class="ln" d="M 718 656 V 684" marker-end="url(#a)"/>
 
   <!-- 提出 → 検証 -->
-  <path class="ln" d="M 888 340 H 915 V 218 H 932" marker-end="url(#a)"/>
+  <path class="ln" d="M 888 340 H 920 V 218 H 932" marker-end="url(#a)"/>
 
   <path class="ln" d="M 1103 260 V 278" marker-end="url(#a)"/>
   <path class="ln" stroke="#b4472f" d="M 1103 372 V 394" marker-end="url(#ar)"/>
@@ -148,7 +148,7 @@
 
   <!-- ================= フィードバック ================= -->
   <!-- 提出の指摘とCIの結果 -->
-  <path class="fb" d="M 868 372 H 900 V 850"/>
+  <path class="fb" d="M 868 372 H 902 V 850"/>
   <!-- 検証結果・実動作・本番の異常 -->
   <path class="fb" d="M 1268 218 H 1292"/>
   <path class="fb" d="M 1268 328 H 1292"/>

@@ -651,3 +651,43 @@ test("図が、出口制限を閉じる仕掛けとして見せない", () => {
   // 規約であって強制ではないことまで言う。**言わないと、有効だと読まれる。**
   assert.ok(svg.includes("機械的な強制ではない"), "規約と強制の区別が無い");
 });
+
+/**
+ * タグの対応を見る。**XML の検証器はこの環境に無い。**
+ *
+ * 開始と終了、自己終了だけを数える。属性の中身までは見ない。
+ * **入れ子が壊れているかどうかが分かれば足りる。**
+ */
+function unbalancedTags(xml) {
+  const body = xml.replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/g, "");
+  const stack = [];
+  for (const m of body.matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+    const [, closing, name, , selfClosing] = m;
+    if (selfClosing === "/") continue;
+    if (closing === "/") {
+      if (stack.pop() !== name) return `${name} の閉じ方が合っていない`;
+    } else {
+      stack.push(name);
+    }
+  }
+  return stack.length === 0 ? null : `閉じていない: ${stack.join(" > ")}`;
+}
+
+// 図が、そもそも描かれること。
+//
+// **SVG は壊れていると、何も出ずに終わる。** 崩れて出るのではなく、出ない。
+// README に埋め込んだため、壊れれば「仕組み」の節が丸ごと空になる。
+test("図が、組み立てとして壊れていない", () => {
+  const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
+  assert.equal(unbalancedTags(svg), null);
+  assert.match(svg, /^<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/m, "名前空間が無い");
+  // README から画像として読まれるため、単体で完結していること。
+  assert.equal(/<(script|foreignObject)\b/.test(svg), false, "画像として読まれない要素がある");
+});
+
+test("壊れた組み立てを、実際に見つける", () => {
+  // **「壊れていない」を主張する判定は、壊れを見つけられなくても通る。**
+  assert.notEqual(unbalancedTags("<svg><g></svg>"), null, "閉じ忘れを見逃している");
+  assert.notEqual(unbalancedTags("<svg><g></rect></g></svg>"), null, "食い違いを見逃している");
+  assert.equal(unbalancedTags('<svg><rect x="1"/><g></g></svg>'), null, "正しいものを落としている");
+});
