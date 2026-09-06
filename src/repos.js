@@ -52,6 +52,12 @@ export class Repo {
     return slugFromUrl(this.git("remote", "get-url", "origin"));
   }
 
+  /** 追跡されているファイルの一覧。取れなければ空。 */
+  trackedFiles() {
+    const out = this.git("ls-files", "-z");
+    return out === null ? [] : out.split("\0").filter((n) => n !== "");
+  }
+
   telemetryFiles() {
     const dir = join(this.path, "telemetry");
     if (!existsSync(dir)) return [];

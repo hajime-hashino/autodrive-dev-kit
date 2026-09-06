@@ -57,7 +57,7 @@ export function renderText(results , repos , scope , language = "ja") {
   return lines.join("\n");
 }
 
-export function renderJson(results , repos , scope , language = "ja") {
+export function renderJson(results , repos , scope , language = "ja", forbidden = []) {
   return JSON.stringify(
     {
       scope,
@@ -71,6 +71,8 @@ export function renderJson(results , repos , scope , language = "ja") {
         unimplemented: r.unimplemented,
       })),
       failing: results.filter((r) => r.failing).map((r) => r.key),
+      // **中身は載せない。** どのファイルが何に当たるかだけ。
+      forbidden: forbidden.map((f) => ({ path: f.path, why: f.why })),
     },
     null,
     2,
