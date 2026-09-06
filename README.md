@@ -79,9 +79,20 @@ It asks about your setup. **The first question is your language** (日本語 / E
 |---|---|
 | `init` | Adopt in a new project. Asks about the setup, then places files |
 | `apply` | Adopt in an existing project. Infers the setup from what is already there and asks you to confirm |
-| `update` | Move the toolkit to a newer version. Does not ask about the setup, and does not change what you already decided |
+
+**That is everything you type.** At the point you run these, there is no project yet and no AI in it.
 
 Copy the placed `.env.example` to `.env` and fill in your credentials. That is the end of the manual work.
+
+### Updating autodrive-dev-kit
+
+To move an adopted toolkit to a newer version, ask the AI:
+
+> I want to update autodrive-dev-kit
+
+The AI files the work item, updates, and submits. You only approve the merge.
+
+**Do not run `update` yourself.** Updating changes files your project tracks, so doing it by hand puts a change on the default branch without a submission.
 
 ### How development goes
 
