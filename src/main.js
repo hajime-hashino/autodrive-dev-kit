@@ -16,6 +16,7 @@ import { createRepoApi } from "./repoApi.js";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
+import { describe as describeTracked, forbidden } from "./tracked.js";
 
 import { renderJson, renderText } from "./report.js";
 import { ACTIVE, INVARIANTS, Result } from "./state.js";
@@ -200,11 +201,39 @@ export async function run(argv) {
   // いう状態ができる（AUT-135）。構成が読めなければ日本語のまま出す。
   const language = readConfig(values.root).config?.language ?? "ja";
 
-  const render = values.format === "json" ? renderJson : renderText;
+  // **追跡してはいけないものが追跡されていないか。**
+  //
+  // 不変条件ではない（定義§9は4つで固定）。配布物の「守ること」にある
+  // 「本番の資格情報を手元に置かない」の検出手段である。規約はあったが、
+  // 見る仕掛けが無かった（AUT-137）。
+  //
+  // **既製品が見ない場所だけを見る。** gitleaks はバイナリを走査せず、
+  // GitHub の Secret Protection は private + Free では使えない。
+  const tracked = repos.flatMap((r) =>
+    forbidden(r.path, r.trackedFiles()).map((f) => ({ ...f, path: `${r.name}/${f.path}` })),
+  );
+
+  const body =
+    values.format === "json"
+      ? renderJson(results, repos, scope, language, tracked)
+      : renderText(results, repos, scope, language);
   return {
-    output: render(results, repos, scope, language),
-    code: results.some((r) => r.failing) ? 1 : 0,
+    output: values.format === "json" ? body : [body, ...describeTracked(tracked)].join("\n"),
+    code: exitCode(results, tracked.length),
   };
+}
+
+/**
+ * 終了コード。
+ *
+ * **追跡してはいけないものがあれば落とす。** 不変条件が全部通っていても落とす。
+ * 落ちなければ、CI では誰も気づかない（AUT-137）。
+ *
+ * **判断をここへ出しているのは、直接確かめるためである。** 判定器を通して見ると、
+ * 一時リポジトリでは記録が無くてどのみち落ちるため、差が出ない。
+ */
+export function exitCode(results, forbiddenCount) {
+  return results.some((r) => r.failing) || forbiddenCount > 0 ? 1 : 0;
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
