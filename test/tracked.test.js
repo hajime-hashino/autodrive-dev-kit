@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -20,12 +20,13 @@ import { Repo } from "../src/repos.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** 追跡された状態のリポジトリを作る。 */
 function repoWith(files) {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-tracked-"));
+  const root = tempDir("autodrive-tracked-");
   execFileSync("git", ["-C", root, "init", "-q"]);
   for (const [name, body] of Object.entries(files)) {
     mkdirSync(join(root, name, ".."), { recursive: true });

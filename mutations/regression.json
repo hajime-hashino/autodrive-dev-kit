@@ -146,5 +146,19 @@
     "from": "配布、改変、利用は自由です。ご自由にお使いください。商用利用も可です。",
     "to": "ご自由にお使いください。",
     "why": "何をしてよいかが書かれていないと、読んだ人が使うのを躊躇する"
+  },
+  {
+    "name": "AUT-147 終了時の片付けをやめる",
+    "file": "test/helpers/tmp.js",
+    "from": "    process.on(\"exit\", cleanupTempDirs);",
+    "to": "    // 片付けない",
+    "why": "残すと inode を使い切る。変異テストは判定を20回以上まわす"
+  },
+  {
+    "name": "AUT-147 置き場を消さない",
+    "file": "test/helpers/tmp.js",
+    "from": "    rmSync(parent, { recursive: true, force: true });",
+    "to": "    /* 消さない */",
+    "why": "覚えているだけで消さなければ、片付けたことにならない"
   }
 ]

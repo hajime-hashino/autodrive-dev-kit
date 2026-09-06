@@ -16,13 +16,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { resolveRepo, resolveWorkItem, telemetryPath } from "../src/workItem.js";
+import { tempDir } from "./helpers/tmp.js";
 
 function withMarker(repo) {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-workitem-"));
+  const root = tempDir("autodrive-workitem-");
   mkdirSync(join(root, ".autodrive"), { recursive: true });
   writeFileSync(
     join(root, ".autodrive", "current-work-item.json"),
@@ -33,7 +34,7 @@ function withMarker(repo) {
 }
 
 test("相対パスの起点でも、起点そのものが対象リポジトリだと分かる", () => {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-rel-"));
+  const root = tempDir("autodrive-rel-");
   const name = basename(root);
 
   // **これが壊れていた形。** basename(".") は "." であり、名前と一致しない。
@@ -52,7 +53,7 @@ test("相対パスの起点でも、起点そのものが対象リポジトリ�
 });
 
 test("起点の直下にあるリポジトリは、これまでどおり直下として解決する", () => {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-child-"));
+  const root = tempDir("autodrive-child-");
   mkdirSync(join(root, "kit"), { recursive: true });
   assert.equal(resolveRepo(root, "kit"), join(resolve(root), "kit"));
   assert.equal(resolveRepo(".", "kit"), join(resolve("."), "kit"));

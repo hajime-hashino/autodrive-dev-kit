@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderText } from "../src/report.js";
 import { ACTIVE, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 const repos = [{ name: "my-app" }];
@@ -114,14 +115,14 @@ test("不変条件の名前が、定義の語彙と揃っている", () => {
 // `renderText` を直接呼ぶ判定だけでは、**構成を読む部分が抜けても気づけない。**
 // 実際に、変異テストで通ってしまった（AUT-138）。
 test("autodrive.json の language が、判定器の出力まで届く", async () => {
-  const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const { execFileSync } = await import("node:child_process");
   const { run } = await import("../src/main.js");
   const { defaults } = await import("../src/config.js");
 
-  const root = mkdtempSync(join(tmpdir(), "autodrive-lang-"));
+  const root = tempDir("autodrive-lang-");
   execFileSync("git", ["-C", root, "init", "-q"]);
   const config = defaults();
   config.language = "en";
