@@ -15,7 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { delegateFor, MODES } from "../src/cli.js";
-import { brokenEmphasis } from "../src/emphasis.js";
+import { brokenEmphasis, headerlessTables } from "../src/emphasis.js";
 import { OPERATIONS as TELEMETRY_OPS } from "../src/telemetryCli.js";
 import { OPERATIONS as TRACKER_OPS } from "../src/trackerCli.js";
 
@@ -208,7 +208,26 @@ test("強調が、強調として表示される", () => {
   assert.deepEqual(broken, [], `閉じられていない ** がある:\n${broken.join("\n")}`);
 });
 
+// **見出しの無い表は、空の帯が出て崩れて見える。** 書いている側は本文だけを見て
+// いるので気づかない。人から指摘されるまで気づかなかった（AUT-135）。
+test("表に見出しがある", () => {
+  const bad = [];
+  for (const doc of documents()) {
+    for (const t of headerlessTables(readFileSync(doc, "utf8"))) {
+      bad.push(`${doc.slice(KIT.length + 1)}:${t.line}`);
+    }
+  }
+  assert.deepEqual(bad, [], `見出しの無い表がある:\n${bad.join("\n")}`);
+});
+
 // **判定が本当に見つけられること。** 空の配列は、見ていなくても出る。
+test("見出しの無い表を、実際に見つける", () => {
+  assert.equal(headerlessTables("| | |\n|---|---|\n| a | b |").length, 1);
+  assert.equal(headerlessTables("| 見出し | |\n|---|---|\n| a | b |").length, 0, "片方でもあれば帯は出る");
+  assert.equal(headerlessTables("| a | b |\n|---|---|\n| 1 | 2 |").length, 0, "誤検出している");
+  assert.equal(headerlessTables("ふつうの文\nもう1行").length, 0, "表でない行を拾っている");
+});
+
 test("助詞が続く強調を、実際に見つける", () => {
   assert.equal(brokenEmphasis("**開発に必要な環境**は必要に応じて構築します。").length, 1);
   assert.equal(brokenEmphasis("**履歴に載っていないと固定にならない**ため。").length, 1);

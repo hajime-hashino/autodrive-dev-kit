@@ -14,7 +14,7 @@ Speed is not the point. **Anyone can go fast by letting an AI write the code.** 
 
 This method moves that job from experience into machinery.
 
-| | |
+| Principle | What it means |
 |---|---|
 | **The AI leads** | It sets up the environment, starts the work, records what happened, and runs the checks. You decide what to build, how it should look, and in what order |
 | **No prior knowledge assumed** | Questions and explanations are in your language, not in implementation jargon. **An explanation you cannot read is an explanation you cannot verify** |
