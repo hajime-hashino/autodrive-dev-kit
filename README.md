@@ -1,239 +1,242 @@
 # autodrive-dev-kit
 
-**システム開発に精通していなくても、AIの案内で開発を進められるようにするための道具一式。**
+**A toolkit that lets you build software with AI, without needing to be an engineer yourself.**
 
-[AIオートドライビング開発](https://github.com/hajimegane/autodrive-dev-definition)の参照実装。
+Reference implementation of [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition).
 
-## 何を目指しているか
+*日本語版は [README.ja.md](README.ja.md) にあります。*
 
-**人のスキルレベルによらず、一定の品質で開発できるようにすること。**
+## What this is for
 
-速く作れることは目的ではない。**速いだけなら、AIに書かせれば誰でもできる。** 問題は、速く作ったものが正しいかを誰が確かめるかである。ふつうそれは人の熟練に頼っている。**熟練が無いと、速さがそのまま危うさになる。**
+**Making the quality of what you ship independent of how experienced you are.**
 
-この手法は、そこを熟練ではなく仕組みで担保する。
+Speed is not the point. **Anyone can go fast by letting an AI write the code.** The question is who checks that what came out is correct. Normally that job rests on an experienced human. **Without that experience, speed simply becomes risk.**
+
+This method moves that job from experience into machinery.
 
 | | |
 |---|---|
-| **AIが主導する** | 環境構築も、着手も、記録も、判定もAIが行う。人が決めるのは、何を作るか・どう見せるか・どの順に作るか |
-| **前提知識を要求しない** | 問いかけも説明も、実装の言葉ではなく人の言葉で行う。**読めない説明は、確認できない説明である** |
-| **任せた範囲が正しかったかを測る** | どこまで任せてよいかは、宣言ではなく記録で決める。うまくいっていない範囲は戻す |
+| **The AI leads** | It sets up the environment, starts the work, records what happened, and runs the checks. You decide what to build, how it should look, and in what order |
+| **No prior knowledge assumed** | Questions and explanations are in your language, not in implementation jargon. **An explanation you cannot read is an explanation you cannot verify** |
+| **Delegation is measured, not declared** | How much to delegate is decided from recorded evidence, not from assertion. Areas that are not working are pulled back |
 
-3つ目が、この手法の中心にある。**「AIに任せてよい」と言い切らない。** 任せた範囲がどう働いたかを記録し、広げるかどうかを実測で決める。
+The third one is the centre of this method. **It never claims "the AI can be trusted with this."** It records how each delegated area actually behaved, and widens the boundary only on measured evidence.
 
-## どう実現しているか
+## How it works
 
-任せられる状態を保つために、次の3つを備える。
+Three things keep the work delegable.
 
-| 要素 | 内容 |
+| Element | What it means |
 |---|---|
-| **不変条件** | 提出を経ない変更が既定ブランチへ入らない。本番の資格情報を手元に置かない |
-| **記録** | 停止、手戻り、検出漏れ、境界変更、トークン消費が自動で残る |
-| **点検** | 上の2つが実際に機能しているかを機械的に判定する。宣言ではなく実測 |
+| **Invariants** | No change reaches the default branch without going through a submission. Production credentials never sit on your machine |
+| **Telemetry** | Stops, rework, missed detections, delegation changes, and token spend are recorded automatically |
+| **Checks** | A checker decides mechanically whether the two above are actually working. Measured, not declared |
 
-記録は、仕組みを改善するために利用される。
+The records exist to improve the machinery itself.
 
-## いまの状態
+## Where it stands
 
-**育てている途中である。** まだ公開しておらず、この道具で作っているプロジェクトは2つ。
+**This is still being grown.** It is not published yet, and two projects are being built with it.
 
-**この道具自身が、この手法で開発されている。** 参照実装の変更も、作業単位の起票から提出・統合まで、ここに書かれている手順を通っている。**書いた本人が従わない規約にしないため。**
+**The kit builds itself with its own method.** Every change to the reference implementation goes through the same path described here, from filing a work item to submission and integration. **A rule its own author does not follow is not a rule.**
 
-不変条件の4つのうち3つが有効で、1つは人が手で代替している（判定がその状態を出す）。詳しくは [docs/invariants.md](docs/invariants.md)。
+Three of the four invariants are active; one is currently substituted by hand, and the checker reports that state. See [docs/invariants.md](docs/invariants.md).
 
-## 必要要件
+## Requirements
 
-| コンポーネント | 用途 | 要否 |
+| Component | Used for | Required |
 |---|---|---|
-| Node 22.18 以上 | ツールセットの実行 | 必須 |
-| Linear | 作業単位の起票、状態管理、記録の紐づけ | 必須 |
-| GitHub | 提出を経た統合。点検がここを読む | 必須 |
-| Cloudflare Workers | 画面の見え方を確認するためのプレビュー | 画面を持つ場合 |
+| Node 22.18 or newer | Running the toolkit | Yes |
+| Linear | Filing work items, tracking status, linking records | Yes |
+| GitHub | Integration through submissions. The checker reads this | Yes |
+| Cloudflare Workers | Previewing how a screen actually looks | If it has a UI |
 
-## 使い方
+## Usage
 
-### はじめ方
+### Getting started
 
-導入するプロジェクトのディレクトリで実行する。
+Run this inside the project you want to adopt it in.
 
 ```sh
-cd <あなたのプロジェクト>
+cd <your project>
 npx github:hajimegane/autodrive-dev-kit init
 ```
 
-**clone も PATH の設定も要らない。** Node 22.18 以上があれば動く（型注釈をそのまま実行するため）。
+**No clone, no PATH setup.** Node 22.18 or newer is all you need.
 
-打つのが長いので、置き場所を決めて PATH へ通してもよい。
+That command is long to type, so you may put it on your PATH instead.
 
 ```sh
-export PATH="$PATH:<この参照実装の置き場所>/bin"
+export PATH="$PATH:<where you keep this reference implementation>/bin"
 autodrive-dev-kit init
 ```
 
-構成について質問される。**最初に言語を聞かれる**（日本語 / English）。選択肢と推奨が表示されるので、番号を入力するか、そのまま Enter を押す。回答は `autodrive.json` に保存され、次回以降は質問されない。
+It asks about your setup. **The first question is your language** (日本語 / English). Each question shows its options and a recommendation, so type a number or just press Enter. Answers are saved to `autodrive.json` and you are not asked again.
 
-**言語の設定が効くのは、このセットアップの表示だけである。** 開発の会話は、AIが相手の言語で行う。
+**That language setting only affects setup.** During development the AI speaks whatever language you speak.
 
-| コマンド | 用途 |
+| Command | Used for |
 |---|---|
-| `init` | 新規に導入する。構成を質問して、ファイルを配置する |
-| `apply` | 既存プロジェクトに導入する。配置済みのファイルから構成を推測し、確認を求める |
-| `update` | ツールセットを新しい版へ入れ替える。構成は質問せず、保存済みの内容も変更しない |
+| `init` | Adopt in a new project. Asks about the setup, then places files |
+| `apply` | Adopt in an existing project. Infers the setup from what is already there and asks you to confirm |
+| `update` | Move the toolkit to a newer version. Does not ask about the setup, and does not change what you already decided |
 
-配置された `.env.example` を複製して `.env` を作成し、資格情報を記入する。手動の作業はここまでである。
+Copy the placed `.env.example` to `.env` and fill in your credentials. That is the end of the manual work.
 
-### 開発の進め方
+### How development goes
 
-Claude Code を開いて、**「プロジェクトを始めたい」と伝えてください。**
+Open Claude Code and say **"I want to start a project."**
 
-その後は、AIがプロジェクトの状態を見て開発を進めてくれます。
+From there the AI reads the state of the project and drives.
 
-| | AIが実行すること | 人が判断すること |
+| | The AI does | You decide |
 |---|---|---|
-| 1 | 何を作るか・なぜ作るかを聞き取り、文書化して読み上げる | 話す |
-| 2 | 画面を持つ場合、見え方の案を提示する | **選ぶ** |
-| 3 | 開発順序の案と判断材料を提示する | **決める** |
-| 4 | 環境を構築する。AIが実行できない操作のみ依頼する | 資格情報の発行など |
-| 5 | 作業単位を起票し、実装する | |
+| 1 | Asks what you are building and why, writes it down, and reads it back | Talk |
+| 2 | If there is a UI, proposes how it could look | **Choose** |
+| 3 | Proposes an order to build in, with the tradeoffs | **Decide** |
+| 4 | Builds the environment. Asks you only for things it cannot do itself | Issuing credentials, etc. |
+| 5 | Files work items and implements | |
 
-**開発に必要な環境は、必要に応じて徐々に構築していきます。**
+**The environment grows as you need it,** not all at once up front.
 
-## 関連ファイル、フォルダ
-
-以下は autodrive-dev-kit に関連するファイル、フォルダである。
+## What gets placed
 
 ```
 my-app/
-├── autodrive/                       ツールセットの複製
-├── autodrive.json                   構成
-├── boundaries.yaml                  委譲範囲の表
-├── CLAUDE.md                        プロジェクト固有の規約
-├── .env.example                     必要な資格情報の一覧。**構成から作られる**
+├── autodrive/                       copy of the toolkit
+├── autodrive.json                   your setup
+├── boundaries.yaml                  the delegation table
+├── CLAUDE.md                        project-specific rules
+├── .env.example                     credentials you need. **generated from your setup**
 ├── .gitignore
 ├── notes/
-│   └── README.md                    **人が使う置き場所。** 中身は追跡しない
+│   └── README.md                    **yours to use.** contents are not tracked
 ├── .claude/
-│   └── settings.json                記録の仕掛けの登録
+│   └── settings.json                registers the recording hook
 ├── .github/
-│   └── workflows/invariants.yml         点検をCIで実行する定義
+│   └── workflows/invariants.yml     runs the checks in CI
 ├── docs/
-│   ├── autodrive.md                 AI向けの作業規約
-│   ├── what-why.md                  何を作るか、なぜ作るか
-│   ├── adr/                         設計判断の記録
-│   └── boundary-changes.md          境界変更の履歴
+│   ├── autodrive.md                 the rules the AI follows
+│   ├── what-why.md                  what you are building, and why
+│   ├── adr/                         design decisions
+│   └── boundary-changes.md          history of delegation changes
 ├── telemetry/
-│   └── <作業単位ID>.jsonl            停止、手戻り、トークン消費の記録
-└── test/                            テスト
+│   └── <work item id>.jsonl         stops, rework, token spend
+└── test/                            tests
 ```
 
-これらは段階に応じて作成されていく。
+These appear as the project needs them.
 
-| ファイル | 作成 | 所有 | 内容 |
+| File | Created | Owned by | Contents |
 |---|---|---|---|
-| `autodrive/` | init | dev-kit | ツールセットの複製。`update` で入れ替わる |
-| `.env.example` | init | dev-kit | 必要な資格情報の一覧。**構成から作られる** |
-| `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
-| `.devcontainer/` | init | dev-kit | AIを動かす隔離された作業場。**外向き通信は許可制** |
-| `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
-| `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
-| `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |
-| `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
-| `CLAUDE.md` | init | プロジェクト | プロジェクト固有の規約 |
-| `.gitignore` | init | プロジェクト | 資格情報と作業状態を除外する |
-| `notes/README.md` | init | プロジェクト | **人が使う置き場所。** 考えをまとめる。中身は追跡しない |
-| `.claude/settings.json` | init | プロジェクト | 記録の仕掛けを**追記**する。既存の登録は保持される |
-| `telemetry/<作業単位ID>.jsonl` | 着手したとき | プロジェクト | 停止、手戻り、トークン消費の記録 |
-| `test/` | 実装したとき | プロジェクト | テスト |
-| `docs/adr/` | 設計判断が生じたとき | プロジェクト | 設計判断の記録 |
-| `docs/boundary-changes.md` | 委譲範囲の表を動かしたとき | プロジェクト | 境界変更の履歴 |
+| `autodrive/` | init | dev-kit | Copy of the toolkit. Replaced by `update` |
+| `.env.example` | init | dev-kit | Credentials you need. **Generated from your setup** |
+| `.github/workflows/invariants.yml` | init | dev-kit | Runs the checks in CI |
+| `.devcontainer/` | init | dev-kit | The isolated workspace the AI runs in. **Outbound traffic is allowlisted** |
+| `docs/autodrive.md` | init | dev-kit | The rules the AI follows. **Includes how it should behave** |
+| `autodrive.json` | init | project | Your setup. Never changed by `update` |
+| `boundaries.yaml` | init | project | The delegation table. What you have handed to the AI |
+| `docs/what-why.md` | init | project | What you are building, and why |
+| `CLAUDE.md` | init | project | Project-specific rules |
+| `.gitignore` | init | project | Keeps credentials and working state out |
+| `notes/README.md` | init | project | **Yours to use.** Contents are not tracked |
+| `.claude/settings.json` | init | project | **Appends** the recording hook. Existing entries are kept |
+| `telemetry/<work item id>.jsonl` | when work starts | project | Stops, rework, token spend |
+| `test/` | when you implement | project | Tests |
+| `docs/adr/` | when a design decision comes up | project | Design decisions |
+| `docs/boundary-changes.md` | when the delegation table moves | project | History of delegation changes |
 
-dev-kit が所有するファイルは `update` で上書きされる。プロジェクトが所有するファイルは、既に存在する場合は変更されない。
+Files owned by dev-kit are overwritten by `update`. Files owned by the project are left alone if they already exist.
 
-`init` の時点では、下4つは作成されない。**プロジェクト固有の内容を持つため、空の雛形は置かない。**
+The last four are not created by `init`. **They hold project-specific content, so no empty stubs are placed.**
 
-## 仕組み
+## How it fits together
 
-### ツールセットはプロジェクトの中に複製される
+### The toolkit is copied into your project
 
 ```
-  <参照実装>                        <あなたのプロジェクト>
+  <reference implementation>        <your project>
 
   autodrive-dev-kit/                my-app/
-    src/          ───── init ─────▶   autodrive/       ツールセットの複製
-    invariants                        autodrive.json   構成
-    VERSION                           docs/            規約 / What・Why
+    src/          ───── init ─────▶   autodrive/       copy of the toolkit
+    invariants                        autodrive.json   your setup
+    VERSION                           docs/            rules / what-why
     templates/                        .github/         CI
 ```
 
-dev-kit を更新しても、`update` を実行するまでプロジェクトは変化しない。プロジェクトごとに異なる版で動作する（[ADR 0004](docs/adr/0004-vendored-kit.md)）。
+Updating dev-kit changes nothing in your project until you run `update`. Each project runs its own pinned version ([ADR 0004](docs/adr/0004-vendored-kit.md)).
 
-### 内側ループと外側ループ
+### Inner loop and outer loop
 
 ```
-  内側   実装 ──▶ 検出手段が判定 ──▶ 修正        AIだけで完結する
-                                                 人は呼ばれない
+  inner   implement ──▶ checks decide ──▶ fix       the AI finishes this alone
+                                                    you are not called
 
-  外側   記録を読む ──▶ 改善案 ──▶ 人が承認      停止の回数そのものを減らす
+  outer   read records ──▶ propose ──▶ you approve  reduces how often you are called at all
 ```
 
-どの領域をAIに任せているかは `boundaries.yaml` が持つ。**この表のセルを動かす変更は外側ループであり、人の承認を要する。** 新しい検出手段の導入も同様である。
+`boundaries.yaml` holds what you have delegated. **Moving a cell in that table is the outer loop, and needs your approval.** So does introducing a new way of detecting problems.
 
-### 不変条件の点検
+### Checking the invariants
 
-配置された仕掛けが実際に機能しているかを `invariants` が判定する。CIから自動実行され、手動でも実行できる。
+`invariants` decides whether the placed machinery is actually working. It runs from CI, and you can run it by hand.
 
 ```sh
 autodrive/invariants --root . --scope self
 ```
 
-見るのは次の4つである。**どれも、上で説明した2つのループが成り立つための前提にあたる。**
+It looks at four things. **Each one is a precondition for the two loops above.**
 
-| 見るもの | 成り立たないと何が起きるか |
+| What it looks at | What breaks if it fails |
 |---|---|
-| 外側ループが起動し、継続しているか | 記録が溜まるだけで、仕組みの改善に使われない |
-| 記録が残っているか | 外側ループの入力そのものが無くなる |
-| 境界変更が履歴に残っているか | いつ何を任せたのかが追えなくなる |
-| AIがこれらを無効化できないか | 上の3つが、いつでも外せる状態になる |
+| Whether the outer loop has started and is continuing | Records pile up and never improve anything |
+| Whether records exist | The outer loop has no input at all |
+| Whether delegation changes are in the history | You lose track of what was handed over, and when |
+| Whether the AI can disable any of the above | All three become removable at any time |
 
-出力は次の形になる。
+Output looks like this.
 
 ```
-[有効]    テレメトリが記録されること
-[代替]    AIがこれらを無効化できないこと
-[要対応]  委譲範囲の変更が履歴に残ること
+[有効] テレメトリが記録されること
+[代替] AIがこれらを無効化できないこと
 ```
 
-状態は4つある（定義§9）。**どれも「いま何であるか」を言う。**
+**This output is still Japanese.** Making it follow your language setting is in progress. Until then, ask the AI to read it back to you — it will.
 
-| 状態 | 意味 | 「記録が残っているか」の例 |
+There are four states (definition §9). **Each says what something currently is.**
+
+| State | Meaning | Example, for "records exist" |
 |---|---|---|
-| **有効** | 仕組みとして働いている。人が意識しなくても守られ、忘れることができない | フックが登録されていて、記録が自動的に残る |
-| **代替** | まだ仕組みになっておらず、人が手で肩代わりしている | 人が思い出して手で記録している。肩代わりの事実も記録に残っている |
-| **要対応** | 肩代わりの記録が無い、または有効かどうかを判定できない | 手で記録しているが、そうしている事実がどこにも無い |
-| **対象外** | この判定の範囲では扱わない | 横断でしか判定できない項目を、1リポジトリの中で見たとき |
+| **active** (有効) | Machinery is doing it. Nobody has to remember, and nobody can forget | The hook is registered and records land automatically |
+| **substituted** (代替) | Not machinery yet; a human is covering it by hand. The fact that they are is itself recorded | Someone remembers to record by hand, and that is written down |
+| **unresolved** (要対応) | No record of anyone covering it, or the state cannot be determined | Someone is recording by hand, but nothing says so |
+| **out of scope** (対象外) | Not judged here | A cross-repository item, looked at from inside one repository |
 
-**代替であること自体は失敗ではない。** 仕組みを作る作業には、まだその仕組みが無い。失敗として扱うのは**要対応だけ**である。「やっているつもり」のまま運用が続くことを防ぐためである。
+**Being substituted is not a failure.** The work of building machinery does not yet have that machinery. **Only "unresolved" is treated as failure** — that is what stops "we're basically doing it" from running forever.
 
-判定の内容、境界の進め方、代替の記録方法は [docs/invariants.md](docs/invariants.md) と [docs/commands.md](docs/commands.md) にある。
+The full criteria, how to widen delegation, and how to record a substitution are in [docs/invariants.md](docs/invariants.md) and [docs/commands.md](docs/commands.md).
 
-## もっと知る
+## Learn more
 
-| 文書 | 内容 |
+| Document | Contents |
 |---|---|
-| [docs/design.md](docs/design.md) | 画面の見え方を、実装前に合意する手順 |
-| [docs/commands.md](docs/commands.md) | コマンドの全体。**AIが実行するものを含む** |
-| [docs/invariants.md](docs/invariants.md) | 判定基準の全文 |
-| [docs/adr/](docs/adr/) | 設計判断の記録。**覆す提案をする前に読む** |
+| [docs/design.md](docs/design.md) | Agreeing on how a screen looks, before implementing it |
+| [docs/commands.md](docs/commands.md) | Every command. **Including the ones the AI runs** |
+| [docs/invariants.md](docs/invariants.md) | The full checking criteria |
+| [docs/adr/](docs/adr/) | Design decisions. **Read before proposing to overturn one** |
 
-## dev-kit そのものを直す
+**These are written in Japanese.** Ask the AI and it will explain any of them in your language — that is required of it, and it always reads the current version, so its answer never goes stale.
+
+## Working on the kit itself
 
 ```sh
-npm test    # node:test。テストフレームワークの依存は無い
+npm test    # node:test. no test framework dependency
 ```
 
-**素の JS を Node で直接実行する。ビルド手順は無い。** 型は JSDoc で書く。
+**Plain JS, run directly by Node. There is no build step.** Types are written as JSDoc.
 
-型注釈をそのまま実行する形は採れない。**Node は `node_modules` の下にあるファイルの型注釈を剥がさないため**、`npx` で配れなくなる（[ADR 0001](docs/adr/0001-implementation-language.md)）。
+Type annotations cannot be used directly. **Node deliberately does not strip types under `node_modules`,** which would break `npx` distribution ([ADR 0001](docs/adr/0001-implementation-language.md)).
 
-**`dependencies` を置かないこと。** 依存ゼロであることが、dev-kit のサプライチェーン上の防御である。追加が必要になった場合は [ADR 0001](docs/adr/0001-implementation-language.md) を読み、必要なら更新の提案から始める。
+**Do not add `dependencies`.** Having none is this kit's supply-chain defence. If you think you need one, read [ADR 0001](docs/adr/0001-implementation-language.md) first and start by proposing to change it.
 
-**確認の仕掛けを作った時点で、その仕掛け自体を検証する。** テストが書けるものは書く。書けないものは動作を確認してから提出する。**壊した実装に対してテストが落ちることまで確かめる**（通ることの確認だけでは、何も見ていないテストと区別できない）。
+**When you build something that checks, verify the check itself in the same work item.** Write a test where you can. Where you cannot, confirm the behaviour before submitting. **Confirm that the test fails against a broken implementation** — otherwise a passing test is indistinguishable from one that checks nothing.
