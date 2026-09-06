@@ -257,9 +257,9 @@ Do not do that by hand; `npm run mutate` does it. `mutations/regression.json` ho
 
 [Apache License 2.0](LICENSE). Copyright 2026 Hajime Hashino.
 
-**Use it, change it, ship it, sell it. You do not need to ask.**
+You are free to distribute it, modify it, and use it, including commercially. Please go ahead.
 
-The one thing you have to do is keep two files with the copy: `LICENSE` and `NOTICE`. **`init` puts both inside `autodrive/` for you,** so if you are simply using the toolkit in a project, there is nothing for you to do.
+Just keep the `LICENSE` and `NOTICE` files alongside it. `init` copies both into `autodrive/` when you adopt the toolkit in a project, so if you are simply using it there is nothing you need to think about.
 
 The method itself is in a separate repository under a different license. [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition) is **CC BY 4.0**, because it is prose rather than code — quote it, translate it, teach from it; just say where it came from.
 
