@@ -733,8 +733,23 @@ test("ライセンスの節が、何をしてよいかを言う", () => {
     assert.match(text, /autodrive\//, `${readme.file}: どこへ置かれるかが無い`);
   }
   // **やってよいことを、先に言う。** 条件から書くと、条件のほうが主に読める。
-  assert.match(READMES[0].text(), /Use it, change it/, "英語版に許諾の一文が無い");
-  assert.match(READMES[1].text(), /断りは要らない/, "日本語版に許諾の一文が無い");
+  //
+  // **言い回しではなく、言えているかで見る。** 文面は変わるが、
+  // 「自由に使ってよい」「商用も含む」の2つは落としてはいけない。
+  for (const [readme, heading, grants] of [
+    // **隣の段落が肩代わりしないものを選ぶ。** 「自由」だけを見ると、
+    // すぐ下にある定義の CC BY の説明が肩代わりして通ってしまう。
+    [READMES[0], "## License", [/distribute/i, /modif/i, /\buse\b/i, /commercial/i]],
+    [READMES[1], "## ライセンス", [/配布/, /改変/, /利用/, /商用/]],
+  ]) {
+    const text = readme.text();
+    const at = text.indexOf(heading);
+    assert.notEqual(at, -1, `${readme.file}: ライセンスの節が無い`);
+    const section = text.slice(at, text.indexOf("\n## ", at + 1));
+    for (const grant of grants) {
+      assert.match(section, grant, `${readme.file}: 許諾の範囲が書かれていない（${grant}）`);
+    }
+  }
 });
 
 // フォークしたときに動かないものを、全部挙げること。
