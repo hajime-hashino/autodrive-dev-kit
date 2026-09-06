@@ -79,8 +79,11 @@ export class Result {
 }
 
 export const INVARIANTS = [
-  { key: "outer_loop_running", label: "外側ループが起動し、継続すること" },
-  { key: "telemetry_recorded", label: "テレメトリが記録されること" },
-  { key: "boundary_change_logged", label: "境界変更が履歴に残ること" },
-  { key: "ai_cannot_disable", label: "AIがこれらを無効化できないこと" },
+  // **名前はここに持たない。** `messages.js` が言語ごとに持つ。2か所に置くと、
+  // 片方だけ古くなる。実際に「境界変更が履歴に残ること」が定義 v0.14 のあとも
+  // 残っていた（AUT-135）。
+  { key: "outer_loop_running" },
+  { key: "telemetry_recorded" },
+  { key: "boundary_change_logged" },
+  { key: "ai_cannot_disable" },
 ];
