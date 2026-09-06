@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 890" width="1360" height="890"
+     role="img" aria-label="人・サンドボックス・記録・実行の4つの区画と、1件の変更が流れる経路の図">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b6167"/>
+    </marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b4472f"/>
+    </marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a8878"/>
+    </marker>
+    <style>
+      text { font-family: "Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",Meiryo,system-ui,sans-serif; }
+      .bx  { fill:#fff; stroke:#d8dcdf; stroke-width:1.2; }
+      .ttl { font-size:15px; font-weight:600; fill:#1a1d1f; }
+      .sub { font-size:12px; fill:#6b7280; }
+      .grp { font-size:11.5px; fill:#8a9199; letter-spacing:.22em; }
+      .ln  { stroke:#5b6167; stroke-width:1.3; fill:none; }
+      .fb  { stroke:#4a8878; stroke-width:1.3; fill:none; stroke-dasharray:5 4; }
+      .tag { font-size:10.5px; fill:#b4472f; letter-spacing:.14em; font-weight:600; }
+    </style>
+  </defs>
+
+  <!-- 暗い配色の画面でも読めるように、下地を敷く -->
+  <rect class="bg" x="0" y="0" width="1360" height="890" fill="#ffffff"/>
+
+  <!-- ================= 人 ================= -->
+  <rect class="bx" x="60" y="24" width="414" height="72" rx="3" fill="#f2f3f4"/>
+  <text class="ttl" x="80" y="52">人</text>
+  <text class="sub" x="80" y="74">意思決定 ／ 抜き取り確認 ／ 統合の承認 ／ リリース発火</text>
+
+  <!-- ================= SANDBOX ================= -->
+  <rect x="32" y="128" width="470" height="470" rx="4"
+        fill="none" stroke="#b8bec4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text class="grp" x="56" y="152">SANDBOX ／ devcontainer</text>
+
+  <rect class="bx" x="60" y="176" width="414" height="92" rx="3" fill="#eaf3f0" stroke="#9cc3b7"/>
+  <text class="ttl" x="80" y="205">Coding Agent（Claude Code）</text>
+  <text class="sub" x="80" y="227">ポート語彙で実装・検証・提出を主導する</text>
+  <text class="sub" x="80" y="247">停止条件に触れたら人へ返す</text>
+
+  <rect class="bx" x="60" y="286" width="414" height="80" rx="3"/>
+  <text class="ttl" x="80" y="314">autodrive/（複製された道具）</text>
+  <text class="sub" x="80" y="336">invariants ／ 記録フック ／ CLI</text>
+  <text class="sub" x="80" y="356">版はプロジェクトごとに固定される</text>
+
+  <rect class="bx" x="60" y="384" width="196" height="80" rx="3"/>
+  <text class="ttl" x="80" y="412">作業ツリー</text>
+  <text class="sub" x="80" y="434">ソース ／ docs/adr</text>
+  <text class="sub" x="80" y="454">boundaries.yaml</text>
+
+  <rect class="bx" x="278" y="384" width="196" height="80" rx="3"/>
+  <text class="ttl" x="298" y="412">ローカル検証</text>
+  <text class="sub" x="298" y="434">test ／ 型 ／ lint</text>
+  <text class="sub" x="298" y="454">変異テスト</text>
+
+  <text class="tag" x="60" y="500">GUARDRAIL</text>
+  <text class="sub" x="60" y="522">出口は許可制。宛先は構成から作られ、起動のたびに適用される。</text>
+  <text class="sub" x="60" y="542">出られる先を減らす仕掛けであって、閉じる仕掛けではない。</text>
+  <text class="sub" x="60" y="562">直接編集しないのは規約であり、機械的な強制ではない。</text>
+
+  <!-- ================= TRACK / RECORD ================= -->
+  <text class="grp" x="548" y="152">TRACK ／ RECORD</text>
+
+  <rect class="bx" x="548" y="176" width="340" height="88" rx="3"/>
+  <text class="ttl" x="568" y="205">Linear（Tracker）</text>
+  <text class="sub" x="568" y="227">作業単位 ／ ステータス</text>
+  <text class="sub" x="568" y="247">作業ログ ／ 意思決定の記録</text>
+
+  <!-- GitHub は入れ物。記録はこの中に溜まる -->
+  <rect class="bx holder" x="548" y="284" width="340" height="372" rx="4" fill="#fafbfb"/>
+  <text class="ttl" x="568" y="312">GitHub（Repo）</text>
+
+  <rect class="bx" x="568" y="328" width="300" height="62" rx="3"/>
+  <text class="ttl" x="586" y="354">提出（PR）</text>
+  <text class="sub" x="586" y="376">差分とCIの結果、指摘が集まる</text>
+
+  <rect class="bx" x="568" y="402" width="300" height="76" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
+  <text class="ttl" x="586" y="428">統合（マージ）</text>
+  <text class="tag" x="782" y="426">人が承認</text>
+  <text class="sub" x="586" y="450">承認はここで受け取る</text>
+  <text class="sub" x="586" y="470">不可逆。既定ブランチへ直接は入れない</text>
+
+  <rect class="bx" x="568" y="490" width="300" height="56" rx="3"/>
+  <text class="ttl" x="586" y="516">docs/adr ／ 委譲範囲の変更履歴</text>
+  <text class="sub" x="586" y="536">設計判断と、任せた範囲の動き</text>
+
+  <rect class="bx" x="568" y="558" width="300" height="80" rx="3"/>
+  <text class="ttl" x="586" y="584">telemetry/*.jsonl</text>
+  <text class="sub" x="586" y="606">停止 ／ 手戻り ／ 検出漏れ</text>
+  <text class="sub" x="586" y="626">抜き取り確認 ／ トークン消費</text>
+
+  <rect class="bx" x="548" y="690" width="340" height="88" rx="3"/>
+  <text class="ttl" x="568" y="719">invariants（判定器）</text>
+  <text class="sub" x="568" y="741">不変条件が有効かを機械的に判定</text>
+  <text class="sub" x="568" y="761">CIと手元の両方から打てる</text>
+
+  <!-- ================= RUN / RELEASE ================= -->
+  <text class="grp" x="946" y="152">RUN ／ RELEASE</text>
+
+  <rect class="bx" x="946" y="176" width="314" height="84" rx="3"/>
+  <text class="ttl" x="966" y="205">Runner（GitHub Actions）</text>
+  <text class="sub" x="966" y="227">検証の実行と配布</text>
+  <text class="sub" x="966" y="247">提出を経ない変更を弾く</text>
+
+  <!-- 配布先は1つ。箱ごとに繰り返さず、囲んで一度だけ言う -->
+  <rect x="930" y="274" width="346" height="486" rx="4"
+        fill="none" stroke="#b8bec4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text class="grp" x="946" y="296">Cloudflare Workers（既定）</text>
+
+  <rect class="bx holder" x="946" y="312" width="314" height="176" rx="4" fill="#fafbfb"/>
+  <text class="ttl" x="966" y="340">検証環境</text>
+
+  <rect class="bx" x="964" y="352" width="278" height="80" rx="3"/>
+  <text class="ttl" x="982" y="378">プレビュー</text>
+  <text class="sub" x="982" y="400">検証環境の上に出る。別の環境ではない</text>
+  <text class="sub" x="982" y="420">提出ごとに見え方を確かめる</text>
+
+  <text class="sub" x="966" y="454">本番相当の資格情報とデータを持つ</text>
+  <text class="sub" x="966" y="474">外から見せるのは人の承認</text>
+
+  <rect class="bx" x="946" y="516" width="314" height="84" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
+  <text class="ttl" x="966" y="544">本番環境</text>
+  <text class="tag" x="1196" y="542">FIXED</text>
+  <text class="sub" x="966" y="566">配布は不可逆。人が発火する</text>
+  <text class="sub" x="966" y="586">実績が積まれても緩めない</text>
+
+  <rect class="bx" x="946" y="632" width="314" height="104" rx="3"/>
+  <text class="ttl" x="966" y="661">Flag（既定なし）</text>
+  <text class="sub" x="966" y="683">OpenFeature 準拠の任意の実装</text>
+  <text class="sub" x="966" y="703">見せる範囲を段階的に広げる</text>
+  <text class="sub" x="966" y="723">広げるほうが不可逆。戻すのは可逆</text>
+
+  <!-- ================= 経路 ================= -->
+  <path class="ln" d="M 430 96 V 170" marker-end="url(#a)"/>
+
+  <path class="ln" d="M 474 222 H 524"/>
+  <path class="ln" d="M 524 222 V 596"/>
+  <path class="ln" d="M 524 222 H 542" marker-end="url(#a)"/>
+  <path class="ln" d="M 524 358 H 562" marker-end="url(#a)"/>
+  <path class="ln" d="M 524 596 H 562" marker-end="url(#a)"/>
+
+  <!-- 提出 → 統合（不可逆） -->
+  <path class="ln" stroke="#b4472f" d="M 718 390 V 396" marker-end="url(#ar)"/>
+
+  <!-- リポジトリ → 判定器 -->
+  <path class="ln" d="M 718 656 V 684" marker-end="url(#a)"/>
+
+  <!-- 提出 → 検証 -->
+  <path class="ln" d="M 888 340 H 920 V 218 H 940" marker-end="url(#a)"/>
+
+  <path class="ln" d="M 1200 260 V 306" marker-end="url(#a)"/>
+  <path class="ln" stroke="#b4472f" d="M 1200 488 V 510" marker-end="url(#ar)"/>
+  <path class="ln" d="M 1200 632 V 606" marker-end="url(#a)"/>
+
+  <!-- ================= フィードバック ================= -->
+  <!-- 提出の指摘とCIの結果 -->
+  <path class="fb" d="M 868 372 H 902 V 850"/>
+  <!-- 検証結果・実動作・本番の異常 -->
+  <path class="fb" d="M 1260 218 H 1330"/>
+  <path class="fb" d="M 1260 392 H 1330"/>
+  <path class="fb" d="M 1260 558 H 1330"/>
+  <path class="fb" d="M 1330 218 V 850"/>
+  <path class="fb" d="M 1330 850 H 200 V 604" marker-end="url(#at)"/>
+  <text class="grp" x="360" y="838" fill="#4a8878">FEEDBACK ／ 提出の指摘・検証結果・実動作・本番の異常</text>
+
+  <!-- ================= 凡例 ================= -->
+  <path class="ln" d="M 560 862 H 596" marker-end="url(#a)"/>
+  <text class="sub" x="606" y="866">操作の流れ</text>
+  <path class="fb" d="M 706 862 H 742"/>
+  <text class="sub" x="752" y="866">フィードバック</text>
+  <path class="ln" stroke="#b4472f" d="M 878 862 H 914" marker-end="url(#ar)"/>
+  <text class="sub" x="924" y="866">不可逆な操作</text>
+</svg>
