@@ -108,3 +108,30 @@ test("不変条件の名前が、定義の語彙と揃っている", () => {
   assert.match(out, /委譲範囲の変更が履歴に残ること/, "定義 v0.14 の語彙になっていない");
   assert.ok(!out.includes("境界変更"), `旧名が残っている: ${out}`);
 });
+
+// **構成から判定器の出力まで、通しで見る。**
+//
+// `renderText` を直接呼ぶ判定だけでは、**構成を読む部分が抜けても気づけない。**
+// 実際に、変異テストで通ってしまった（AUT-138）。
+test("autodrive.json の language が、判定器の出力まで届く", async () => {
+  const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { execFileSync } = await import("node:child_process");
+  const { run } = await import("../src/main.js");
+  const { defaults } = await import("../src/config.js");
+
+  const root = mkdtempSync(join(tmpdir(), "autodrive-lang-"));
+  execFileSync("git", ["-C", root, "init", "-q"]);
+  const config = defaults();
+  config.language = "en";
+  writeFileSync(join(root, "autodrive.json"), JSON.stringify(config), "utf8");
+
+  const en = await run(["--root", root, "--scope", "self"]);
+  assert.match(en.output, /^Invariant status/, `英語になっていない: ${en.output.slice(0, 120)}`);
+
+  config.language = "ja";
+  writeFileSync(join(root, "autodrive.json"), JSON.stringify(config), "utf8");
+  const ja = await run(["--root", root, "--scope", "self"]);
+  assert.match(ja.output, /^不変条件の状態/, `日本語になっていない: ${ja.output.slice(0, 120)}`);
+});

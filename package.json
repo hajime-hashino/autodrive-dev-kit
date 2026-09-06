@@ -21,6 +21,7 @@
   },
   "scripts": {
     "verify": "node src/main.js",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "mutate": "node src/mutateCli.js mutations/regression.json"
   }
 }
