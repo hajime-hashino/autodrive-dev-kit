@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 890" width="1320" height="890"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 890" width="1360" height="890"
      role="img" aria-label="人・サンドボックス・記録・実行の4つの区画と、1件の変更が流れる経路の図">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5"
@@ -26,7 +26,7 @@
   </defs>
 
   <!-- 暗い配色の画面でも読めるように、下地を敷く -->
-  <rect class="bg" x="0" y="0" width="1320" height="890" fill="#ffffff"/>
+  <rect class="bg" x="0" y="0" width="1360" height="890" fill="#ffffff"/>
 
   <!-- ================= 人 ================= -->
   <rect class="bx" x="60" y="24" width="414" height="72" rx="3" fill="#f2f3f4"/>
@@ -100,38 +100,40 @@
   <text class="sub" x="568" y="761">CIと手元の両方から打てる</text>
 
   <!-- ================= RUN / RELEASE ================= -->
-  <text class="grp" x="938" y="152">RUN ／ RELEASE</text>
+  <text class="grp" x="946" y="152">RUN ／ RELEASE</text>
 
-  <rect class="bx" x="938" y="176" width="330" height="84" rx="3"/>
-  <text class="ttl" x="958" y="205">Runner（GitHub Actions）</text>
-  <text class="sub" x="958" y="227">検証の実行と配布</text>
-  <text class="sub" x="958" y="247">提出を経ない変更を弾く</text>
+  <rect class="bx" x="946" y="176" width="314" height="84" rx="3"/>
+  <text class="ttl" x="966" y="205">Runner（GitHub Actions）</text>
+  <text class="sub" x="966" y="227">検証の実行と配布</text>
+  <text class="sub" x="966" y="247">提出を経ない変更を弾く</text>
 
-  <!-- プレビューは検証環境の上に出る。別の環境ではないため、入れ物にする -->
-  <rect class="bx holder" x="938" y="284" width="330" height="196" rx="4" fill="#fafbfb"/>
-  <text class="ttl" x="958" y="312">検証環境</text>
-  <text class="sub" x="958" y="332">Cloudflare Workers（既定）</text>
+  <!-- 配布先は1つ。箱ごとに繰り返さず、囲んで一度だけ言う -->
+  <rect x="930" y="274" width="346" height="486" rx="4"
+        fill="none" stroke="#b8bec4" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text class="grp" x="946" y="296">Cloudflare Workers（既定）</text>
 
-  <rect class="bx" x="956" y="346" width="294" height="80" rx="3"/>
-  <text class="ttl" x="974" y="372">プレビュー</text>
-  <text class="sub" x="974" y="394">検証環境の上に出る。別の環境ではない</text>
-  <text class="sub" x="974" y="414">提出ごとに見え方を確かめる</text>
+  <rect class="bx holder" x="946" y="312" width="314" height="176" rx="4" fill="#fafbfb"/>
+  <text class="ttl" x="966" y="340">検証環境</text>
 
-  <text class="sub" x="958" y="448">本番相当の資格情報とデータを持つ</text>
-  <text class="sub" x="958" y="468">外から見せるのは人の承認</text>
+  <rect class="bx" x="964" y="352" width="278" height="80" rx="3"/>
+  <text class="ttl" x="982" y="378">プレビュー</text>
+  <text class="sub" x="982" y="400">検証環境の上に出る。別の環境ではない</text>
+  <text class="sub" x="982" y="420">提出ごとに見え方を確かめる</text>
 
-  <rect class="bx" x="938" y="506" width="330" height="104" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
-  <text class="ttl" x="958" y="535">本番環境</text>
-  <text class="tag" x="1196" y="533">FIXED</text>
-  <text class="sub" x="958" y="557">Cloudflare Workers（既定）</text>
-  <text class="sub" x="958" y="577">配布は不可逆。人が発火する</text>
-  <text class="sub" x="958" y="597">実績が積まれても緩めない</text>
+  <text class="sub" x="966" y="454">本番相当の資格情報とデータを持つ</text>
+  <text class="sub" x="966" y="474">外から見せるのは人の承認</text>
 
-  <rect class="bx" x="938" y="636" width="330" height="104" rx="3"/>
-  <text class="ttl" x="958" y="665">Flag（既定なし）</text>
-  <text class="sub" x="958" y="687">OpenFeature 準拠の任意の実装</text>
-  <text class="sub" x="958" y="707">見せる範囲を段階的に広げる</text>
-  <text class="sub" x="958" y="727">広げるほうが不可逆。戻すのは可逆</text>
+  <rect class="bx" x="946" y="516" width="314" height="84" rx="3" fill="#fbeee9" stroke="#d9a08e"/>
+  <text class="ttl" x="966" y="544">本番環境</text>
+  <text class="tag" x="1196" y="542">FIXED</text>
+  <text class="sub" x="966" y="566">配布は不可逆。人が発火する</text>
+  <text class="sub" x="966" y="586">実績が積まれても緩めない</text>
+
+  <rect class="bx" x="946" y="632" width="314" height="104" rx="3"/>
+  <text class="ttl" x="966" y="661">Flag（既定なし）</text>
+  <text class="sub" x="966" y="683">OpenFeature 準拠の任意の実装</text>
+  <text class="sub" x="966" y="703">見せる範囲を段階的に広げる</text>
+  <text class="sub" x="966" y="723">広げるほうが不可逆。戻すのは可逆</text>
 
   <!-- ================= 経路 ================= -->
   <path class="ln" d="M 430 96 V 170" marker-end="url(#a)"/>
@@ -149,21 +151,21 @@
   <path class="ln" d="M 718 656 V 684" marker-end="url(#a)"/>
 
   <!-- 提出 → 検証 -->
-  <path class="ln" d="M 888 340 H 920 V 218 H 932" marker-end="url(#a)"/>
+  <path class="ln" d="M 888 340 H 920 V 218 H 940" marker-end="url(#a)"/>
 
-  <path class="ln" d="M 1103 260 V 278" marker-end="url(#a)"/>
-  <path class="ln" stroke="#b4472f" d="M 1103 480 V 500" marker-end="url(#ar)"/>
-  <path class="ln" d="M 1103 636 V 616" marker-end="url(#a)"/>
+  <path class="ln" d="M 1200 260 V 306" marker-end="url(#a)"/>
+  <path class="ln" stroke="#b4472f" d="M 1200 488 V 510" marker-end="url(#ar)"/>
+  <path class="ln" d="M 1200 632 V 606" marker-end="url(#a)"/>
 
   <!-- ================= フィードバック ================= -->
   <!-- 提出の指摘とCIの結果 -->
   <path class="fb" d="M 868 372 H 902 V 850"/>
   <!-- 検証結果・実動作・本番の異常 -->
-  <path class="fb" d="M 1268 218 H 1292"/>
-  <path class="fb" d="M 1268 386 H 1292"/>
-  <path class="fb" d="M 1268 558 H 1292"/>
-  <path class="fb" d="M 1292 218 V 850"/>
-  <path class="fb" d="M 1292 850 H 200 V 604" marker-end="url(#at)"/>
+  <path class="fb" d="M 1260 218 H 1330"/>
+  <path class="fb" d="M 1260 392 H 1330"/>
+  <path class="fb" d="M 1260 558 H 1330"/>
+  <path class="fb" d="M 1330 218 V 850"/>
+  <path class="fb" d="M 1330 850 H 200 V 604" marker-end="url(#at)"/>
   <text class="grp" x="360" y="838" fill="#4a8878">FEEDBACK ／ 提出の指摘・検証結果・実動作・本番の異常</text>
 
   <!-- ================= 凡例 ================= -->

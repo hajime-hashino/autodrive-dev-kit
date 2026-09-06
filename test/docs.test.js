@@ -590,9 +590,13 @@ test("構築例の図が、枠からはみ出さない", () => {
 
   const rects = [...svg.matchAll(/<rect([^>]*?)\/>/g)].map((m) => {
     const at = (k) => Number((new RegExp(`${k}="([-\\d.]+)"`).exec(m[1]) || [])[1]);
-    // 下地と、中に枠を持つ入れ物。**大きさではなく class で見分ける。**
-    const holder = /dasharray|class="bg"|class="bx holder"/.test(m[1]);
-    return { x: at("x"), y: at("y"), w: at("width"), h: at("height"), group: holder };
+    return {
+      x: at("x"), y: at("y"), w: at("width"), h: at("height"),
+      // 下地。判定の対象にしない
+      background: /class="bg"/.test(m[1]),
+      // 中に枠を持つ入れ物。**大きさではなく class と破線で見分ける。**
+      holder: /dasharray|class="bx holder"/.test(m[1]),
+    };
   });
   assert.ok(rects.length > 5, "枠を読み取れていない。判定が空回りしている");
 
@@ -603,11 +607,11 @@ test("構築例の図が、枠からはみ出さない", () => {
     );
   }
 
-  // 下地と、中に枠を持つ入れ物は、重なりの判定から外す。
-  const boxes = rects.filter((r) => !r.group);
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      const [a, b] = [boxes[i], boxes[j]];
+  // 入れ物は中に枠を持つため、重なりの判定から外す。
+  const solid = rects.filter((r) => !r.background && !r.holder);
+  for (let i = 0; i < solid.length; i++) {
+    for (let j = i + 1; j < solid.length; j++) {
+      const [a, b] = [solid[i], solid[j]];
       const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
       assert.equal(overlap, false, `枠が重なっている: (${a.x},${a.y}) と (${b.x},${b.y})`);
     }
@@ -625,7 +629,9 @@ test("構築例の図が、枠からはみ出さない", () => {
     const size = cls === "ttl" ? 15 : cls === "tag" ? 10.5 : 12;
     const [x, y] = [Number(xs), Number(ys)];
     // **いちばん小さい枠で見る。** 入れ物のほうで見ると、内側の枠の幅を見逃す。
-    const home = boxes
+    // 入れ物の直下に置いた文字もあるため、入れ物も候補に含める。
+    const home = rects
+      .filter((r) => !r.background)
       .filter((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
       .sort((a, b) => a.w * a.h - b.w * b.h)[0];
     const right = x + widthOf(body, size);
