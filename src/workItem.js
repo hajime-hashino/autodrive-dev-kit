@@ -9,7 +9,7 @@
  */
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 /** 作業状態の置き場所。work リポジトリ直下、追跡対象外。 */
 export const STATE_DIR = ".autodrive";
@@ -62,7 +62,28 @@ export function resolveWorkItem(root) {
     };
   }
 
-  return { item: { workItemId, repoPath: resolveRepo(root, repo) }, unattributedReason: null };
+  // **無い場所には書かない。** 記録の追記は途中のディレクトリごと作るため、
+  // 指す先が存在しなくても**「記録した」と表示されて成功に見える。** 判定器が
+  // 見るのは `<対象リポジトリ>/telemetry/` であり、そこに無い記録は無いのと同じ
+  // である。しかも作られた場所は追跡対象外なので、そのまま消える（AUT-143）。
+  //
+  // 直したのは相対パスの取り違えだが、**取り違えの原因は1つとは限らない。**
+  // マーカーのリポジトリ名が古くなった場合も同じ形で黙る。ここで塞ぐ。
+  //
+  // **`.git` までは求めない。** 求めれば「記録は追跡される場所に置く」まで言えるが、
+  // それは観測されていない失敗に対する強化である。ここで塞ぐのは、**実際に起きた
+  // 「無い場所が作られる」だけにする。**
+  const repoPath = resolveRepo(root, repo);
+  if (!existsSync(repoPath)) {
+    return {
+      item: null,
+      unattributedReason:
+        `作業単位マーカーが指すリポジトリが無い（${repo} → ${repoPath}）。` +
+        "**そこへ書くと、判定器が見ない場所に記録が作られる。** 起点と repo を確かめること",
+    };
+  }
+
+  return { item: { workItemId, repoPath }, unattributedReason: null };
 }
 
 /**
@@ -75,9 +96,19 @@ export function currentWorkItem(root) {
   return resolveWorkItem(root).item;
 }
 
-/** リポジトリ名から作業ツリーの位置を求める。work 自身は直下ではなく起点そのもの。 */
+/**
+ * リポジトリ名から作業ツリーの位置を求める。work 自身は直下ではなく起点そのもの。
+ *
+ * **比べる前に、起点を絶対パスへ直す。** `--root .` のような相対パスだと
+ * `basename(".")` は `"."` であり、「起点そのものが対象リポジトリ」の判定が外れる。
+ * 外れると起点の下をもう一段掘り、**存在しない入れ子へ記録を書く**（AUT-143）。
+ *
+ * `--root` の説明は「記録の起点。既定は CLAUDE_PROJECT_DIR かカレントディレクトリ」
+ * であり、`.` を渡すのは自然な使い方である。**受け取り方の側で吸収する。**
+ */
 export function resolveRepo(root , repo) {
-  return repo === basename(root) ? root : join(root, repo);
+  const base = resolve(root);
+  return repo === basename(base) ? base : join(base, repo);
 }
 
 export function cursorPath(root , sessionId) {
@@ -101,9 +132,15 @@ export function writeCursor(path , lines , lastUuid) {
   writeFileSync(path, `${JSON.stringify({ lines, last_uuid: lastUuid })}\n`, "utf8");
 }
 
-/** 記録の追記先。作業単位が解決できない場合の行き先もここで決める。 */
+/**
+ * 記録の追記先。作業単位が解決できない場合の行き先もここで決める。
+ *
+ * **絶対パスで返す。** 相対で返すと、書けた先が本当に意図した場所かを、出力を見た
+ * 人が確かめられない。実際に `autodrive-dev-work/telemetry/...` と表示され、
+ * 起点そのものだと読めてしまった（AUT-143）。
+ */
 export function telemetryPath(root , item) {
-  if (item === null) return join(root, "telemetry", "unattributed.jsonl");
+  if (item === null) return join(resolve(root), "telemetry", "unattributed.jsonl");
   return join(item.repoPath, "telemetry", `${item.workItemId}.jsonl`);
 }
 
