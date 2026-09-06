@@ -556,12 +556,20 @@ test("互いを指している", () => {
 // **載せる出力は、実物であること。** 無い出力を載せると、読んだ人が信じる。
 test("英語版が載せている判定の出力が、実物と同じ形をしている", async () => {
   // **判定が使う印を、そのまま引く。** 手で写すと、変わったときに気づけない。
-  const { MARK } = await import("../src/report.js");
-  const real = Object.values(MARK);
+  // 言語ごとに綴りが違うため、全部の言語から集める。
+  const { LANGUAGES, say } = await import("../src/messages.js");
+  const real = LANGUAGES.flatMap((l) =>
+    ["state.active", "state.substituted", "state.unsubstituted", "state.notInScope"].map((k) =>
+      say(l, k),
+    ),
+  );
 
-  const inReadme = [...READMES[0].text().matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1]);
-  assert.ok(inReadme.length > 0, "出力例が載っていない");
-  for (const m of inReadme) {
-    assert.ok(real.includes(m), `実物に無い印を載せている: [${m}]（実物は ${real.join(" / ")}）`);
+  for (const { file, text } of READMES) {
+    // **リンクを拾わない。** `[名前](先)` は行頭にも出る。
+    const inReadme = [...text().matchAll(/^\[([^\]]+)\](?!\()/gm)].map((m) => m[1]);
+    assert.ok(inReadme.length > 0, `${file}: 出力例が載っていない`);
+    for (const m of inReadme) {
+      assert.ok(real.includes(m), `${file}: 実物に無い印を載せている: [${m}]`);
+    }
   }
 });
