@@ -152,6 +152,12 @@ The last four are not created by `init`. **They hold project-specific content, s
 
 ## How it fits together
 
+The setup, and the path a single change takes. **Every element is a port and can be swapped.** What the diagram shows is the default setup.
+
+![How it fits together: the human, the sandbox, the record, and the run, with the path a change takes](docs/environment.svg)
+
+*The diagram is labelled in Japanese. Ask the AI and it will read it back in your language.*
+
 ### The toolkit is copied into your project
 
 ```
@@ -221,7 +227,6 @@ The full criteria, how to widen delegation, and how to record a substitution are
 
 | Document | Contents |
 |---|---|
-| [docs/environment.html](docs/environment.html) | **What runs where, on one page.** The setup and the path a change takes |
 | [docs/design.md](docs/design.md) | Agreeing on how a screen looks, before implementing it |
 | [docs/commands.md](docs/commands.md) | Every command. **Including the ones the AI runs** |
 | [docs/invariants.md](docs/invariants.md) | The full checking criteria |
