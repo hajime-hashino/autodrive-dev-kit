@@ -244,3 +244,11 @@ npm run mutate  # 過去に直した誤りを戻し、テストが落ちるか�
 その確認は手で打たず、`npm run mutate` に任せる。`mutations/regression.json` に、過去に直した誤りを実装へ戻す変異が入っている。**誤りを直したら、それを戻す変異をここへ足すこと。** CI からも回る。
 
 **手で打つと、打ち方のほうが壊れる。** 実際に2度壊れており、どちらも「すべて捕まえている」と読めていた（AUT-138）。詳しくは [src/mutate.js](src/mutate.js) の冒頭にある。
+
+## ライセンス
+
+[Apache License 2.0](LICENSE)。Copyright 2026 Hajime Hashino.
+
+**この道具は採用先のプロジェクトへ複製されるため、ライセンスも一緒に付いていく。** `init` は `autodrive/` の中へ `LICENSE` と `NOTICE` を置く。複製が、誰のものか分からない状態にならないようにするためである。
+
+手法そのものは別のリポジトリにあり、ライセンスも別である。[AIオートドライビング開発](https://github.com/hajimegane/autodrive-dev-definition) は **CC BY 4.0**。コードではなく散文であるため。

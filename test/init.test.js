@@ -272,3 +272,40 @@ test("ディレクトリごとの再帰複製を使わない", () => {
   assert.equal(src.includes("cpSync"), false, "再帰複製に頼っている");
   assert.ok(src.includes("copyFileSync"), "1ファイルずつ写していない");
 });
+
+// ライセンスは、複製された先まで付いていくこと。
+//
+// **ここに置かれるのはこの道具のコードの複製である。** Apache-2.0 は「複製を
+// 受け取る人にライセンスの写しを渡す」ことを求めている（§4(a)）。入れ忘れると、
+// **採用先にライセンス文の無いコードの複製が残る。**
+//
+// 誰のものかも残す（§4(d)）。名前の無い複製にしない。
+test("複製された道具に、ライセンスと著作権表示が付いてくる", () => {
+  const root = project();
+  init(root, KIT);
+
+  const license = join(root, "autodrive", "LICENSE");
+  assert.ok(existsSync(license), "**ライセンス文の無いコードの複製になっている**");
+  const text = readFileSync(license, "utf8");
+  assert.match(text, /Apache License/, "Apache-2.0 の全文が入っていない");
+  assert.match(text, /Version 2\.0, January 2004/, "版が読み取れない");
+
+  const notice = join(root, "autodrive", "NOTICE");
+  assert.ok(existsSync(notice), "**誰のものか分からない複製になっている**");
+  assert.match(readFileSync(notice, "utf8"), /Copyright \d{4}/, "著作権表示が無い");
+});
+
+// 元の道具の側にも、置かれていること。
+//
+// **複製にだけ入っていても意味が無い。** 受け取る経路は `init` だけではない。
+// `npx github:` も `git clone` も、このリポジトリを直接読む。
+test("参照実装そのものに、ライセンスと著作権表示がある", () => {
+  for (const name of ["LICENSE", "NOTICE"]) {
+    assert.ok(existsSync(join(KIT, name)), `${name} が無い`);
+  }
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
+  // **文書とメタデータを食い違わせない。** 道具の一覧に出るのはこちらである。
+  assert.equal(pkg.license, "Apache-2.0", "package.json の license が違う");
+  assert.match(readFileSync(join(KIT, "NOTICE"), "utf8"), new RegExp(pkg.author ?? "^$"),
+    "NOTICE と package.json の author が食い違っている");
+});
