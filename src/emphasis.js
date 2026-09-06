@@ -93,3 +93,29 @@ function unclosed(text) {
 
   return open;
 }
+
+/**
+ * 見出しの無い表を見つける。
+ *
+ * **Markdown の表には見出し行が要る。** 空にすると、多くの描画で**空の帯が出て
+ * 崩れて見える。** 書いている側は本文だけを見ているので気づかない。実際に、
+ * 人から「レイアウトが崩れている」と指摘されるまで気づかなかった（AUT-135）。
+ *
+ * @param {string} body
+ * @returns {Array<{ line: number, text: string }>}
+ */
+export function headerlessTables(body) {
+  const lines = body.split("\n");
+  const found = [];
+  lines.forEach((line, i) => {
+    // 次の行が区切り（|---|---|）なら、この行は見出し行である。
+    const next = lines[i + 1] ?? "";
+    if (!/^\s*\|(\s*:?-+:?\s*\|)+\s*$/.test(next)) return;
+    // 見出しの中身が1つも無ければ、空の帯が出る。
+    const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+    if (cells.length > 0 && cells.every((c) => c === "")) {
+      found.push({ line: i + 1, text: line });
+    }
+  });
+  return found;
+}

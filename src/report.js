@@ -1,5 +1,6 @@
 /** 判定結果の出力。 */
 
+import { say } from "./messages.js";
 import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "./state.js";
 
 
@@ -9,48 +10,61 @@ import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "./state.js";
  * **どれも「いま何であるか」を言う。** 状態の不在を名前にすると、実際に何が
  * 起きているのかが読めない。「未有効」ではなく「代替」としているのはそのため。
  */
-const MARK = {
-  [ACTIVE]: "有効",
-  [SUBSTITUTED]: "代替",
-  [UNSUBSTITUTED]: "要対応",
-  [NOT_IN_SCOPE]: "対象外",
+/** 状態と、文の項目名の対応。**綴りは `messages.js` が持つ。** */
+const STATE_KEY = {
+  [ACTIVE]: "state.active",
+  [SUBSTITUTED]: "state.substituted",
+  [UNSUBSTITUTED]: "state.unsubstituted",
+  [NOT_IN_SCOPE]: "state.notInScope",
 };
 
-export function renderText(results , repos , scope) {
+/** 状態の印。**判定と文書で同じものを見るために出す。** */
+export const MARK = Object.fromEntries(
+  Object.entries(STATE_KEY).map(([state, key]) => [state, say("ja", key)]),
+);
+
+/** 不変条件の名前。**言語ごとに `messages.js` が持つ。** */
+export const labelOf = (key, language) => say(language, `invariant.${key}`);
+
+export function renderText(results , repos , scope , language = "ja") {
+  const t = (key, values) => say(language, key, values);
   const lines = [
-    "不変条件の状態",
-    `判定対象: ${repos.map((r) => r.name).join(", ")}`,
-    `実行範囲: ${scope}`,
-    "",
+    t("report.title"),
+    t("report.repos", { repos: repos.map((r) => r.name).join(", ") }),
+    t("report.scope", { scope }),
   ];
+  // **観測の中身は日本語のままである。** 黙って混ぜず、そう断る（AUT-135）。
+  const hasDetail = results.some(
+    (r) => r.observations.length + r.substitutions.length + r.unimplemented.length > 0,
+  );
+  if (language !== "ja" && hasDetail) lines.push(t("report.evidence.ja"));
+  lines.push("");
+
   for (const r of results) {
-    lines.push(`[${MARK[r.state]}] ${r.label}`);
-    for (const o of r.observations) lines.push(`    観測  ${o}`);
-    for (const s of r.substitutions) lines.push(`    代替  ${s}`);
-    for (const u of r.unimplemented) lines.push(`    未実装 ${u}`);
+    lines.push(`[${t(STATE_KEY[r.state])}] ${labelOf(r.key, language)}`);
+    for (const o of r.observations) lines.push(`    ${t("report.observed")}  ${o}`);
+    for (const s of r.substitutions) lines.push(`    ${t("report.substituted")}  ${s}`);
+    for (const u of r.unimplemented) lines.push(`    ${t("report.unimplemented")} ${u}`);
     lines.push("");
   }
   const failed = results.filter((r) => r.failing);
   if (failed.length > 0) {
-    lines.push(`失敗: ${failed.map((r) => r.label).join("、")}`);
-    lines.push(
-      "代替であること自体は失敗ではない。肩代わりの記録が無いこと、" +
-        "および有効かどうかを判定できないことが失敗である。",
-    );
+    lines.push(t("report.failed", { labels: failed.map((r) => labelOf(r.key, language)).join("、") }));
+    lines.push(t("report.failed.why"));
   } else {
-    lines.push("失敗なし");
+    lines.push(t("report.ok"));
   }
   return lines.join("\n");
 }
 
-export function renderJson(results , repos , scope) {
+export function renderJson(results , repos , scope , language = "ja") {
   return JSON.stringify(
     {
       scope,
       repos: repos.map((r) => r.name),
       invariants: results.map((r) => ({
         key: r.key,
-        label: r.label,
+        label: labelOf(r.key, language),
         state: r.state,
         observations: r.observations,
         substitutions: r.substitutions,

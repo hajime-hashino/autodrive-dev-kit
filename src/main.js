@@ -15,6 +15,7 @@ import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
 import { createRepoApi } from "./repoApi.js";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { discoverRepos } from "./repos.js";
+import { readConfig } from "./config.js";
 
 import { renderJson, renderText } from "./report.js";
 import { ACTIVE, INVARIANTS, Result } from "./state.js";
@@ -195,8 +196,15 @@ export async function run(argv) {
     results.push(await check.run(input));
   }
 
+  // **セットアップと同じ設定を使う。** 言語の設定が2つに割れると、片方だけ英語と
+  // いう状態ができる（AUT-135）。構成が読めなければ日本語のまま出す。
+  const language = readConfig(values.root).config?.language ?? "ja";
+
   const render = values.format === "json" ? renderJson : renderText;
-  return { output: render(results, repos, scope), code: results.some((r) => r.failing) ? 1 : 0 };
+  return {
+    output: render(results, repos, scope, language),
+    code: results.some((r) => r.failing) ? 1 : 0,
+  };
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
