@@ -18,6 +18,7 @@ import { delegateFor, MODES } from "../src/cli.js";
 import { brokenEmphasis, headerlessTables } from "../src/emphasis.js";
 import { OPERATIONS as TELEMETRY_OPS } from "../src/telemetryCli.js";
 import { OPERATIONS as TRACKER_OPS } from "../src/trackerCli.js";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -149,10 +150,10 @@ test("README の一覧が、実際に置かれるものと一致する", async (
   // ものが表から漏れる（実際に autodrive.json で漏れた）。
   const { setup } = await import("../src/setup.js");
   const { useRecommended } = await import("../src/ports/interview.js");
-  const { mkdirSync, mkdtempSync } = await import("node:fs");
+  const { mkdirSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
 
-  const root = mkdtempSync(join(tmpdir(), "autodrive-readme-"));
+  const root = tempDir("autodrive-readme-");
   mkdirSync(join(root, ".git"), { recursive: true });
   const placed = setup("init", root, KIT, useRecommended).placed.map((p) => p.path);
 
@@ -174,10 +175,10 @@ test("README の一覧が、実際に置かれるものと一致する", async (
 test("後から作られると書いたものは、init では作られない", async () => {
   const { setup } = await import("../src/setup.js");
   const { useRecommended } = await import("../src/ports/interview.js");
-  const { existsSync, mkdirSync, mkdtempSync } = await import("node:fs");
+  const { existsSync, mkdirSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
 
-  const root = mkdtempSync(join(tmpdir(), "autodrive-later-"));
+  const root = tempDir("autodrive-later-");
   mkdirSync(join(root, ".git"), { recursive: true });
   setup("init", root, KIT, useRecommended);
 

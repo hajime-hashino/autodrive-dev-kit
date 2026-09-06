@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,11 +23,12 @@ import {
   readManifest,
   writeManifest,
 } from "../src/manifest.js";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-manifest-"));
+  const root = tempDir("autodrive-manifest-");
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }

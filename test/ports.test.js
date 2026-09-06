@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import { KIT_VERSION } from "../src/kitVersion.js";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { run as telemetryRun } from "../src/telemetryCli.js";
 import { run as trackerRun } from "../src/trackerCli.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 function root() {
-  return mkdtempSync(join(tmpdir(), "autodrive-ports-"));
+  return tempDir("autodrive-ports-");
 }
 
 function withWorkItem(id , repo) {

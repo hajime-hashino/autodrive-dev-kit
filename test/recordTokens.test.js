@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { record } from "../src/recordTokens.js";
+import { tempDir } from "./helpers/tmp.js";
 
 function assistant(model , requestId , usage) {
   return JSON.stringify({
@@ -15,7 +16,7 @@ function assistant(model , requestId , usage) {
 }
 
 function fixture(lines) {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-"));
+  const root = tempDir("autodrive-");
   const transcript = join(root, "session.jsonl");
   writeFileSync(transcript, `${lines.join("\n")}\n`, "utf8");
   return { root, transcript };
@@ -154,13 +155,13 @@ test("壊れた行があっても他の行の集計を止めない", () => {
 });
 
 test("セッション記録が読めなくても落ちない", () => {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-"));
+  const root = tempDir("autodrive-");
   const result = record({ transcript_path: join(root, "無い.jsonl"), session_id: "s1" }, root);
   assert.equal(result.written, 0);
 });
 
 test("必要な入力が欠けていれば何もしない", () => {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-"));
+  const root = tempDir("autodrive-");
   assert.equal(record({}, root).written, 0);
   assert.equal(existsSync(join(root, "telemetry")), false);
 });
