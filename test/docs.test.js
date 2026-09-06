@@ -583,14 +583,15 @@ test("英語版が載せている判定の出力が、実物と同じ形をし�
 // **座標なら機械で見られる。** 見るのは収まっているかどうかまでで、読みやすいか
 // までは見ない。
 test("構築例の図が、枠からはみ出さない", () => {
-  const svg = readFileSync(join(KIT, "docs", "environment.html"), "utf8");
+  const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
   const vb = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
   assert.notEqual(vb, null, "viewBox が読めない");
   const [W, H] = [Number(vb[1]), Number(vb[2])];
 
   const rects = [...svg.matchAll(/<rect([^>]*?)\/>/g)].map((m) => {
     const at = (k) => Number((new RegExp(`${k}="([-\\d.]+)"`).exec(m[1]) || [])[1]);
-    return { x: at("x"), y: at("y"), w: at("width"), h: at("height"), group: /dasharray/.test(m[1]) };
+    const holder = /dasharray|class="bg"|width="340" height="372"/.test(m[1]);
+    return { x: at("x"), y: at("y"), w: at("width"), h: at("height"), group: holder };
   });
   assert.ok(rects.length > 5, "枠を読み取れていない。判定が空回りしている");
 
@@ -601,7 +602,7 @@ test("構築例の図が、枠からはみ出さない", () => {
     );
   }
 
-  // 破線の囲みは中に枠を持つため、重なりの判定から外す。
+  // 下地と、中に枠を持つ入れ物は、重なりの判定から外す。
   const boxes = rects.filter((r) => !r.group);
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
