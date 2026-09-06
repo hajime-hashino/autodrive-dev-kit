@@ -22,6 +22,9 @@ function fixture(lines) {
 }
 
 function markWorkItem(root , id , repo) {
+  // **対象リポジトリを実際に置く。** 一部の判定はこれを置かずに通っていたが、
+  // それは無い場所をディレクトリごと作っていたからである（AUT-143）。
+  mkdirSync(join(root, repo), { recursive: true });
   mkdirSync(join(root, ".autodrive"), { recursive: true });
   writeFileSync(
     join(root, ".autodrive", "current-work-item.json"),

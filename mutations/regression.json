@@ -97,5 +97,19 @@
     "from": "      note:\n        \"**GH_TOKEN で兼ねないこと。**",
     "to": "      unusedNote:\n        \"**GH_TOKEN で兼ねないこと。**",
     "why": "理由が雛形に出ないと、同じ GitHub の鍵を片方で兼ねたくなる"
+  },
+  {
+    "name": "AUT-143 起点を絶対パスへ直さずに比べる",
+    "file": "src/workItem.js",
+    "from": "  const base = resolve(root);\n  return repo === basename(base) ? base : join(base, repo);",
+    "to": "  return repo === basename(root) ? root : join(root, repo);",
+    "why": "相対パスの起点だと「起点そのものが対象リポジトリ」の判定が外れ、入れ子へ書く"
+  },
+  {
+    "name": "AUT-143 指す先が無くても書けることにする",
+    "file": "src/workItem.js",
+    "from": "  if (!existsSync(repoPath)) {",
+    "to": "  if (false) {",
+    "why": "追記は途中のディレクトリごと作るため、無い場所でも成功に見える"
   }
 ]
