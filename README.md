@@ -197,11 +197,12 @@ It looks at four things. **Each one is a precondition for the two loops above.**
 Output looks like this.
 
 ```
-[有効] テレメトリが記録されること
-[代替] AIがこれらを無効化できないこと
+[active]      Telemetry is being recorded
+[substituted] The AI cannot disable any of these
+[unresolved]  Delegation changes stay in the history
 ```
 
-**This output is still Japanese.** Making it follow your language setting is in progress. Until then, ask the AI to read it back to you — it will.
+**It follows the `language` you chose at setup.** The evidence lines under each result are still Japanese; the output says so, and the AI will restate them for you.
 
 There are four states (definition §9). **Each says what something currently is.**
 

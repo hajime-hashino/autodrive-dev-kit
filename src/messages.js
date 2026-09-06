@@ -79,6 +79,34 @@ const MESSAGES = {
       "**.env を作ってから行うこと。** 環境を作るときに読まれる",
     "todo.start": "Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める",
     "todo.pointer": "CLAUDE.md に次の1行を足すこと: 「作業の進め方は docs/autodrive.md に従う」",
+    // --- 判定の出力 ---
+    //
+    // **CI の失敗ログは人が直接読む。** AIが介在しないため、ここは相手の言語で
+    // 出す必要がある（AUT-135）。
+    "report.title": "不変条件の状態",
+    "report.repos": "判定対象: {repos}",
+    "report.scope": "実行範囲: {scope}",
+    "report.observed": "観測",
+    "report.substituted": "代替",
+    "report.unimplemented": "未実装",
+    "report.failed": "失敗: {labels}",
+    "report.failed.why":
+      "代替であること自体は失敗ではない。肩代わりの記録が無いこと、" +
+      "および有効かどうかを判定できないことが失敗である。",
+    "report.ok": "失敗なし",
+    "report.evidence.ja": "（観測の中身は日本語のまま。AIに聞けば言い直す）",
+
+    "state.active": "有効",
+    "state.substituted": "代替",
+    "state.unsubstituted": "要対応",
+    "state.notInScope": "対象外",
+
+    "invariant.outer_loop_running": "外側ループが起動し、継続すること",
+    "invariant.telemetry_recorded": "テレメトリが記録されること",
+    "invariant.boundary_change_logged": "委譲範囲の変更が履歴に残ること",
+    "invariant.ai_cannot_disable": "AIがこれらを無効化できないこと",
+
+
     "todo.staleWorkflow":
       ".github/workflows/verify.yml を削除する（invariants.yml に置き換わった。" +
       "残すと同じ判定が二重に走る）",
@@ -129,6 +157,29 @@ const MESSAGES = {
     "todo.start": "Open Claude Code and say \"let's start\". The AI takes it from there",
     "todo.pointer":
       "Add this line to CLAUDE.md: \"Follow docs/autodrive.md for how to work\"",
+    "report.title": "Invariant status",
+    "report.repos": "Checked: {repos}",
+    "report.scope": "Scope: {scope}",
+    "report.observed": "observed",
+    "report.substituted": "substituted",
+    "report.unimplemented": "not built",
+    "report.failed": "Failing: {labels}",
+    "report.failed.why":
+      "Being substituted is not itself a failure. Failure means there is no record " +
+      "of anyone covering it, or the state cannot be determined.",
+    "report.ok": "Nothing failing",
+    "report.evidence.ja": "(the observations below are in Japanese. ask the AI and it will restate them)",
+
+    "state.active": "active",
+    "state.substituted": "substituted",
+    "state.unsubstituted": "unresolved",
+    "state.notInScope": "out of scope",
+
+    "invariant.outer_loop_running": "The outer loop has started and is continuing",
+    "invariant.telemetry_recorded": "Telemetry is being recorded",
+    "invariant.boundary_change_logged": "Delegation changes stay in the history",
+    "invariant.ai_cannot_disable": "The AI cannot disable any of these",
+
     "todo.staleWorkflow":
       "Delete .github/workflows/verify.yml (replaced by invariants.yml. " +
       "Leaving it runs the same check twice)",
