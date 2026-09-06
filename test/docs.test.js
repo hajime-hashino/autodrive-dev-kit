@@ -156,18 +156,17 @@ test("README の一覧が、実際に置かれるものと一致する", async (
   mkdirSync(join(root, ".git"), { recursive: true });
   const placed = setup("init", root, KIT, useRecommended).placed.map((p) => p.path);
 
-  const readme = readFileSync(join(KIT, "README.md"), "utf8");
-  const section = readme.slice(readme.indexOf("## 関連ファイル"), readme.indexOf("## 仕組み"));
+  // **両方の README で見る。** 片方だけ見ると、もう片方が黙って古くなる。
+  for (const { file, section } of READMES) {
+    const listed = [...section().matchAll(/^\| `([^`]+)` \| init \|/gm)].map((m) => m[1]);
+    assert.ok(listed.length > 0, `${file}: init で置かれるものの一覧を拾えていない`);
 
-  // 表の1列目のうち、`init` の行だけを見る。
-  const listed = [...section.matchAll(/^\| `([^`]+)` \| init \|/gm)].map((m) => m[1]);
-  assert.ok(listed.length > 0, "init で置かれるものの一覧を拾えていない");
-
-  for (const path of listed) {
-    assert.ok(placed.includes(path), `README に載っているが置かれない: ${path}`);
-  }
-  for (const path of placed) {
-    assert.ok(listed.includes(path), `置かれるのに README に無い: ${path}`);
+    for (const path of listed) {
+      assert.ok(placed.includes(path), `${file} に載っているが置かれない: ${path}`);
+    }
+    for (const path of placed) {
+      assert.ok(listed.includes(path), `置かれるのに ${file} に無い: ${path}`);
+    }
   }
 });
 
@@ -178,15 +177,14 @@ test("後から作られると書いたものは、init では作られない", 
   const { existsSync, mkdirSync, mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
 
-  const readme = readFileSync(join(KIT, "README.md"), "utf8");
-  const section = readme.slice(readme.indexOf("## 関連ファイル"), readme.indexOf("## 仕組み"));
-
-  const later = [...section.matchAll(/^\| `([^`]+)` \| (?!init \|)[^|]+\|/gm)].map((m) => m[1]);
-  assert.ok(later.length > 0, "後から作られるものの一覧を拾えていない");
-
   const root = mkdtempSync(join(tmpdir(), "autodrive-later-"));
   mkdirSync(join(root, ".git"), { recursive: true });
   setup("init", root, KIT, useRecommended);
+
+  const later = READMES.flatMap(({ section }) =>
+    [...section().matchAll(/^\| `([^`]+)` \| (?!init \|)[^|]+\|/gm)].map((m) => m[1]),
+  );
+  assert.ok(later.length > 0, "後から作られるものの一覧を拾えていない");
 
   for (const path of later) {
     // 作業単位IDのような差し込みを含む行は、置き場所だけを見る。
@@ -231,11 +229,10 @@ test("助詞が続く強調を、実際に見つける", () => {
 // **最初の1手で詰まらせない。** clone と PATH の設定を挟むと、いちばん負担を
 // かけたくない人に摩擦が当たる（AUT-96）。
 test("最初に打つものが、clone も PATH も要らない形で書いてある", () => {
-  const readme = readFileSync(join(KIT, "README.md"), "utf8");
-  const start = readme.slice(readme.indexOf("### はじめ方"), readme.indexOf("### 開発の進め方"));
-
-  assert.ok(start.includes("npx"), "clone せずに打てる形が書かれていない");
-  assert.ok(start.includes("clone も PATH の設定も要らない"), start.slice(0, 400));
+  for (const { file, start, noSetup } of READMES) {
+    assert.ok(start().includes("npx"), `${file}: clone せずに打てる形が書かれていない`);
+    assert.ok(start().includes(noSetup), `${file}: ${start().slice(0, 200)}`);
+  }
 });
 
 // **npm から辿れる形になっていること。** bin が無いと、npx は何を実行すれば
@@ -329,6 +326,42 @@ test("入口だけは、型注釈を使わない", () => {
  * 文書は読みやすさのために折り返してあり、そのままだと文の途中に改行が入る。
  * 畳まずに照合すると、**内容ではなく整形の違いで落ちる。**
  */
+/**
+ * 2つの README。**見出しが言語ごとに違うので、対応を表で持つ。**
+ *
+ * 英語を正とし、日本語も残す（AUT-135）。**「両方持たない」の理由は、実装が従う
+ * ものと人が読むものの食い違いである。README は何も実行しないため、その危険が無い。**
+ * ただし黙ってずれさせない。中身は両方で見る。
+ */
+const READMES = [
+  {
+    file: "README.md",
+    text: () => readFileSync(join(KIT, "README.md"), "utf8"),
+    section: () => {
+      const t = readFileSync(join(KIT, "README.md"), "utf8");
+      return t.slice(t.indexOf("## What gets placed"), t.indexOf("## How it fits together"));
+    },
+    start: () => {
+      const t = readFileSync(join(KIT, "README.md"), "utf8");
+      return t.slice(t.indexOf("### Getting started"), t.indexOf("### How development goes"));
+    },
+    noSetup: "No clone, no PATH setup",
+  },
+  {
+    file: "README.ja.md",
+    text: () => readFileSync(join(KIT, "README.ja.md"), "utf8"),
+    section: () => {
+      const t = readFileSync(join(KIT, "README.ja.md"), "utf8");
+      return t.slice(t.indexOf("## 関連ファイル"), t.indexOf("## 仕組み"));
+    },
+    start: () => {
+      const t = readFileSync(join(KIT, "README.ja.md"), "utf8");
+      return t.slice(t.indexOf("### はじめ方"), t.indexOf("### 開発の進め方"));
+    },
+    noSetup: "clone も PATH の設定も要らない",
+  },
+];
+
 const rules = () => readFileSync(join(KIT, "templates", "autodrive.md"), "utf8").replace(/\n/g, "");
 
 // **配布物に書かれていなければ、次のプロジェクトで同じ既定に戻る。**
@@ -457,4 +490,59 @@ test("同じ語で2つを指さない、と書いてある", () => {
 // **避ける対象を取り違えない。** 実装名と、一般語は違う。
 test("避けるのは実装名であって一般語ではない、と書いてある", () => {
   assert.ok(rules().includes("避けるのは実装名"), "取り違えを塞いでいない");
+});
+
+// ------------------------------------- 2つの README がずれない（AUT-135）
+
+/** 見出しの深さの並び。**言語が違っても、構造は同じであること。** */
+const outline = (text) =>
+  [...text.matchAll(/^(#{1,4}) /gm)].map((m) => m[1].length);
+
+/** 指しているもの。**片方だけリンクが増減したら、内容がずれている。** */
+const links = (text) =>
+  [...text.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]).filter((l) => !l.startsWith("http"));
+
+// **英語を正とし、日本語も残す。** README は何も実行しないので、食い違っても
+// 危険ではない。ただし黙ってずれると、片方だけ古いことに誰も気づかない。
+test("2つの README の構造が揃っている", () => {
+  const [en, ja] = READMES.map((r) => r.text());
+  assert.deepEqual(
+    outline(en),
+    outline(ja),
+    "見出しの数か深さが違う。片方に節が増えたか減っている",
+  );
+});
+
+test("2つの README が、同じものを指している", () => {
+  const [en, ja] = READMES.map((r) => r.text());
+  const only = (a, b) => a.filter((l) => !b.includes(l));
+  // 互いを指すリンクだけは、当然ながら違う。
+  const drop = (ls) => ls.filter((l) => l !== "README.md" && l !== "README.ja.md");
+  assert.deepEqual(only(drop(links(en)), drop(links(ja))), [], "英語版にだけあるリンク");
+  assert.deepEqual(only(drop(links(ja)), drop(links(en))), [], "日本語版にだけあるリンク");
+});
+
+// **英語の読み手を、日本語の文書の前で放置しない。**
+test("日本語の文書しか無いことを、英語版が断っている", () => {
+  const en = READMES[0].text();
+  assert.ok(en.includes("written in Japanese"), "日本語であることを言っていない");
+  assert.ok(en.includes("in your language"), "どうすればよいかを言っていない");
+});
+
+test("互いを指している", () => {
+  assert.ok(READMES[0].text().includes("README.ja.md"), "英語版から日本語版へ行けない");
+  assert.ok(READMES[1].text().includes("README.md"), "日本語版から英語版へ行けない");
+});
+
+// **載せる出力は、実物であること。** 無い出力を載せると、読んだ人が信じる。
+test("英語版が載せている判定の出力が、実物と同じ形をしている", async () => {
+  // **判定が使う印を、そのまま引く。** 手で写すと、変わったときに気づけない。
+  const { MARK } = await import("../src/report.js");
+  const real = Object.values(MARK);
+
+  const inReadme = [...READMES[0].text().matchAll(/^\[([^\]]+)\]/gm)].map((m) => m[1]);
+  assert.ok(inReadme.length > 0, "出力例が載っていない");
+  for (const m of inReadme) {
+    assert.ok(real.includes(m), `実物に無い印を載せている: [${m}]（実物は ${real.join(" / ")}）`);
+  }
 });
