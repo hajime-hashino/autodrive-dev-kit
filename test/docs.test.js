@@ -118,16 +118,62 @@ test("文書に載っている操作が実在する", () => {
 // **人が打つものと、AIが打つものを取り違えさせない。** 使う人が打つのは3つだけで、
 // そこを間違えると「覚えることを増やさない」という前提が崩れる。
 test("README は、人が打つものだけを使い方として出す", () => {
-  const readme = readFileSync(join(KIT, "README.md"), "utf8");
-  const upTo = readme.slice(0, readme.indexOf("## 関連ファイル"));
+  // **節の区切りが効いていなかった。** 英語版で `## 関連ファイル` を探しており、
+  // 見つからないまま全文を見ていた（README を英語にしたときに置き去りになった）。
+  // 節で区切れていないと、他の節が肩代わりして通る。
+  for (const { file, usage } of [
+    { file: "README.md", usage: ["## Usage", "## What gets placed"] },
+    { file: "README.ja.md", usage: ["## 使い方", "## 関連ファイル"] },
+  ]) {
+    const text = readFileSync(join(KIT, file), "utf8");
+    const [from, to] = usage.map((h) => text.indexOf(h));
+    assert.ok(from !== -1 && to > from, `${file}: 使い方の節を切り出せない（${usage.join(" / ")}）`);
+    const section = text.slice(from, to);
 
-  const calls = invocations(upTo);
-  assert.ok(calls.length > 0, "使い方に、打つ形が1つも無い");
-  for (const c of calls) {
-    assert.ok(MODES.has(c.command), `使い方に、人が打たないコマンドが出ている: ${c.command}`);
+    const calls = invocations(section);
+    assert.ok(calls.length > 0, `${file}: 使い方に、打つ形が1つも無い`);
+
+    // **人が打つのは init と apply だけ。** update はプロジェクトの追跡ファイルを
+    // 書き換える変更であり、作業単位にしてAIが行う（AUT-150）。人が既定ブランチで
+    // 打って直接コミットすると、そのプロジェクト自身の規約を破る。
+    for (const c of calls) {
+      assert.ok(
+        c.command === "init" || c.command === "apply",
+        `${file}: 使い方に、人が打たないものが打つ形で出ている: ${c.command}`,
+      );
+    }
+    // **表も見る。** 打つ形だけを見ていると、表に1行足されたことに気づけない。
+    // 人が最初に読むのは表であり、**そこに並んでいれば打つものだと読まれる。**
+    const listed = [...section.matchAll(/^\| `(\w+)` \|/gm)].map((m) => m[1]);
+    assert.deepEqual(
+      listed.sort(),
+      ["apply", "init"],
+      `${file}: 使い方の表に並んでいるものが違う`,
+    );
   }
-  for (const mode of MODES) {
-    assert.ok(upTo.includes(`autodrive-dev-kit ${mode}`) || upTo.includes(`\`${mode}\``), `${mode} が案内に無い`);
+});
+
+// **人が打たないことを、書いてあること。** 消しただけだと、読んだ人は
+// `update` の存在を知らないまま、どこかで見つけて打つ。
+test("道具の入れ替えは、人が打つものではないと書いてある", () => {
+  for (const [file, phrase] of [
+    ["README.md", /Do not run `update` yourself/],
+    ["README.ja.md", /人が直接 `update` を打たないこと/],
+  ]) {
+    assert.match(readFileSync(join(KIT, file), "utf8"), phrase, `${file}: 断っていない`);
+  }
+  // **手順は配布物にも要る。** AIが読むのはそちらである。
+  const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
+  const at = rules.indexOf("## autodrive-dev-kit を更新する");
+  assert.notEqual(at, -1, "配布物に手順が無い");
+  const section = rules.slice(at, rules.indexOf("\n## ", at + 1));
+  for (const [pattern, what] of [
+    [/作業単位にして/, "作業単位にすること"],
+    [/既定ブランチで打って直接コミットしないこと/, "直接コミットしないこと"],
+    [/止まったら、人へ返す/, "止まったときの扱い"],
+    [/\.env\.example/, "資格情報が増える場合"],
+  ]) {
+    assert.match(section, pattern, `配布物の手順に、${what}が無い`);
   }
 });
 
