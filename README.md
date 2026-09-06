@@ -214,10 +214,10 @@ There are four states (definition §9). **Each says what something currently is.
 
 | State | Meaning | Example, for "records exist" |
 |---|---|---|
-| **active** (有効) | Machinery is doing it. Nobody has to remember, and nobody can forget | The hook is registered and records land automatically |
-| **substituted** (代替) | Not machinery yet; a human is covering it by hand. The fact that they are is itself recorded | Someone remembers to record by hand, and that is written down |
-| **unresolved** (要対応) | No record of anyone covering it, or the state cannot be determined | Someone is recording by hand, but nothing says so |
-| **out of scope** (対象外) | Not judged here | A cross-repository item, looked at from inside one repository |
+| **active** | Machinery is doing it. Nobody has to remember, and nobody can forget | The hook is registered and records land automatically |
+| **substituted** | Not machinery yet; a human is covering it by hand. The fact that they are is itself recorded | Someone remembers to record by hand, and that is written down |
+| **unresolved** | No record of anyone covering it, or the state cannot be determined | Someone is recording by hand, but nothing says so |
+| **out of scope** | Not judged here | A cross-repository item, looked at from inside one repository |
 
 **Being substituted is not a failure.** The work of building machinery does not yet have that machinery. **Only "unresolved" is treated as failure** — that is what stops "we're basically doing it" from running forever.
 
@@ -257,6 +257,24 @@ Do not do that by hand; `npm run mutate` does it. `mutations/regression.json` ho
 
 [Apache License 2.0](LICENSE). Copyright 2026 Hajime Hashino.
 
-**The toolkit is copied into your project, and the license travels with it.** `init` places `LICENSE` and `NOTICE` inside `autodrive/`, so the copy is never orphaned.
+You are free to distribute it, modify it, and use it, including commercially. Please go ahead.
 
-The method itself lives in a separate repository and is licensed differently: [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition) is under **CC BY 4.0**, because it is prose rather than code.
+Just keep the `LICENSE` and `NOTICE` files alongside it. `init` copies both into `autodrive/` when you adopt the toolkit in a project, so if you are simply using it there is nothing you need to think about.
+
+The method itself is in a separate repository under a different license. [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition) is **CC BY 4.0**, because it is prose rather than code — quote it, translate it, teach from it; just say where it came from.
+
+## Forking
+
+The license lets you fork and go your own way. **Three things in this repository are about *this* project, though, and will not work in yours.**
+
+| What | Why | What to do |
+|---|---|---|
+| `telemetry/*.jsonl` | The records point at work items in this project's tracker. The checker reports them as **records pointing at work items that do not exist** | Empty the directory. Your records start with your first work item |
+| The `cross` job in `.github/workflows/invariants.yml` | It clones four specific repositories that only exist here | Remove the job, or point it at your own layout |
+| `mutations/regression.json` | The mutations reintroduce defects that were fixed here. Once you change the implementation they stop matching, and the run reports **not applied** | Replace them as you fix things of your own |
+
+**Whether to carry the telemetry over is a real question.** Keeping it fails the check; dropping it means the record of how this toolkit grew stays only in the original repository. **Dropping it is the recommendation** — that history is not yours to claim, and it is still here to read.
+
+Add your own line to `NOTICE`; Apache-2.0 allows it. If you change a file, say that you changed it (§4(b)).
+
+CI needs two secrets: `AUTODRIVE_CI_TOKEN` and `LINEAR_API_KEY`.

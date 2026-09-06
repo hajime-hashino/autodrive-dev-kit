@@ -701,3 +701,79 @@ test("壊れた組み立てを、実際に見つける", () => {
   assert.notEqual(unbalancedTags("<svg><g></rect></g></svg>"), null, "食い違いを見逃している");
   assert.equal(unbalancedTags('<svg><rect x="1"/><g></g></svg>'), null, "正しいものを落としている");
 });
+
+// ------------------------- 受け取る側から読めること（AUT-149）
+
+// 英語版に日本語を混ぜないこと。
+//
+// **訳語の対応を括弧で添えていた**（`**active** (有効)`）。`language` を en に
+// すれば判定器は `active` と出すため、英語の読者には用が無い。
+//
+// 残してよいのは2つだけ。日本語版への案内（日本語で書かないと気づかれない）と、
+// 設定が実際に表示する選択肢である。
+test("英語版に、日本語が紛れていない", () => {
+  const lines = READMES[0].text().split("\n");
+  const allowed = [/README\.ja\.md/, /\(日本語 \/ English\)/];
+  const stray = lines
+    .map((line, i) => ({ line, no: i + 1 }))
+    .filter(({ line }) => /[぀-ヿ一-鿿]/.test(line))
+    .filter(({ line }) => !allowed.some((ok) => ok.test(line)));
+  assert.deepEqual(stray, [], stray.map((s) => `${s.no}: ${s.line}`).join("\n"));
+});
+
+// ライセンスの節が、何をしてよいかを言うこと。
+//
+// **名前と著作権表示だけでは、読んだ人が使ってよいか判断できない。** 躊躇させる。
+// 言うべきは「自由に使える」「残すのは2つだけ」「init が置くので普通は何も要らない」。
+test("ライセンスの節が、何をしてよいかを言う", () => {
+  for (const readme of READMES) {
+    const text = readme.text();
+    assert.match(text, /LICENSE/, `${readme.file}: 対象のファイル名が無い`);
+    assert.match(text, /NOTICE/, `${readme.file}: 対象のファイル名が無い`);
+    assert.match(text, /autodrive\//, `${readme.file}: どこへ置かれるかが無い`);
+  }
+  // **やってよいことを、先に言う。** 条件から書くと、条件のほうが主に読める。
+  //
+  // **言い回しではなく、言えているかで見る。** 文面は変わるが、
+  // 「自由に使ってよい」「商用も含む」の2つは落としてはいけない。
+  for (const [readme, heading, grants] of [
+    // **隣の段落が肩代わりしないものを選ぶ。** 「自由」だけを見ると、
+    // すぐ下にある定義の CC BY の説明が肩代わりして通ってしまう。
+    [READMES[0], "## License", [/distribute/i, /modif/i, /\buse\b/i, /commercial/i]],
+    [READMES[1], "## ライセンス", [/配布/, /改変/, /利用/, /商用/]],
+  ]) {
+    const text = readme.text();
+    const at = text.indexOf(heading);
+    assert.notEqual(at, -1, `${readme.file}: ライセンスの節が無い`);
+    const section = text.slice(at, text.indexOf("\n## ", at + 1));
+    for (const grant of grants) {
+      assert.match(section, grant, `${readme.file}: 許諾の範囲が書かれていない（${grant}）`);
+    }
+  }
+});
+
+// フォークしたときに動かないものを、全部挙げること。
+//
+// **測って3つある。** どれも「この作業場に固有」であり、黙っていると
+// フォークした人が原因の分からない失敗を踏む。
+test("フォークの節が、動かないものを挙げている", () => {
+  // **節の中だけを見る。** 全文で見ると、他の節に同じ語があるだけで通ってしまう。
+  // 実際に `mutations/regression.json` は「dev-kit そのものを直す」にも出るため、
+  // フォークの節から落としても気づけなかった。
+  for (const [readme, heading] of [[READMES[0], "## Forking"], [READMES[1], "## フォークする"]]) {
+    const text = readme.text();
+    const at = text.indexOf(heading);
+    assert.notEqual(at, -1, `${readme.file}: フォークの節が無い`);
+    const section = text.slice(at);
+
+    for (const [pattern, what] of [
+      [/telemetry\/\*\.jsonl/, "記録"],
+      [/`cross`/, "横断のジョブ"],
+      [/mutations\/regression\.json/, "変異の一覧"],
+      [/AUTODRIVE_CI_TOKEN/, "CI の資格情報"],
+      [/NOTICE/, "著作権表示の足し方"],
+    ]) {
+      assert.match(section, pattern, `${readme.file} のフォークの節に、${what}への言及が無い`);
+    }
+  }
+});
