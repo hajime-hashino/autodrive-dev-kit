@@ -246,3 +246,11 @@ Type annotations cannot be used directly. **Node deliberately does not strip typ
 Do not do that by hand; `npm run mutate` does it. `mutations/regression.json` holds mutations that put previously fixed defects back into the implementation. **When you fix a defect, add the mutation that reintroduces it.** CI runs this too.
 
 **Done by hand, it is the running of it that breaks.** It broke twice here, and both times read as "everything is caught" (AUT-138). The details are at the top of [src/mutate.js](src/mutate.js).
+
+## License
+
+[Apache License 2.0](LICENSE). Copyright 2026 Hajime Hashino.
+
+**The toolkit is copied into your project, and the license travels with it.** `init` places `LICENSE` and `NOTICE` inside `autodrive/`, so the copy is never orphaned.
+
+The method itself lives in a separate repository and is licensed differently: [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition) is under **CC BY 4.0**, because it is prose rather than code.
