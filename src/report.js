@@ -9,7 +9,8 @@ import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "./state.js";
  * **どれも「いま何であるか」を言う。** 状態の不在を名前にすると、実際に何が
  * 起きているのかが読めない。「未有効」ではなく「代替」としているのはそのため。
  */
-const MARK = {
+/** 状態の印。**判定と文書で同じものを見るために出す。** */
+export const MARK = {
   [ACTIVE]: "有効",
   [SUBSTITUTED]: "代替",
   [UNSUBSTITUTED]: "要対応",
