@@ -50,13 +50,19 @@ jobs:
           node-version: "22.18"
 
       - name: 判定対象のリポジトリを取得する
+        # **名前を実態に合わせる。** ここに要るのは読取だけであり、渡しているのは
+        # 読取専用の AUTODRIVE_CI_TOKEN である。以前はこれを GH_TOKEN という名前で
+        # 受けていたため、**読んだ人は「CI に書き込み用の鍵がある」と受け取った。**
+        # 実際に、それを前提にした誤った案内を出している（AUT-139）。
+        #
+        # `GH_TOKEN` は gh CLI が拾う名前でもある。**CI では使わない。**
         env:
-          GH_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
+          CLONE_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
         run: |
           set -eu
           for repo in autodrive-dev-work autodrive-dev-definition agent-playground; do
             git clone --quiet \
-              "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/${repo}.git" \
+              "https://x-access-token:${CLONE_TOKEN}@github.com/${{ github.repository_owner }}/${repo}.git" \
               "work/${repo}"
           done
           # 横断判定の起点は autodrive-dev-work であり、他のリポジトリはその直下に置く。
