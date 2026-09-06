@@ -8,7 +8,7 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,12 +18,13 @@ import { NONE, defaults } from "../src/config.js";
 import { setup } from "../src/setup.js";
 import { featuresBlock, template } from "../src/init.js";
 import { useRecommended } from "../src/ports/interview.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project(name = "autodrive-sandbox-") {
-  const root = mkdtempSync(join(tmpdir(), name));
+  const root = tempDir(name);
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }

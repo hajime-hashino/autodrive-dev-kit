@@ -15,18 +15,19 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { VENDOR_DIR } from "../src/init.js";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** 素のリポジトリを作り、`init` を通す。 */
 function initialized() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-e2e-"));
+  const root = tempDir("autodrive-e2e-");
   const git = (...args) =>
     execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "pipe"] });
 

@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +23,7 @@ import {
   terminalInterview,
 } from "../src/adapters/interviewTerminal.js";
 import { useRecommended } from "../src/ports/interview.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 /** 聞かれた問い。どのポートについてかも見る。 */
@@ -31,7 +32,7 @@ import { useRecommended } from "../src/ports/interview.js";
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-setup-"));
+  const root = tempDir("autodrive-setup-");
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CHECKS, observeStops } from "../src/checks.js";
 
 
 import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 function check(key) {
@@ -44,7 +45,7 @@ function fakeRepo(
 
 /** 記録を自動で残す仕掛けが登録されているリポジトリ。有効の条件のひとつ。 */
 function repoWithHook(name) {
-  const path = mkdtempSync(join(tmpdir(), "autodrive-repo-"));
+  const path = tempDir("autodrive-repo-");
   mkdirSync(join(path, ".claude"), { recursive: true });
   writeFileSync(
     join(path, ".claude", "settings.json"),

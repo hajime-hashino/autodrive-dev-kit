@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { init, mergeHook, vendor } from "../src/init.js";
 import { delegateFor } from "../src/cli.js";
+import { tempDir } from "./helpers/tmp.js";
 
 // **本物の参照実装を指す。** 雛形をファイルから読むようになったため、偽の場所では
 // 動かない。ここで偽物を使うと、雛形の欠落を捕まえられない。
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-init-"));
+  const root = tempDir("autodrive-init-");
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }
@@ -24,7 +25,7 @@ const placementOf = (r , path) =>
 
 // **記録も判定も履歴の上で成り立っている。** 履歴が無い場所へ置いても動かない。
 test("git のリポジトリでなければ、置かずに理由を出す", () => {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-nogit-"));
+  const root = tempDir("autodrive-nogit-");
   const r = init(root, KIT);
   assert.equal(r.code, 1);
   assert.ok(r.message?.includes("git init"), r.message ?? "");
@@ -224,7 +225,7 @@ test("AIが使う道具は、入口の下にまとめる", () => {
 
 /** 複製の途中で必ず落ちる道具置き場を作る。**権限に頼らない**（root でも効く）。 */
 function brokenKit() {
-  const kit = mkdtempSync(join(tmpdir(), "autodrive-brokenkit-"));
+  const kit = tempDir("autodrive-brokenkit-");
   writeFileSync(join(kit, "VERSION"), "9.9.9\n", "utf8");
   mkdirSync(join(kit, "src"), { recursive: true });
   writeFileSync(join(kit, "src", "ok.js"), "//\n", "utf8");
