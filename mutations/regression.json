@@ -111,5 +111,12 @@
     "from": "  if (!existsSync(repoPath)) {",
     "to": "  if (false) {",
     "why": "追記は途中のディレクトリごと作るため、無い場所でも成功に見える"
+  },
+  {
+    "name": "AUT-144 ライセンスを複製の対象から外す",
+    "file": "src/init.js",
+    "from": "  \"package.json\",\n  \"LICENSE\",\n  \"NOTICE\",\n];",
+    "to": "  \"package.json\",\n];",
+    "why": "外すと、採用先にライセンス文の無いコードの複製が残る（Apache-2.0 §4(a)）"
   }
 ]
