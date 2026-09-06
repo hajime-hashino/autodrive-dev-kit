@@ -59,9 +59,9 @@
   <text class="sub" x="298" y="454">変異テスト</text>
 
   <text class="tag" x="60" y="500">GUARDRAIL</text>
-  <text class="sub" x="60" y="522">出口は許可制。許可する宛先は構成から作られる。</text>
-  <text class="sub" x="60" y="542">起動のたびに適用するため、止めても戻らない。</text>
-  <text class="sub" x="60" y="562">エージェントはこれを書き換えられない。</text>
+  <text class="sub" x="60" y="522">出口は許可制。宛先は構成から作られ、起動のたびに適用される。</text>
+  <text class="sub" x="60" y="542">出られる先を減らす仕掛けであって、閉じる仕掛けではない。</text>
+  <text class="sub" x="60" y="562">直接編集しないのは規約であり、機械的な強制ではない。</text>
 
   <!-- ================= TRACK / RECORD ================= -->
   <text class="grp" x="548" y="152">TRACK ／ RECORD</text>
