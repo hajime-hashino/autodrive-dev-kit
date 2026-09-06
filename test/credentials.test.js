@@ -285,3 +285,20 @@ test("道具の資格情報と同じ名前は、二重に出さない", () => {
   const names = credentialsFor(config).map((c) => c.name);
   assert.equal(names.filter((n) => n === "GH_TOKEN").length, 1, "同じ名前が2行出る");
 });
+
+// 2つの鍵が並んでいる理由を、雛形が持っていること。
+//
+// **書いていないと、片方で兼ねたくなる。** 同じ GitHub の鍵が2つ並び、なぜ分けて
+// あるかがどこにも無かったため、実際に使い分けを問われた（AUT-139）。
+//
+// 兼ねると、**判定する側が判定対象を書き換えられる。** これは名前の問題ではなく、
+// 定義§9の「AIがこれらを無効化できないこと」を誰が見るかの問題である。
+test("読取専用の鍵に、書ける鍵で兼ねない理由が書いてある", () => {
+  const ci = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
+  assert.notEqual(ci.note, undefined, "**兼ねない理由が無い。** 無いと片方で兼ねたくなる");
+  assert.match(ci.note, /GH_TOKEN/, "どちらと兼ねてはいけないのかが書いていない");
+  assert.match(ci.note, /判定/, "分けている理由（判定する側が書き換えられる）が書いていない");
+
+  const text = envExample(defaults());
+  assert.ok(text.includes(ci.note), "雛形に載っていない。人が読む場所に無ければ届かない");
+});
