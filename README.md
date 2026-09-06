@@ -84,23 +84,15 @@ It asks about your setup. **The first question is your language** (日本語 / E
 
 Copy the placed `.env.example` to `.env` and fill in your credentials. That is the end of the manual work.
 
-### Moving the toolkit to a newer version, later
+### Updating autodrive-dev-kit
 
-There is an `update` operation, but **it is not one for you to type.** File it as a work item and let the AI do it.
+To move an adopted toolkit to a newer version, ask the AI:
 
-Updating **changes files your project tracks** — `autodrive/`, `docs/autodrive.md`, the CI definition, `.devcontainer/`, `.env.example`. This method assumes every change reaches the default branch through a submission. **Running it on the default branch and committing directly breaks your own project's rule.**
+> I want to update autodrive-dev-kit
 
-**Say "I want to move the toolkit to a newer version," and the AI does this.**
+The AI files the work item, updates, and submits. You only approve the merge.
 
-| | The AI does | You decide |
-|---|---|---|
-| 1 | Files the work item, starts it, cuts a branch | |
-| 2 | Runs `update` | |
-| 3 | If it stopped because a managed file was edited by hand, **brings it back to you** | **What to do about it** |
-| 4 | Tells you if `.env.example` gained an entry | **Issuing the credential** |
-| 5 | Runs the checks and tests, then submits | **Approving the merge** |
-
-3 and 4 are the things the AI cannot decide or cannot do. **You are not called for anything else.**
+**Do not run `update` yourself.** Updating changes files your project tracks, so doing it by hand puts a change on the default branch without a submission.
 
 ### How development goes
 
