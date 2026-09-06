@@ -83,5 +83,19 @@
     "file": "src/tracked.js",
     "from": "{ test: (n) => /^core(\\.\\d+)?$/.test(n), why: \"コアダンプ。実行時のメモリがそのまま入る\" },",
     "to": ""
+  },
+  {
+    "name": "AUT-139 読取専用の鍵を GH_TOKEN の名前で渡す",
+    "file": ".github/workflows/invariants.yml",
+    "from": "          CLONE_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}",
+    "to": "          GH_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}",
+    "why": "名前が実態と違うと、読んだ人が「CI に書き込み用の鍵がある」と受け取る"
+  },
+  {
+    "name": "AUT-139 鍵を分けている理由を書かない",
+    "file": "src/credentials.js",
+    "from": "      note:\n        \"**GH_TOKEN で兼ねないこと。**",
+    "to": "      unusedNote:\n        \"**GH_TOKEN で兼ねないこと。**",
+    "why": "理由が雛形に出ないと、同じ GitHub の鍵を片方で兼ねたくなる"
   }
 ]
