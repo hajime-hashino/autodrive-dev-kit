@@ -25,7 +25,7 @@ import { defaultBranchOf, hasMergedSubmission, isPlanLimited } from "./repoApi.j
 function resultFor(key) {
   const invariant = INVARIANTS.find((i) => i.key === key);
   if (invariant === undefined) throw new Error(`未知の不変条件: ${key}`);
-  return new Result(invariant.key, invariant.label);
+  return new Result(invariant.key);
 }
 
 /**

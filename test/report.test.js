@@ -16,8 +16,8 @@ import { ACTIVE, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src
 
 const repos = [{ name: "my-app" }];
 
-function resultWith(state , label) {
-  const r = new Result("k", label);
+function resultWith(state , key) {
+  const r = new Result(key);
   r.observe("見たこと");
   if (state === SUBSTITUTED) r.substitutedBy("人が肩代わりしている");
   r.conclude(state);
@@ -28,10 +28,10 @@ function resultWith(state , label) {
 test("状態の名前が、定義のとおりに出る", () => {
   const out = renderText(
     [
-      resultWith(ACTIVE, "テレメトリが記録されること"),
-      resultWith(SUBSTITUTED, "AIがこれらを無効化できないこと"),
-      resultWith(UNSUBSTITUTED, "境界変更が履歴に残ること"),
-      resultWith(NOT_IN_SCOPE, "外側ループが起動し、継続すること"),
+      resultWith(ACTIVE, "telemetry_recorded"),
+      resultWith(SUBSTITUTED, "ai_cannot_disable"),
+      resultWith(UNSUBSTITUTED, "boundary_change_logged"),
+      resultWith(NOT_IN_SCOPE, "outer_loop_running"),
     ],
     repos,
     "self",
@@ -70,4 +70,41 @@ test("代替は失敗として出さない", () => {
 test("見出しが、何を判定したかを言う", () => {
   const out = renderText([resultWith(ACTIVE, "何か")], repos, "self");
   assert.ok(out.startsWith("不変条件の状態"), out.slice(0, 40));
+});
+
+// ------------------------- 相手の言語で出す（AUT-135）
+
+// **CI の失敗ログは人が直接読む。** AIが介在しないので、ここは相手の言語が要る。
+test("英語の設定なら、判定の出力も英語になる", () => {
+  const out = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self", "en");
+  assert.match(out, /^Invariant status/, out.slice(0, 80));
+  assert.match(out, /\[active\] Telemetry is being recorded/, out);
+  assert.ok(!/不変条件|有効/.test(out.split("observed")[0]), `枠が日本語のまま: ${out}`);
+});
+
+test("既定は日本語のまま", () => {
+  const out = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self");
+  assert.match(out, /^不変条件の状態/);
+  assert.match(out, /\[有効\] テレメトリが記録されること/);
+});
+
+// **観測の中身は日本語のままである。黙って混ぜない。**
+test("観測が日本語であることを、英語の出力では断る", () => {
+  const withDetail = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self", "en");
+  assert.ok(withDetail.includes("in Japanese"), "断っていない");
+
+  const r = new Result("telemetry_recorded");
+  r.conclude(ACTIVE);
+  assert.equal(
+    renderText([r], repos, "self", "en").includes("in Japanese"),
+    false,
+    "観測が無いのに断っている",
+  );
+});
+
+// **名前の出どころは1つ。** 2か所に置くと、片方だけ古くなる。
+test("不変条件の名前が、定義の語彙と揃っている", () => {
+  const out = renderText([resultWith(UNSUBSTITUTED, "boundary_change_logged")], repos, "self");
+  assert.match(out, /委譲範囲の変更が履歴に残ること/, "定義 v0.14 の語彙になっていない");
+  assert.ok(!out.includes("境界変更"), `旧名が残っている: ${out}`);
 });
