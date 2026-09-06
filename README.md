@@ -221,6 +221,7 @@ The full criteria, how to widen delegation, and how to record a substitution are
 
 | Document | Contents |
 |---|---|
+| [docs/environment.html](docs/environment.html) | **What runs where, on one page.** The setup and the path a change takes |
 | [docs/design.md](docs/design.md) | Agreeing on how a screen looks, before implementing it |
 | [docs/commands.md](docs/commands.md) | Every command. **Including the ones the AI runs** |
 | [docs/invariants.md](docs/invariants.md) | The full checking criteria |

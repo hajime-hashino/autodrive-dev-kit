@@ -118,5 +118,12 @@
     "from": "  \"package.json\",\n  \"LICENSE\",\n  \"NOTICE\",\n];",
     "to": "  \"package.json\",\n];",
     "why": "外すと、採用先にライセンス文の無いコードの複製が残る（Apache-2.0 §4(a)）"
+  },
+  {
+    "name": "AUT-146 図の枠を画面の外へ出す",
+    "file": "docs/environment.html",
+    "from": "<rect class=\"bx\" x=\"920\" y=\"176\" width=\"310\" height=\"80\" rx=\"3\"/>",
+    "to": "<rect class=\"bx\" x=\"1120\" y=\"176\" width=\"310\" height=\"80\" rx=\"3\"/>",
+    "why": "図は開くまで壊れが分からない。座標なら機械で見られる"
   }
 ]

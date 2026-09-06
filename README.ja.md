@@ -221,6 +221,7 @@ autodrive/invariants --root . --scope self
 
 | 文書 | 内容 |
 |---|---|
+| [docs/environment.html](docs/environment.html) | **どの環境で何が動くかの1枚図。** 構成と、1件の変更が流れる経路 |
 | [docs/design.md](docs/design.md) | 画面の見え方を、実装前に合意する手順 |
 | [docs/commands.md](docs/commands.md) | コマンドの全体。**AIが実行するものを含む** |
 | [docs/invariants.md](docs/invariants.md) | 判定基準の全文 |

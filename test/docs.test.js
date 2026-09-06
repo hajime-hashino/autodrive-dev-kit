@@ -573,3 +573,61 @@ test("英語版が載せている判定の出力が、実物と同じ形をし�
     }
   }
 });
+
+// 構築例の図が、枠からはみ出していないこと。
+//
+// **図には目視以外の確かめ方が無い。** SVG は座標で書いてあるため、文字が枠を
+// 越えても、枠どうしが重なっても、開くまで分からない。開ける環境が無いところで
+// 直すこともある（実際にこれを書いたときがそうだった）。
+//
+// **座標なら機械で見られる。** 見るのは収まっているかどうかまでで、読みやすいか
+// までは見ない。
+test("構築例の図が、枠からはみ出さない", () => {
+  const svg = readFileSync(join(KIT, "docs", "environment.html"), "utf8");
+  const vb = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
+  assert.notEqual(vb, null, "viewBox が読めない");
+  const [W, H] = [Number(vb[1]), Number(vb[2])];
+
+  const rects = [...svg.matchAll(/<rect([^>]*?)\/>/g)].map((m) => {
+    const at = (k) => Number((new RegExp(`${k}="([-\\d.]+)"`).exec(m[1]) || [])[1]);
+    return { x: at("x"), y: at("y"), w: at("width"), h: at("height"), group: /dasharray/.test(m[1]) };
+  });
+  assert.ok(rects.length > 5, "枠を読み取れていない。判定が空回りしている");
+
+  for (const r of rects) {
+    assert.ok(
+      r.x >= 0 && r.y >= 0 && r.x + r.w <= W && r.y + r.h <= H,
+      `枠が画面の外にある: ${r.x},${r.y} ${r.w}x${r.h}`,
+    );
+  }
+
+  // 破線の囲みは中に枠を持つため、重なりの判定から外す。
+  const boxes = rects.filter((r) => !r.group);
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const [a, b] = [boxes[i], boxes[j]];
+      const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      assert.equal(overlap, false, `枠が重なっている: (${a.x},${a.y}) と (${b.x},${b.y})`);
+    }
+  }
+
+  // 文字幅は描いてみないと確定しないため、**多めに見積もる。**
+  // 日本語は全角、英数は 0.55 倍。これで収まらないものは、実際にも危うい。
+  const widthOf = (t, size) =>
+    [...t].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? size * 0.55 : size), 0);
+  const texts = [...svg.matchAll(/<text class="(\w+)"[^>]*x="([\d.]+)"[^>]*y="([\d.]+)"[^>]*>([^<]*)</g)];
+  assert.ok(texts.length > 20, "文字を読み取れていない。判定が空回りしている");
+
+  for (const [, cls, xs, ys, body] of texts) {
+    if (cls === "grp") continue; // 区画の見出しは枠の外に置く
+    const size = cls === "ttl" ? 15 : cls === "tag" ? 10.5 : 12;
+    const [x, y] = [Number(xs), Number(ys)];
+    const home = boxes.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    const right = x + widthOf(body, size);
+    if (home === undefined) {
+      assert.ok(right <= W, `画面からはみ出す文字: ${body}`);
+      continue;
+    }
+    assert.ok(right <= home.x + home.w - 12, `枠からはみ出す文字: ${body}`);
+  }
+});
