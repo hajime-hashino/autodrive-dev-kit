@@ -54,15 +54,40 @@ import { join } from "node:path";
  * 走った件数も併せて確かめる（AUT-138）。
  */
 export function runTests(root, exec = execFileSync) {
+  return runOnce(root, exec).ok;
+}
+
+/**
+ * 走らせて、通ったかどうかと**そのときの出力**を返す。
+ *
+ * **落ちた理由を捨てない。** 素の状態で落ちたとき、`false` だけでは何が起きたのかが
+ * 分からない。手元で通るのに CI で落ちたとき、原因に辿り着けなかった（AUT-150）。
+ * **判定の道具が、自分の失敗について黙るべきではない。**
+ *
+ * @returns {{ ok: boolean, output: string }}
+ */
+export function runOnce(root, exec = execFileSync) {
   let out;
   try {
     out = String(exec("npm", ["test"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
   } catch (error) {
-    return false; // 非ゼロで終わった＝落ちた
+    // 非ゼロで終わった＝落ちた。**何が出ていたかは残す。**
+    const said = [error?.stdout, error?.stderr, error?.message]
+      .map((v) => (v === undefined || v === null ? "" : String(v)))
+      .filter((v) => v !== "")
+      .join("\n");
+    return { ok: false, output: said };
   }
   // **1件も走っていないなら、通ったとは言わない。**
   const ran = /^# tests (\d+)$/m.exec(out);
-  return ran !== null && Number(ran[1]) > 0;
+  if (ran !== null && Number(ran[1]) > 0) return { ok: true, output: out };
+  return { ok: false, output: `${out}\n（走った件数を読み取れない。1件も走っていない可能性がある）` };
+}
+
+/** 出力の終わりだけを取り出す。**全部出すと、肝心の行が流れる。** */
+export function tail(text, lines = 20) {
+  const all = text.split("\n").filter((l) => l.trim() !== "");
+  return all.slice(-lines);
 }
 
 /** 退避の置き場。**リポジトリの外。** */
@@ -97,16 +122,21 @@ export function applyOne(root, m, run = runTests) {
  * @returns {{ baseline: boolean, outcomes: Outcome[] }}
  */
 export function mutate(root, mutations, run = runTests) {
-  if (!run(root)) return { baseline: false, outcomes: [] };
-  return { baseline: true, outcomes: mutations.map((m) => applyOne(root, m, run)) };
+  // **素の状態は、理由まで見る。** 落ちたときに何が起きたのかを残す。
+  const first = run === runTests ? runOnce(root) : { ok: run(root), output: "" };
+  if (!first.ok) return { baseline: false, outcomes: [], baselineOutput: first.output };
+  return { baseline: true, outcomes: mutations.map((m) => applyOne(root, m, run)), baselineOutput: "" };
 }
 
 /** 人が読む形にする。**捕まえられなかったものを目立たせる。** */
-export function describe({ baseline, outcomes }) {
+export function describe({ baseline, outcomes, baselineOutput }) {
   if (!baseline) {
     return [
       "**素の状態でテストが落ちている。変異は当てていない。**",
       "落ちたのが変異のせいか、元からかを区別できない。先に直すこと。",
+      ...(baselineOutput === undefined || baselineOutput === ""
+        ? []
+        : ["", "そのときの出力（終わりだけ）:", ...tail(baselineOutput).map((l) => `  ${l}`)]),
     ];
   }
   const label = { caught: "落ちた  ", survived: "**通った（捕まえていない）**", "not-applied": "**当てられなかった**" };

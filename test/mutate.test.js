@@ -167,3 +167,43 @@ test("この実行で残ったものだけを掃く", async () => {
   assert.equal(existsSync(無関係), true, "関係の無いものを消している");
   assert.equal(removed, 1, "消した数が合わない");
 });
+
+// 素の状態で落ちたとき、理由を残すこと。
+//
+// **「落ちている」だけでは直せない。** 手元で通るのに CI で落ちたとき、原因に
+// 辿り着けなかった（AUT-150）。判定の道具が、自分の失敗について黙るべきではない。
+test("素の状態で落ちたら、そのときの出力を出す", () => {
+  const { describe: say } = { describe };
+  const 落ちる = () => {
+    throw Object.assign(new Error("走らせられない"), {
+      stdout: "# tests 3\n# fail 1\nnot ok 2 - 何かが壊れている\n",
+      stderr: "Error: Cannot find module 'x'\n",
+    });
+  };
+  const result = mutate("/tmp", [{ name: "n", file: "f", from: "a", to: "b" }], (root) => {
+    try {
+      落ちる();
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  assert.equal(result.baseline, false);
+
+  // 差し込んだ関数では出力を持てないため、出力つきの結果を直に組み立てて確かめる。
+  const lines = say({
+    baseline: false,
+    outcomes: [],
+    baselineOutput: "not ok 2 - 何かが壊れている\nError: Cannot find module 'x'",
+  });
+  const text = lines.join("\n");
+  assert.match(text, /素の状態でテストが落ちている/);
+  assert.match(text, /何かが壊れている/, "**落ちた中身を出していない**");
+  assert.match(text, /Cannot find module/, "標準エラーを捨てている");
+});
+
+test("出力が無ければ、余計な見出しを出さない", () => {
+  const text = describe({ baseline: false, outcomes: [] }).join("\n");
+  assert.match(text, /素の状態でテストが落ちている/);
+  assert.equal(text.includes("そのときの出力"), false, "空の見出しを出している");
+});
