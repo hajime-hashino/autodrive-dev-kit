@@ -13,17 +13,18 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** 配るものを、node_modules の下へ実体で置く。**リンクにしない。** */
 function installed() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-pkg-"));
+  const root = tempDir("autodrive-pkg-");
   const dest = join(root, "node_modules", "autodrive-dev-kit");
   mkdirSync(dest, { recursive: true });
 

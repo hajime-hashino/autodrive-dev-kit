@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { run } from "../src/main.js";
+import { tempDir } from "./helpers/tmp.js";
 
 /** 作業単位に紐づき、記録の仕掛けが登録されたリポジトリを1つ作る。 */
 function workspace() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-sub-"));
+  const root = tempDir("autodrive-sub-");
   mkdirSync(join(root, ".git"), { recursive: true });
   mkdirSync(join(root, ".autodrive"), { recursive: true });
   mkdirSync(join(root, ".claude"), { recursive: true });

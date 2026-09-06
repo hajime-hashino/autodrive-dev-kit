@@ -7,14 +7,15 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { allCaught, applyOne, describe, mutate, runTests } from "../src/mutate.js";
+import { tempDir } from "./helpers/tmp.js";
 
 function project(body = "元の中身\n") {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-mutate-t-"));
+  const root = tempDir("autodrive-mutate-t-");
   writeFileSync(join(root, "a.js"), body, "utf8");
   return root;
 }
@@ -136,4 +137,33 @@ test("捕まえられなかったものを、目立たせる", () => {
 test("全部落ちたら、そう言う", () => {
   const text = describe({ baseline: true, outcomes: [{ name: "あ", outcome: "caught" }] }).join("\n");
   assert.ok(text.includes("すべてで落ちた"), text);
+});
+
+// 変異が残したものを、掃くこと。
+//
+// **壊した側が片付ける。** 変異は判定を壊すためのものであり、判定の後始末も
+// 一緒に壊れる。片付けを外す変異を足したところ、1回まわすごとに 378 個残った
+// （AUT-147）。判定を直しても、ここが残ると溜まり続ける。
+test("この実行で残ったものだけを掃く", async () => {
+  const { sweepLeftovers } = await import("../src/mutateCli.js");
+  const { mkdirSync, existsSync, utimesSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tempDir } = await import("./helpers/tmp.js");
+
+  const dir = tempDir("autodrive-掃除-");
+  const 古い = join(dir, "autodrive-前からある");
+  const 新しい = join(dir, "autodrive-いま作った");
+  const 無関係 = join(dir, "他の道具のもの");
+  for (const p of [古い, 新しい, 無関係]) mkdirSync(p, { recursive: true });
+
+  const 境界 = Date.now();
+  // **前からあるものを巻き込まない。** 他の作業が使っている置き場を消さない。
+  const 昔 = new Date(境界 - 60_000);
+  utimesSync(古い, 昔, 昔);
+
+  const removed = sweepLeftovers(境界 - 1, dir);
+  assert.equal(existsSync(新しい), false, "**この実行で残ったものが消えていない**");
+  assert.equal(existsSync(古い), true, "前からあるものを消している");
+  assert.equal(existsSync(無関係), true, "関係の無いものを消している");
+  assert.equal(removed, 1, "消した数が合わない");
 });

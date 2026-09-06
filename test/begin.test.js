@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { branchNameFor, defaultBranchOf, run } from "../src/beginCli.js";
+import { tempDir } from "./helpers/tmp.js";
 
 
 /** 作業場と、その直下の対象リポジトリ。 */
 function workspace(repos = ["agent-playground"]) {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-begin-"));
+  const root = tempDir("autodrive-begin-");
   for (const repo of repos) mkdirSync(join(root, repo, ".git"), { recursive: true });
   return root;
 }

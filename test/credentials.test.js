@@ -6,7 +6,7 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,11 +15,12 @@ import { credentialsFor, envExample } from "../src/credentials.js";
 import { NONE, defaults } from "../src/config.js";
 import { setup } from "../src/setup.js";
 import { useRecommended } from "../src/ports/interview.js";
+import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project() {
-  const root = mkdtempSync(join(tmpdir(), "autodrive-cred-"));
+  const root = tempDir("autodrive-cred-");
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }
