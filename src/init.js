@@ -48,8 +48,25 @@ import { defaults } from "./config.js";
 /** 複製先。**追跡する。** 版を固定するには、履歴に載っている必要がある。 */
 export const VENDOR_DIR = "autodrive";
 
-/** 複製するもの。テストや文書は要らない（プロジェクトは `init` を打たない）。 */
-const VENDORED = ["src", "hooks", "bin", "invariants", "verify", "VERSION", "package.json"];
+/**
+ * 複製するもの。テストや文書は要らない（プロジェクトは `init` を打たない）。
+ *
+ * **ライセンスは要る。** ここに置くのはこの道具のコードの複製であり、Apache-2.0 は
+ * 「複製を受け取る人にライセンスの写しを渡す」ことを求めている（§4(a)）。入れないと、
+ * **採用先にライセンス文の無いコードの複製が残る。** NOTICE も同じ理由で入れる
+ * （§4(d)）。誰のものか分からない複製にしない。
+ */
+const VENDORED = [
+  "src",
+  "hooks",
+  "bin",
+  "invariants",
+  "verify",
+  "VERSION",
+  "package.json",
+  "LICENSE",
+  "NOTICE",
+];
 /** @typedef {"managed" | "seeded" | "skipped" | "merged"} Placement */
 /** @typedef {{ path: string, placement: Placement }} Placed */
 function write(full , body) {
