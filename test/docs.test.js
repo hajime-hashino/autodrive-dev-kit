@@ -573,3 +573,131 @@ test("英語版が載せている判定の出力が、実物と同じ形をし�
     }
   }
 });
+
+// 構築例の図が、枠からはみ出していないこと。
+//
+// **図には目視以外の確かめ方が無い。** SVG は座標で書いてあるため、文字が枠を
+// 越えても、枠どうしが重なっても、開くまで分からない。開ける環境が無いところで
+// 直すこともある（実際にこれを書いたときがそうだった）。
+//
+// **座標なら機械で見られる。** 見るのは収まっているかどうかまでで、読みやすいか
+// までは見ない。
+test("構築例の図が、枠からはみ出さない", () => {
+  const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
+  const vb = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
+  assert.notEqual(vb, null, "viewBox が読めない");
+  const [W, H] = [Number(vb[1]), Number(vb[2])];
+
+  const rects = [...svg.matchAll(/<rect([^>]*?)\/>/g)].map((m) => {
+    const at = (k) => Number((new RegExp(`${k}="([-\\d.]+)"`).exec(m[1]) || [])[1]);
+    return {
+      x: at("x"), y: at("y"), w: at("width"), h: at("height"),
+      // 下地。判定の対象にしない
+      background: /class="bg"/.test(m[1]),
+      // 中に枠を持つ入れ物。**大きさではなく class と破線で見分ける。**
+      holder: /dasharray|class="bx holder"/.test(m[1]),
+    };
+  });
+  assert.ok(rects.length > 5, "枠を読み取れていない。判定が空回りしている");
+
+  for (const r of rects) {
+    assert.ok(
+      r.x >= 0 && r.y >= 0 && r.x + r.w <= W && r.y + r.h <= H,
+      `枠が画面の外にある: ${r.x},${r.y} ${r.w}x${r.h}`,
+    );
+  }
+
+  // 入れ物は中に枠を持つため、重なりの判定から外す。
+  const solid = rects.filter((r) => !r.background && !r.holder);
+  for (let i = 0; i < solid.length; i++) {
+    for (let j = i + 1; j < solid.length; j++) {
+      const [a, b] = [solid[i], solid[j]];
+      const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      assert.equal(overlap, false, `枠が重なっている: (${a.x},${a.y}) と (${b.x},${b.y})`);
+    }
+  }
+
+  // 文字幅は描いてみないと確定しないため、**多めに見積もる。**
+  // 日本語は全角、英数は 0.55 倍。これで収まらないものは、実際にも危うい。
+  const widthOf = (t, size) =>
+    [...t].reduce((n, c) => n + (/[\x20-\x7e]/.test(c) ? size * 0.55 : size), 0);
+  const texts = [...svg.matchAll(/<text class="(\w+)"[^>]*x="([\d.]+)"[^>]*y="([\d.]+)"[^>]*>([^<]*)</g)];
+  assert.ok(texts.length > 20, "文字を読み取れていない。判定が空回りしている");
+
+  for (const [, cls, xs, ys, body] of texts) {
+    if (cls === "grp") continue; // 区画の見出しは枠の外に置く
+    const size = cls === "ttl" ? 15 : cls === "tag" ? 10.5 : 12;
+    const [x, y] = [Number(xs), Number(ys)];
+    // **いちばん小さい枠で見る。** 入れ物のほうで見ると、内側の枠の幅を見逃す。
+    // 入れ物の直下に置いた文字もあるため、入れ物も候補に含める。
+    const home = rects
+      .filter((r) => !r.background)
+      .filter((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0];
+    const right = x + widthOf(body, size);
+    if (home === undefined) {
+      assert.ok(right <= W, `画面からはみ出す文字: ${body}`);
+      continue;
+    }
+    assert.ok(right <= home.x + home.w - 12, `枠からはみ出す文字: ${body}`);
+  }
+});
+
+// 図が、配布物より強い主張をしないこと。
+//
+// **図は短くする力が働くため、限界の但し書きが落ちやすい。** 実際に落とした。
+// 初版は出口制限を「エージェントはこれを書き換えられない」と書いていたが、
+// **エージェントはパスワード無しの root を持っており、書き換えられる**（AUT-146）。
+//
+// 配布物は「出口制限は、閉じる仕掛けではない」と書き、判定器も §9 の
+// 「AIがこれらを無効化できないこと」を**代替**と報告している。
+// **図だけが有効であるかのように見せていた。**
+test("図が、出口制限を閉じる仕掛けとして見せない", () => {
+  const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
+  assert.ok(svg.includes("GUARDRAIL"), "図の該当箇所が読めていない。判定が空回りしている");
+
+  assert.equal(svg.includes("書き換えられない"), false, "**嘘が残っている**");
+  assert.ok(svg.includes("閉じる仕掛けではない"), "限界を書いていない");
+  // 規約であって強制ではないことまで言う。**言わないと、有効だと読まれる。**
+  assert.ok(svg.includes("機械的な強制ではない"), "規約と強制の区別が無い");
+});
+
+/**
+ * タグの対応を見る。**XML の検証器はこの環境に無い。**
+ *
+ * 開始と終了、自己終了だけを数える。属性の中身までは見ない。
+ * **入れ子が壊れているかどうかが分かれば足りる。**
+ */
+function unbalancedTags(xml) {
+  const body = xml.replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/g, "");
+  const stack = [];
+  for (const m of body.matchAll(/<(\/?)([a-zA-Z][\w:-]*)([^>]*?)(\/?)>/g)) {
+    const [, closing, name, , selfClosing] = m;
+    if (selfClosing === "/") continue;
+    if (closing === "/") {
+      if (stack.pop() !== name) return `${name} の閉じ方が合っていない`;
+    } else {
+      stack.push(name);
+    }
+  }
+  return stack.length === 0 ? null : `閉じていない: ${stack.join(" > ")}`;
+}
+
+// 図が、そもそも描かれること。
+//
+// **SVG は壊れていると、何も出ずに終わる。** 崩れて出るのではなく、出ない。
+// README に埋め込んだため、壊れれば「仕組み」の節が丸ごと空になる。
+test("図が、組み立てとして壊れていない", () => {
+  const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
+  assert.equal(unbalancedTags(svg), null);
+  assert.match(svg, /^<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/m, "名前空間が無い");
+  // README から画像として読まれるため、単体で完結していること。
+  assert.equal(/<(script|foreignObject)\b/.test(svg), false, "画像として読まれない要素がある");
+});
+
+test("壊れた組み立てを、実際に見つける", () => {
+  // **「壊れていない」を主張する判定は、壊れを見つけられなくても通る。**
+  assert.notEqual(unbalancedTags("<svg><g></svg>"), null, "閉じ忘れを見逃している");
+  assert.notEqual(unbalancedTags("<svg><g></rect></g></svg>"), null, "食い違いを見逃している");
+  assert.equal(unbalancedTags('<svg><rect x="1"/><g></g></svg>'), null, "正しいものを落としている");
+});
