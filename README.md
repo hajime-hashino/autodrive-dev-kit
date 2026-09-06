@@ -79,9 +79,28 @@ It asks about your setup. **The first question is your language** (日本語 / E
 |---|---|
 | `init` | Adopt in a new project. Asks about the setup, then places files |
 | `apply` | Adopt in an existing project. Infers the setup from what is already there and asks you to confirm |
-| `update` | Move the toolkit to a newer version. Does not ask about the setup, and does not change what you already decided |
+
+**That is everything you type.** At the point you run these, there is no project yet and no AI in it.
 
 Copy the placed `.env.example` to `.env` and fill in your credentials. That is the end of the manual work.
+
+### Moving the toolkit to a newer version, later
+
+There is an `update` operation, but **it is not one for you to type.** File it as a work item and let the AI do it.
+
+Updating **changes files your project tracks** — `autodrive/`, `docs/autodrive.md`, the CI definition, `.devcontainer/`, `.env.example`. This method assumes every change reaches the default branch through a submission. **Running it on the default branch and committing directly breaks your own project's rule.**
+
+**Say "I want to move the toolkit to a newer version," and the AI does this.**
+
+| | The AI does | You decide |
+|---|---|---|
+| 1 | Files the work item, starts it, cuts a branch | |
+| 2 | Runs `update` | |
+| 3 | If it stopped because a managed file was edited by hand, **brings it back to you** | **What to do about it** |
+| 4 | Tells you if `.env.example` gained an entry | **Issuing the credential** |
+| 5 | Runs the checks and tests, then submits | **Approving the merge** |
+
+3 and 4 are the things the AI cannot decide or cannot do. **You are not called for anything else.**
 
 ### How development goes
 
