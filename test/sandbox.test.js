@@ -8,7 +8,7 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -519,4 +519,58 @@ test("なぜ要るのかが、置いた場所に書かれる", () => {
 
 test("足していなければ、見出しも出さない", () => {
   assert.equal(rendered([]).text.includes("このプロジェクトが足したもの"), false);
+});
+
+// ------------------------- devcontainer-lock.json は管理下から外れる（AUT-153）
+
+// **足した機能を作り直すと、CLI が版を解決して lock を書き込む。** そこは
+// `(雛形, 構成)` だけでは決まらないため、他の管理下ファイルと同じ扱いにすると
+// 「手で変えられている」と誤って判定され、update が止まる。ここでは実際に
+// setup("update", ...) を通し、その誤判定が起きないことを確かめる。
+test("lock を CLI が書き換えても、update は止まらない", () => {
+  const root = project();
+  setup("init", root, KIT, useRecommended);
+
+  const lock = join(root, ".devcontainer", "devcontainer-lock.json");
+  const before = JSON.parse(readFileSync(lock, "utf8"));
+  before.features["ghcr.io/devcontainers/features/docker-in-docker:2"] = {
+    version: "2.17.0",
+    resolved: "ghcr.io/devcontainers/features/docker-in-docker@sha256:dummy",
+    integrity: "sha256:dummy",
+  };
+  writeFileSync(lock, JSON.stringify(before, null, 2));
+
+  const r = setup("update", root, KIT, useRecommended);
+  assert.equal(r.code, 0, r.message ?? "");
+  assert.equal((r.message ?? "").includes("手で変えられている"), false, r.message ?? "");
+
+  // **書き込んだ内容が消えていないこと。** 止まらないだけでなく、上書きもしない。
+  const after = JSON.parse(readFileSync(lock, "utf8"));
+  assert.ok(after.features["ghcr.io/devcontainers/features/docker-in-docker:2"] !== undefined, "上書きされた");
+});
+
+// **組み込みの3つだけの、素のプロジェクトでも起きる。** 機能を1つも足していなくても、
+// 上流の版が動けば CLI は lock を書き換える。devcontainer_features の有無とは
+// 関係がないことを、ここで確かめる。
+test("機能を足していなくても、lock の書き換えで update は止まらない", () => {
+  const root = project();
+  setup("init", root, KIT, useRecommended);
+
+  const lock = join(root, ".devcontainer", "devcontainer-lock.json");
+  const before = JSON.parse(readFileSync(lock, "utf8"));
+  before.features["ghcr.io/devcontainers/features/node:1"].version = "1.7.2";
+  writeFileSync(lock, JSON.stringify(before, null, 2));
+
+  const r = setup("update", root, KIT, useRecommended);
+  assert.equal(r.code, 0, r.message ?? "");
+});
+
+// **播種であって、消せるものではない。** サンドボックスを使わないプロジェクトに
+// 置いてはいけない。
+test("サンドボックスを使わないなら、lock も置かない", () => {
+  const root = project();
+  const port = answering({ "AIを、隔離された作業場の中で動かしますか？": NONE });
+  setup("init", root, KIT, port);
+
+  assert.equal(existsSync(join(root, ".devcontainer", "devcontainer-lock.json")), false);
 });
