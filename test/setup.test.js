@@ -568,66 +568,77 @@ test("宛先を持っていなくても、そのまま通る", () => {
   assert.deepEqual(configOf(root).app.destinations, []);
 });
 
-// -------------------------------------- 作業場に足す道具（AUT-132）
 
-const FEAT = { id: "ghcr.io/devcontainers/features/docker-in-docker:2", options: {}, why: "配布前に確かめる" };
+// -------------------------------------- 持ち主がプロジェクトのもの（AUT-157）
 
-test("入れ替えても、足した道具は残る", () => {
+// **黙って古くならないこと。** 書き換えない代わりに、離れていることを言う。
+test("テンプレートが変わっていたら、書き換えずに差分を言う", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", devcontainer_features: [FEAT] });
+
+  // kit 側に行が増えた状態を作る（こちらの定義から1行落とす）。
+  const path = join(root, ".devcontainer", "devcontainer.json");
+  const before = readFileSync(path, "utf8");
+  writeFileSync(path, before.replace('  "remoteUser": "vscode",\n', ""), "utf8");
 
   const result = run("update", root);
 
-  assert.equal(result.message, null, result.message ?? "");
-  assert.deepEqual(configOf(root).app.devcontainer_features, [FEAT], "入れ替えで消えている");
-  assert.ok(
-    readFileSync(join(root, ".devcontainer", "devcontainer.json"), "utf8").includes(FEAT.id),
-    "作業場の定義に出ていない",
-  );
+  assert.equal(result.code, 0, result.message ?? "");
+  const notes = result.notes.join("\n");
+  assert.ok(notes.includes("devcontainer.json"), notes);
+  assert.ok(notes.includes("書き換えていない"), notes);
+  assert.ok(notes.includes("remoteUser"), `離れている行を出していない: ${notes}`);
+  // **言うだけで、書き換えないこと。**
+  assert.equal(readFileSync(path, "utf8").includes('"remoteUser"'), false, "上書きした");
 });
 
-test("なぜ要るのかが無ければ、進めずに止まる", () => {
+// **同じなら黙る。** 毎回言うと読まれなくなる。
+test("テンプレートと同じなら、何も言わない", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", devcontainer_features: [{ id: "a/b:1" }] });
+
+  const notes = run("update", root).notes.join("\n");
+  assert.equal(notes.includes("書き換えていない"), false, notes);
+});
+
+// **lock は比べない。** CLI が書き換えるのが正常であり、離れているのが既定になる。
+test("lock が離れていても、差分は言わない", () => {
+  const root = project();
+  run("init", root);
+
+  const lock = join(root, ".devcontainer", "devcontainer-lock.json");
+  writeFileSync(lock, JSON.stringify({ features: { "a/b:1": { version: "9" } } }, null, 2), "utf8");
+
+  const notes = run("update", root).notes.join("\n");
+  assert.equal(notes.includes("devcontainer-lock.json"), false, notes);
+});
+
+// **読まなくなった項目を、黙って無視しない。** 書いてあるのに効かない状態は、
+// 書いた人から見て「効いているのに動かない」に見える。
+test("使わなくなった項目が残っていたら、そう言う", () => {
+  const root = project();
+  run("init", root);
+  writeRawConfig(root, {
+    screen: "yes",
+    devcontainer_features: [{ id: "a/b:1", options: {}, why: "理由" }],
+  });
 
   const result = run("update", root);
 
-  assert.equal(result.code, 1);
-  assert.ok(result.message.includes("why"), result.message);
-  assert.ok(result.message.includes("a/b:1"), `どれが悪いのかを出していない: ${result.message}`);
+  assert.equal(result.code, 0, result.message ?? "");
+  const notes = result.notes.join("\n");
+  assert.ok(notes.includes("app.devcontainer_features"), notes);
+  assert.ok(notes.includes("もう読んでいない"), notes);
+  // **消さないこと。** 構成はプロジェクトのものである（ADR 0005）。
+  const raw = JSON.parse(readFileSync(join(root, CONFIG_FILE), "utf8"));
+  assert.ok(raw.app.devcontainer_features !== undefined, "構成から消している");
 });
 
-test("道具の名前が無ければ、進めずに止まる", () => {
+// **空なら言わない。** 項目名だけ残っている状態で毎回言うと、読まれなくなる。
+test("使わなくなった項目が空なら、言わない", () => {
   const root = project();
   run("init", root);
-  writeRawConfig(root, { screen: "yes", devcontainer_features: [{ why: "理由" }] });
-  assert.equal(run("update", root).code, 1);
-});
+  writeRawConfig(root, { screen: "yes", devcontainer_features: [] });
 
-test("持っていなくても、そのまま通る", () => {
-  const root = project();
-  run("init", root);
-  writeRawConfig(root, { screen: "yes" });
-  assert.equal(run("update", root).message, null);
-  assert.deepEqual(configOf(root).app.devcontainer_features, []);
-});
-
-// **使えない構成で黙って持たせない。** Feature は Dev Container 仕様のものである。
-test("サンドボックスが devcontainer でなければ、進めずに止まる", () => {
-  const root = project();
-  run("init", root);
-  const ports = { ...defaults().ports, sandbox: NONE };
-  writeFileSync(
-    join(root, CONFIG_FILE),
-    JSON.stringify({ version: 1, language: "ja", ports, app: { devcontainer_features: [FEAT] } }, null, 2),
-    "utf8",
-  );
-
-  const result = run("update", root);
-
-  assert.equal(result.code, 1);
-  assert.ok(result.message.includes("ports.sandbox"), result.message);
-  assert.ok(result.message.includes("効かない"), `なぜ駄目かを言っていない: ${result.message}`);
+  assert.equal(run("update", root).notes.join("\n").includes("もう読んでいない"), false);
 });

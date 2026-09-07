@@ -143,7 +143,8 @@ These appear as the project needs them.
 | `autodrive/` | init | dev-kit | Copy of the toolkit. Replaced by `update` |
 | `.env.example` | init | dev-kit | Credentials you need. **Generated from your setup** |
 | `.github/workflows/invariants.yml` | init | dev-kit | Runs the checks in CI |
-| `.devcontainer/` | init | dev-kit | The isolated workspace the AI runs in. **Outbound traffic is allowlisted** |
+| `.devcontainer/` | init | dev-kit | Isolation logic (firewall, setup, allowlist). **Outbound traffic is allowlisted** |
+| `.devcontainer/devcontainer.json` | init | project | The workspace definition. **Edit it directly.** `invariants` checks the isolation wiring |
 | `.devcontainer/devcontainer-lock.json` | init | project | Version pins. **Placed once.** After that, the Dev Containers CLI rewrites it on every rebuild |
 | `docs/autodrive.md` | init | dev-kit | The rules the AI follows. **Includes how it should behave** |
 | `autodrive.json` | init | project | Your setup. Never changed by `update` |
