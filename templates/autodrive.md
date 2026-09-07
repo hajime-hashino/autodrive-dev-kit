@@ -224,8 +224,8 @@
 作っているものによって、作業場に要る道具は変わる。**`.devcontainer/` を直接編集しない。**
 道具が管理しており、入れ替えのときに書き直される。
 
-`autodrive.json` の `app.devcontainer_features` に足して、`{{KIT}}/bin/autodrive-dev-kit update`
-を打つこと。
+`autodrive.json` の `app.devcontainer_features` に足して、**更新を打つこと**
+（「autodrive-dev-kit を更新する」）。書いただけでは `.devcontainer/` は作り直されない。
 
 ```json
 {
@@ -263,8 +263,8 @@
 一覧は道具のために要る宛先しか持っていない。作っているものが叩く先、配布した先の
 疎通確認はそこに入っていない。
 
-`autodrive.json` の `app.destinations` に足して、`{{KIT}}/bin/autodrive-dev-kit update`
-を打つこと。**許可一覧を直接編集しないこと。** そのファイルは道具が管理しているため、
+`autodrive.json` の `app.destinations` に足して、**更新を打つこと**
+（「autodrive-dev-kit を更新する」）。**許可一覧を直接編集しないこと。** そのファイルは道具が管理しているため、
 入れ替えのたびに書き直される。
 
 ```json
@@ -291,8 +291,8 @@
 道具のために要るもの（`GH_TOKEN` など）は `.env.example` に並んでいる。**作っている
 ものが自分で要る鍵は、そこに入っていない。** モデルを叩く鍵、外部サービスの鍵など。
 
-`autodrive.json` の `app.credentials` に足して、`{{KIT}}/bin/autodrive-dev-kit update`
-を打つこと。**`.env.example` へ直接書かないこと。** そのファイルは道具が管理して
+`autodrive.json` の `app.credentials` に足して、**更新を打つこと**
+（「autodrive-dev-kit を更新する」）。**`.env.example` へ直接書かないこと。** そのファイルは道具が管理して
 いるため、入れ替えのたびに丸ごと書き直される。
 
 ```json
@@ -340,10 +340,14 @@
 ## autodrive-dev-kit を更新する
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit update
+npx github:hajimegane/autodrive-dev-kit update
 ```
 
 **これは人が打つものではない。作業単位にして、こちらが行う。**
+
+**外から取ってくる。** `{{KIT}}/` にあるコピーからは打てない。コピーが持っているのは
+実行するものだけで、ファイルを作る元（テンプレート）は入っていない。打つと理由を
+言って止まる（AUT-152）。
 
 更新は**このプロジェクトの追跡ファイルを書き換える変更**である
 （`{{KIT}}/`・この文書・CI 定義・`.devcontainer/`・`.env.example`）。すべての変更は
@@ -353,8 +357,11 @@
 2. `update` を打つ
 3. 判定とテストを走らせ、提出する
 
-**構成を変えたときに打つ `update` も同じである。** `autodrive.json` を変えるのは
-このプロジェクトへの変更であり、枝の上で行うこと。
+**構成を変えたときも、これで反映する。** `autodrive.json` に書いただけでは、
+`.devcontainer/` も `.env.example` も作り直されない。
+
+**このとき kit のバージョンも上がる。** 取ってくるのは最新であり、構成の変更だけを
+反映する打ち方は無い。上がった分の差分も、同じ作業単位の中で確かめること。
 
 ### 止まったら、人へ返す
 
