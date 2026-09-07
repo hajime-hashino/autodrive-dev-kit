@@ -12,6 +12,8 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { init } from "./init.js";
 import { LANGUAGES, say } from "./messages.js";
 
@@ -171,10 +173,43 @@ function refuse(message) {
   return { placed: [], todo: [], notes: [], version: null, code: 1, message, config: null, decisions: [] };
 }
 
+/** 外から取ってくるときの打ち方。**README と同じものを指す。** */
+export const FROM_SOURCE = "npx github:hajimegane/autodrive-dev-kit";
+
+/**
+ * ここから置けるか。
+ *
+ * **プロジェクトの中のコピーからは置けない。** コピーにはテンプレートが入って
+ * いない（[ADR 0004](../docs/adr/0004-vendored-kit.md)）。置く処理はテンプレートを
+ * 読んでファイルを作るため、無ければ何も作れない。
+ *
+ * **理由を言って止める。** 言わないと、テンプレートを開こうとしたところで
+ * ENOENT の生ログが出る。読んだ人には、何を打ち間違えたのかが分からない
+ * （AUT-152）。題材アプリ2はここで詰まり、手で迂回している。
+ */
+function cannotGenerate(kitRoot) {
+  if (existsSync(join(kitRoot, "templates"))) return null;
+  return refuse(
+    "ここからは置けない。**プロジェクトの中のコピーには、テンプレートが入っていない。**\n\n" +
+      "コピーが持っているのは実行するものだけで、ファイルを作る元は持っていない。\n" +
+      "意図してそうしている（ADR 0004）。プロジェクトがファイルを生成することはない。\n\n" +
+      "更新するときは、kit を外から取ってきて打つこと。\n\n" +
+      `  ${FROM_SOURCE} update\n\n` +
+      "**人が打つものではない。** 作業単位にして、枝の上で打つこと\n" +
+      "（docs/autodrive.md「autodrive-dev-kit を更新する」）。",
+  );
+}
+
 export function setup(mode , root , kitRoot , interviewer , inside = undefined) {
   const present = hasConfig(root);
 
   // 前提 ----------------------------------------------------------------------
+  //
+  // **打てる場所かを、いちばん先に見る。** 後ろに置くと、構成を聞き終えてから
+  // 落ちる。答えさせてから「ここでは打てない」と言うことになる。
+  const cannot = cannotGenerate(kitRoot);
+  if (cannot !== null) return cannot;
+
   if (mode === "update" && !present) {
     return refuse(
       `${CONFIG_FILE} が無い。**このプロジェクトは、まだ土台を置いていない。**\n\n` +

@@ -21,6 +21,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { VENDOR_DIR } from "../src/init.js";
+import { FROM_SOURCE } from "../src/setup.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -99,6 +100,20 @@ test("置かれた設定が、置かれた道具を指している", () => {
   assert.equal(rules.includes("{{KIT}}"), false, "置き換えが残っている");
 });
 
+// **更新だけは、置かれた道具を指していてはいけない。** 複製にはテンプレートが
+// 入っていないため、案内どおりに打つと必ず落ちる（AUT-152）。
+test("置かれた文書が、更新を外から取る形で案内している", () => {
+  const root = initialized();
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+
+  assert.ok(rules.includes(`${FROM_SOURCE} update`), rules.slice(0, 400));
+  assert.equal(
+    rules.includes(`${VENDOR_DIR}/bin/autodrive-dev-kit update`),
+    false,
+    "複製先で update を打たせている",
+  );
+});
+
 // ------------------------------------------------------------ 判定の中身
 
 // **記録が1件も無い状態から始まる。** そこで何が言われるかは、初日の体験そのもの。
@@ -127,6 +142,36 @@ test("参照実装のテストや文書は複製しない", () => {
   for (const p of ["test", "docs", "templates", "telemetry"]) {
     assert.equal(existsSync(join(root, VENDOR_DIR, p)), false, `${VENDOR_DIR}/${p} を複製している`);
   }
+});
+
+// **複製しないことと、打てると案内することは両立しない。**
+//
+// 上の試験は正しいものを守っていた。**足りなかったのは、打てない場所で打たれた
+// ときの出方である。** 題材アプリ2は、配られた文書の案内どおりに複製先で打ち、
+// ENOENT の生ログを受け取って詰まった（AUT-152）。
+test("複製した先から update を打つと、理由を言って止まる", () => {
+  const root = initialized();
+
+  let out;
+  let code = 0;
+  try {
+    out = execFileSync(join(root, VENDOR_DIR, "bin", "autodrive-dev-kit"), ["update"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (error) {
+    const e = error;
+    out = `${e.stdout ?? ""}${e.stderr ?? ""}`;
+    code = e.status ?? 1;
+  }
+
+  assert.equal(code, 1, `止まっていない: ${out.slice(0, 300)}`);
+  // **打ち直せる形を出す。** 止めるだけでは、次に何を打てばよいかが分からない。
+  assert.ok(out.includes(`${FROM_SOURCE} update`), out.slice(0, 400));
+  // **生ログを出さない。** 読んだ人には、何が起きたのかが分からない。
+  assert.equal(out.includes("ENOENT"), false, out.slice(0, 400));
+  assert.equal(out.includes("at template"), false, out.slice(0, 400));
 });
 
 // ------------------------------------------------------------ 始まりの合図

@@ -174,5 +174,19 @@
     "from": "**既定ブランチで打って直接コミットしないこと。**",
     "to": "既定ブランチで打ってよい。",
     "why": "入れ替えは追跡ファイルを書き換える。直接コミットは規約違反になる"
+  },
+  {
+    "name": "AUT-152 打てない場所で打たれても、理由を言わない",
+    "file": "src/setup.js",
+    "from": "  const cannot = cannotGenerate(kitRoot);\n  if (cannot !== null) return cannot;",
+    "to": "  void 0;",
+    "why": "テンプレートを開くところまで進み、ENOENT の生ログで落ちる。打った側には理由が分からない"
+  },
+  {
+    "name": "AUT-152 配布物が、プロジェクトの中のコピーで update を打たせる",
+    "file": "templates/autodrive.md",
+    "from": "npx github:hajimegane/autodrive-dev-kit update\n",
+    "to": "{{KIT}}/bin/autodrive-dev-kit update\n",
+    "why": "コピーにはテンプレートが無い。案内どおりに打つと必ず落ちる"
   }
 ]
