@@ -2,10 +2,15 @@
   "name": "{{NAME}}",
   "image": "mcr.microsoft.com/devcontainers/base:debian",
 
+  // このファイルはプロジェクトのものである。**足したいものは直接書いてよい。**
+  // kit は上書きしない（テンプレート側が変わったときは update が差分を言う）。
+  //
+  // ただし下の3つ（runArgs / postStartCommand / remoteUser）は、外向き通信を
+  // 絞るのに要る。**外すと invariants が落ちる**（AUT-121、AUT-157）。
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}{{APP_FEATURES}}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
 
   // 外向き通信を絞るために要る。これが無いと出口を閉じられない。

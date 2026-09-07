@@ -17,6 +17,7 @@ import { LinearTracker } from "./adapters/trackerLinear.js";
 import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
 import { describe as describeTracked, forbidden } from "./tracked.js";
+import { describe as describeIsolation, isolationGaps } from "./isolation.js";
 
 import { renderJson, renderText } from "./report.js";
 import { ACTIVE, INVARIANTS, Result } from "./state.js";
@@ -213,13 +214,25 @@ export async function run(argv) {
     forbidden(r.path, r.trackedFiles()).map((f) => ({ ...f, path: `${r.name}/${f.path}` })),
   );
 
+  // **隔離の配線が保たれているか。**
+  //
+  // 不変条件ではない（定義§9は4つで固定）。配布物の「守ること」にある隔離の
+  // 検出手段である。`.devcontainer/devcontainer.json` をプロジェクトのものに
+  // したため、触れるようになった代わりにここで見る（AUT-157）。
+  const isolation = repos.flatMap((r) =>
+    isolationGaps(r.path).map((g) => ({ ...g, path: `${r.name}/${g.path}` })),
+  );
+
   const body =
     values.format === "json"
-      ? renderJson(results, repos, scope, language, tracked)
+      ? renderJson(results, repos, scope, language, tracked, isolation)
       : renderText(results, repos, scope, language);
   return {
-    output: values.format === "json" ? body : [body, ...describeTracked(tracked)].join("\n"),
-    code: exitCode(results, tracked.length),
+    output:
+      values.format === "json"
+        ? body
+        : [body, ...describeTracked(tracked), ...describeIsolation(isolation)].join("\n"),
+    code: exitCode(results, tracked.length, isolation.length),
   };
 }
 
@@ -229,11 +242,14 @@ export async function run(argv) {
  * **追跡してはいけないものがあれば落とす。** 不変条件が全部通っていても落とす。
  * 落ちなければ、CI では誰も気づかない（AUT-137）。
  *
+ * **隔離の配線が欠けていても落とす。** 同じ理由である。触ってよいファイルに
+ * した以上、壊れたまま統合される経路を残さない（AUT-157）。
+ *
  * **判断をここへ出しているのは、直接確かめるためである。** 判定器を通して見ると、
  * 一時リポジトリでは記録が無くてどのみち落ちるため、差が出ない。
  */
-export function exitCode(results, forbiddenCount) {
-  return results.some((r) => r.failing) || forbiddenCount > 0 ? 1 : 0;
+export function exitCode(results, forbiddenCount, isolationCount = 0) {
+  return results.some((r) => r.failing) || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
