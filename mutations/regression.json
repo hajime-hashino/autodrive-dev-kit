@@ -49,12 +49,6 @@
     "to": "if (typeof host !== \"string\") {"
   },
   {
-    "name": "AUT-132 使えない構成でも features を通す",
-    "file": "src/config.js",
-    "from": "  if (box.features.length > 0 && ports.sandbox !== \"devcontainer\") {",
-    "to": "  if (false) {"
-  },
-  {
     "name": "AUT-135 英語の設定を読まない",
     "file": "src/main.js",
     "from": "readConfig(values.root).config?.language ?? \"ja\"",
@@ -192,8 +186,36 @@
   {
     "name": "AUT-153 lock も他の管理下ファイルと同じ扱いに戻す",
     "file": "src/init.js",
-    "from": "\"devcontainer.json\", \"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\"",
-    "to": "\"devcontainer.json\", \"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"devcontainer-lock.json\", \"README.md\"",
+    "from": "\"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\"",
+    "to": "\"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\", \"devcontainer-lock.json\"",
     "why": "CLI が書き換える lock を管理下に戻すと、作り直すたびに update が止まる"
+  },
+  {
+    "name": "AUT-157 隔離の配線を見ない",
+    "file": "src/main.js",
+    "from": "    code: exitCode(results, tracked.length, isolation.length),",
+    "to": "    code: exitCode(results, tracked.length, 0),",
+    "why": "見つけても終了コードに出ない。CI で誰も気づかない"
+  },
+  {
+    "name": "AUT-157 起動のたびに閉じているかを見ない",
+    "file": "src/isolation.js",
+    "from": "  if (!invokes(json.postStartCommand, FIREWALL)) {",
+    "to": "  if (false) {",
+    "why": "AUT-121 で実際に起きた形（postCreateCommand に置く）を素通りさせる"
+  },
+  {
+    "name": "AUT-157 root で動かしても通す",
+    "file": "src/isolation.js",
+    "from": "  if (json.remoteUser === undefined || json.remoteUser === \"root\") {",
+    "to": "  if (false) {",
+    "why": "エージェントが root なら、置いた規則を自分で外せる"
+  },
+  {
+    "name": "AUT-157 devcontainer.json を管理下に戻す",
+    "file": "src/init.js",
+    "from": "const PROJECT_OWNED_SANDBOX = [\"devcontainer.json\", \"devcontainer-lock.json\"];",
+    "to": "const PROJECT_OWNED_SANDBOX = [\"devcontainer-lock.json\"];",
+    "why": "触りたい項目が多いのに、触ると update が止まる状態へ戻る"
   }
 ]

@@ -523,12 +523,30 @@ test("本当に守っているものを挙げ、補えないと書く", () => {
   assert.ok(text.includes("補えない"), "補えないと言っていない");
 });
 
-// ------------------------- 作業場に足す道具（AUT-132）
+// ------------------------- 作業場の定義は、プロジェクトのもの（AUT-157）
 
-test("道具の足し方が配ってある", () => {
+// **触ってよいことと、誰のものかが配ってあること。** 分からなければ、結局こちらへ
+// 聞きに来る。
+test("作業場の定義を直接編集してよいと、配ってある", () => {
   const text = rules();
-  assert.ok(text.includes("app.devcontainer_features"), "どこに書けばよいかが無い");
-  assert.ok(text.includes("`.devcontainer/` を直接編集しない"), "直接編集するなと言っていない");
+  assert.ok(text.includes("直接編集してよい"), "触ってよいと言っていない");
+  assert.ok(text.includes("devcontainer.json"), "どのファイルかが無い");
+  // **kit のものと混ぜない。** 隔離のロジックは手で変えるものではない。
+  assert.ok(text.includes("init-firewall.sh"), "kit が持つものを挙げていない");
+});
+
+// **外すと隔離が消える行を、触ってよいと言う場所と同じところに書く。** 別の場所だと
+// 読まれない。
+test("外してはいけない行が、同じ場所に書いてある", () => {
+  const text = rules();
+  for (const must of ["runArgs", "postStartCommand", "remoteUser", "NET_ADMIN"]) {
+    assert.ok(text.includes(must), `${must} が書かれていない`);
+  }
+  // **判定が見ていることまで言う。** 外したら落ちると分かる。
+  assert.ok(text.includes("invariants"), "判定が見ていることを言っていない");
+  // **AUT-121 の形を名指しする。** ここが唯一、指紋では捕まらなかった壊れ方である。
+  assert.ok(text.includes("postCreateCommand"), "移してはいけない先を言っていない");
+  assert.ok(text.includes("AUT-121"), "実際に起きたことを指していない");
 });
 
 // **足すと穴が開くことを、足し方と同じ場所に書く。** 別の場所だと読まれない。
