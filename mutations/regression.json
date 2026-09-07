@@ -188,5 +188,12 @@
     "from": "npx github:hajimegane/autodrive-dev-kit update\n",
     "to": "{{KIT}}/bin/autodrive-dev-kit update\n",
     "why": "コピーにはテンプレートが無い。案内どおりに打つと必ず落ちる"
+  },
+  {
+    "name": "AUT-153 lock も他の管理下ファイルと同じ扱いに戻す",
+    "file": "src/init.js",
+    "from": "\"devcontainer.json\", \"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\"",
+    "to": "\"devcontainer.json\", \"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"devcontainer-lock.json\", \"README.md\"",
+    "why": "CLI が書き換える lock を管理下に戻すと、作り直すたびに update が止まる"
   }
 ]
