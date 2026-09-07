@@ -144,6 +144,7 @@ These appear as the project needs them.
 | `.env.example` | init | dev-kit | Credentials you need. **Generated from your setup** |
 | `.github/workflows/invariants.yml` | init | dev-kit | Runs the checks in CI |
 | `.devcontainer/` | init | dev-kit | The isolated workspace the AI runs in. **Outbound traffic is allowlisted** |
+| `.devcontainer/devcontainer-lock.json` | init | project | Version pins. **Placed once.** After that, the Dev Containers CLI rewrites it on every rebuild |
 | `docs/autodrive.md` | init | dev-kit | The rules the AI follows. **Includes how it should behave** |
 | `autodrive.json` | init | project | Your setup. Never changed by `update` |
 | `boundaries.yaml` | init | project | The delegation table. What you have handed to the AI |
