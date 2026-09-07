@@ -193,9 +193,9 @@
   {
     "name": "AUT-157 隔離の配線を見ない",
     "file": "src/main.js",
-    "from": "    code: exitCode(results, tracked.length, isolation.length),",
-    "to": "    code: exitCode(results, tracked.length, 0),",
-    "why": "見つけても終了コードに出ない。CI で誰も気づかない"
+    "from": "  return results.some((r) => r.failing) || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;",
+    "to": "  return results.some((r) => r.failing) || forbiddenCount > 0 ? 1 : 0;",
+    "why": "見つけても終了コードに出ない。CI で誰も気づかない。**呼び出し側で 0 を渡す形は、この判定では捕まえられない**（一時リポジトリでは記録が無く、どのみち落ちるため差が出ない）。追跡してはいけないものの判定も同じ位置にある"
   },
   {
     "name": "AUT-157 起動のたびに閉じているかを見ない",
