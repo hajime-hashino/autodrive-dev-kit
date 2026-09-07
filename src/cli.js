@@ -20,10 +20,10 @@ const USAGE = `AIに開発を任せて回すための道具一式
 
   autodrive-dev-kit init                    新しく始める。構成を聞いて、土台を置く
   autodrive-dev-kit apply                   既にあるものへ入れる。構成を推測して確かめる
-  autodrive-dev-kit update                  道具を新しい版へ入れ替える。構成は聞かない
 
 AIが使うもの（人は打たなくてよい）
 
+  autodrive-dev-kit update                  新しいバージョンへ入れ替える。構成は聞かない
   autodrive-dev-kit begin <ID> --repo <先>  着手する
   autodrive-dev-kit tracker <操作> ...      作業単位を扱う
   autodrive-dev-kit telemetry <操作> ...    記録する
