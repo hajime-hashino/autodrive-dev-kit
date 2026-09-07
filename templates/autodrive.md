@@ -219,39 +219,45 @@
 そのときは**なぜ届かないのかを言って、人に作ってもらう。** 権限を広げてくれとは
 頼まないこと。**1つ作るために、全部を消せる鍵を渡させることになる**（AUT-110）。
 
-#### 作業場に足りない道具も、構成に書く
+#### 作業場の定義は、直接編集してよい
 
-作っているものによって、作業場に要る道具は変わる。**`.devcontainer/` を直接編集しない。**
-道具が管理しており、入れ替えのときに書き直される。
+`.devcontainer/devcontainer.json` は**このプロジェクトのものである。** 機能を足す、
+ポートを転送する、環境変数を置く——**そのファイルへ直接書くこと。** 構成に差し込み口は
+無い（AUT-157）。`update` はこのファイルを書き換えない。
 
-`autodrive.json` の `app.devcontainer_features` に足して、**更新を打つこと**
-（「autodrive-dev-kit を更新する」）。書いただけでは `.devcontainer/` は作り直されない。
+**`.devcontainer/` の他のファイルは違う。** `init-firewall.sh`・`post-create.sh`・
+`check-setup.sh`・`allowed-domains.txt` は kit が管理しており、手で変えると `update` が
+止まる。**隔離のロジックであり、直す先は参照実装である。**
 
-```json
-{
-  "app": {
-    "devcontainer_features": [
-      {
-        "id": "ghcr.io/devcontainers/features/docker-in-docker:2",
-        "options": {},
-        "why": "配布するイメージを、出す前に手元で作って確かめる"
-      }
-    ]
-  }
-}
+| ファイル | 誰のものか |
+|---|---|
+| `devcontainer.json` | **このプロジェクト。** 直接編集してよい |
+| `devcontainer-lock.json` | このプロジェクト。作り直すたびに CLI が書き換える |
+| `init-firewall.sh` / `post-create.sh` / `check-setup.sh` | kit。手で変えない |
+| `allowed-domains.txt` | kit。`app.destinations` に書く（下記） |
+
+##### ただし、外すと隔離が消える行がある
+
+```jsonc
+"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],   // 規則を置くのに要る
+"postStartCommand": "sudo bash .devcontainer/init-firewall.sh",  // 起動のたびに閉じる
+"remoteUser": "vscode",                                     // root で動かさない
 ```
 
-**ここだけ項目名に実装名が入っている。** 中身が Dev Container 仕様のものであり、
-**他のサンドボックスへ持っていけないため。** ポート名の下に置くと、実装を替えても
-使えるかのように読める。`ports.sandbox` が `devcontainer` でなければ `update` が止まる。
+**この3つは判定が見ている。** 外すと `invariants` が落ち、CI で止まる。
 
-**`why` を省略できない。** 作業場に入れたものは、そのままAIが使える道具になる。
-なぜ要るのかが書けないなら、入れる理由が無い。
+**`postCreateCommand` へ移さないこと。** あれは作ったときにしか走らない。iptables の
+規則はコンテナのネットワーク名前空間にあるため停止すると消えるので、**2回目以降の
+起動で隔離が無くなる。** 実際にそうなっていた（AUT-121）。10日間、誰も気づかなかった。
 
-**足したあと、作業場を作り直すと `.devcontainer/devcontainer-lock.json` が変わる。**
-Dev Containers CLI が版を解決して書き込むためであり、こちら側の変更ではない。
-**手で変えられたものとして扱わない。** この1ファイルだけは最初の一度しか置かれず、
-以後は触らない（AUT-153）。差分に出てきても、直す対象ではない。
+**判定は、書いてあるかしか見ない。** 実際に出られるかどうかは `init-firewall.sh` が
+起動のたびに両方向で確かめる。**どちらも要る。**
+
+##### 作り直すと lock が変わる
+
+`.devcontainer/devcontainer-lock.json` は、作業場を作り直すたびに Dev Containers CLI が
+解決したバージョンを書き込む。**こちら側の変更ではない。手で変えられたものとして
+扱わない**（AUT-153）。差分に出てきても、直す対象ではない。
 
 ##### 中でコンテナを動かす道具は、出口制限を迂回する
 
@@ -470,8 +476,8 @@ npx github:hajimegane/autodrive-dev-kit update
 **データが外へ出ないことの保証として扱わないこと。**
 
 **絞っているのは、この機械が出す通信（`OUTPUT`）だけである。** 通り抜ける通信
-（`FORWARD`）は絞っていない。**中でコンテナを動かす道具を足すと、その通信は
-出口制限を通らない**（`app.devcontainer_features`）。
+（`FORWARD`）は絞っていない。**中でコンテナを動かす機能を `devcontainer.json` へ
+足すと、その通信は出口制限を通らない。**
 
 本当に守っているのは別のものである。
 

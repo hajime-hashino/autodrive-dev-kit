@@ -33,6 +33,7 @@ import {
   describeEdits,
   describeUnchecked,
   findEdits,
+  linesLost,
   manifestPath,
   readManifest,
   writeManifest,
@@ -42,7 +43,7 @@ import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
 import { envExample } from "./credentials.js";
 import { say } from "./messages.js";
-import { defaults } from "./config.js";
+import { defaults, retired } from "./config.js";
 
 
 /** 複製先。**追跡する。** 版を固定するには、履歴に載っている必要がある。 */
@@ -247,60 +248,109 @@ export function insideSandbox() {
 }
 
 /**
- * 作業場に足す道具を、雛形へ差し込む形にする。
+ * 作業場のうち、プロジェクトが持つもの。
  *
- * **雛形を丸ごと組み直さない。** `devcontainer.json` は JSONC であり、コメントに
- * 判断の理由が書いてある。読んで書き戻すとコメントが消える（AUT-132）。`{{NAME}}`
- * と同じく差し込み口へ入れる。
+ * **kit はロジックを持ち、プロジェクトは設定を持つ。**
  *
- * **なぜ要るのかを、置いた場所に残す。** 後から読む人が、消してよいかを判断できる。
+ *   init-firewall.sh / post-create.sh / check-setup.sh   kit    隔離のロジック
+ *   allowed-domains.txt                                  kit    構成から作る
+ *   devcontainer.json                                    ここ   コンテナの設定
+ *   devcontainer-lock.json                               ここ   CLI が書く記録
+ *
+ * ## なぜ devcontainer.json を渡すか
+ *
+ * `forwardPorts`・`mounts`・`containerEnv`・拡張——**触りたい項目が多い。** 管理下に
+ * 置くと、項目ごとに構成へ差し込み口を足していくことになり、kit が Dev Container
+ * 仕様の写しになる。プロジェクト側はその間ずっと止まる（AUT-157）。
+ *
+ * ## 渡しても隔離が守られる理由
+ *
+ * **守っていたのは管理下であることではない。** AUT-121 では、このファイルが
+ * テンプレートと1バイトも違わないまま10日間隔離が外れていた。壊れていたのは
+ * テンプレート自身であり、指紋は何も捕まえていない。
+ *
+ * 実際に守っているのは2つある。
+ *
+ *   init-firewall.sh   起動のたびに走り、実際の到達可否を両方向で確かめる
+ *   isolation.js       その配線があるかを判定する。CI で落ちる
+ *
+ * ## なぜ lock も同じ扱いか
+ *
+ * 他の管理下ファイルは `(雛形, 構成)` だけで中身が決まる。**lock は違う。**
+ * 作業場を作り直すたびに Dev Containers CLI が解決したバージョンを書き込むため、
+ * 管理下に置くと毎回「手で変えられている」と誤判定され、`update` が止まる
+ * （AUT-153）。**人は誰も触っていないのに。**
  */
-export function featuresBlock(config) {
-  const features = config.app?.devcontainer_features ?? [];
-  if (features.length === 0) return "";
+const PROJECT_OWNED_SANDBOX = ["devcontainer.json", "devcontainer-lock.json"];
 
-  const lines = ["", "", "    // ここから下は、このプロジェクトが足したもの。", "    // autodrive.json の app.devcontainer_features にある。"];
-  features.forEach((f, i) => {
-    lines.push(`    // ${f.why}`);
-    const options = JSON.stringify(f.options ?? {});
-    lines.push(`    ${JSON.stringify(f.id)}: ${options}${i < features.length - 1 ? "," : ""}`);
-  });
-  // 直前の項目の末尾に読点が要る。**差し込み口は最後の項目の直後にある。**
-  return `,${lines.join("\n")}`;
+/**
+ * プロジェクトが持つ作業場のファイルを置く。
+ *
+ * **最初の一度だけ置き、以後は触らない。** 既にあれば、テンプレートが変わって
+ * いても書き換えない。代わりに、変わっていることを言う（`driftNotes`）。
+ */
+function seedSandbox(root , kitRoot , placed) {
+  const name = basename(root) || "project";
+  for (const file of PROJECT_OWNED_SANDBOX) {
+    seeded(root, `.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`, { NAME: name }), placed);
+  }
 }
 
 /**
- * `devcontainer-lock.json` の置き場所。
+ * プロジェクトが持つファイルが、テンプレートから離れていないか。
  *
- * **管理下に置かない。** 他の管理下ファイルは `(雛形, 構成)` だけで中身が決まる。
- * これだけは違う。**作業場を作り直すたびに、Dev Containers CLI が解決した版を
- * 書き込む。** `app.devcontainer_features` で足した機能はもちろん、足していない
- * 組み込みの3つでも、上流の版が動けば同じことが起きる。
+ * **書き換えない。言うだけである。** 持ち主はプロジェクトであり、こちらが決める
+ * ことではない。ただし**黙っていると、静かに古くなる。** kit 側の改善が入った
+ * ことを知る機会が無くなる。
  *
- * 管理下に置いたままだと、そのたびに「手で変えられている」と判定され、
- * `update` が止まる（AUT-153）。**人は誰も触っていないのに。**
- *
- * 播種にする。**最初の一度だけ雛形を置き、以後は触らない。** バージョンの固定
- * という値打ちは、置いた瞬間には残る。作り直した後にCLIが上書きするのは、
- * kit の管理から見て「消えた」のではなく「プロジェクトが持つ実測値に変わった」
- * である。
+ * **消える行ではなく、増える行を出す。** 知りたいのは「テンプレートには有るが、
+ * こちらには無いもの」である。
  */
-function seedLock(root , kitRoot , placed) {
-  seeded(root, ".devcontainer/devcontainer-lock.json", template(kitRoot, "devcontainer/devcontainer-lock.json"), placed);
+function driftNotes(root , kitRoot ) {
+  const notes = [];
+  const name = basename(root) || "project";
+
+  for (const file of PROJECT_OWNED_SANDBOX) {
+    const path = join(root, ".devcontainer", file);
+    if (!existsSync(path)) continue;
+
+    // **lock は比べない。** CLI が書き換えるのが正常であり、離れているのが既定の
+    // 状態になる。毎回言うと、読まれなくなる（AUT-153）。
+    if (file === "devcontainer-lock.json") continue;
+
+    let current;
+    try {
+      current = readFileSync(path, "utf8");
+    } catch {
+      continue;
+    }
+    const latest = template(kitRoot, `devcontainer/${file}`, { NAME: name });
+    if (current === latest) continue;
+
+    const added = linesLost(latest, current);
+    if (added.length === 0) continue;
+
+    notes.push(
+      [
+        `\`.devcontainer/${file}\` は、このプロジェクトのものである。**書き換えていない。**`,
+        "",
+        "kit のテンプレート側に、こちらに無い行がある。取り込むかは見て決めること。",
+        "",
+        ...added.slice(0, 8).map((l) => `  ${l}`),
+        ...(added.length > 8 ? [`  … 他 ${added.length - 8} 行`] : []),
+      ].join("\n"),
+    );
+  }
+  return notes;
 }
 
 function placeSandbox(root , kitRoot , config , plan) {
   if (config.ports.sandbox === "none") return false;
 
-  const name = basename(root) || "project";
   // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
   const folded = { placed: [], writes: plan.writes };
-  for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "README.md"]) {
-    managed(
-      `.devcontainer/${file}`,
-      template(kitRoot, `devcontainer/${file}`, { NAME: name, APP_FEATURES: featuresBlock(config) }),
-      folded,
-    );
+  for (const file of ["init-firewall.sh", "post-create.sh", "check-setup.sh", "README.md"]) {
+    managed(`.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`), folded);
   }
   // **一覧は構成から作る。** 雛形を写すと、使わないポートの宛先が付いてくる。
   managed(".devcontainer/allowed-domains.txt", allowedDomains(config), folded);
@@ -377,7 +427,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **`.devcontainer/` の中でも、これだけ管理下から外れる。** Dev Containers CLI が
   // 作り直しのたびに書き込むため、`(雛形, 構成)` だけでは中身が決まらない
   // （AUT-153）。最初の一度だけ置き、以後はプロジェクトの実測値として扱う。
-  if (sandboxPlaced) seedLock(root, kitRoot, placed);
+  if (sandboxPlaced) seedSandbox(root, kitRoot, placed);
 
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
   seeded(root, "docs/what-why.md", template(kitRoot, "what-why.md"), placed);
@@ -437,6 +487,15 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
 
   // **確かめられなかったことは黙らない。** 黙ると、確かめた顔になる。
   const notes = unchecked.length > 0 ? [describeUnchecked(unchecked)] : [];
+
+  // **持ち主がこちらでないものは、書き換えずに言う。** 黙っていると静かに古くなる。
+  if (sandboxPlaced) notes.push(...driftNotes(root, kitRoot));
+
+  // **読まなくなった項目が残っていたら、そう言う。** 書いてあるのに効かない状態は、
+  // 書いた人から見て「効いているのに動かない」に見える。
+  for (const r of retired(root)) {
+    notes.push(`\`${r.key}\` は、もう読んでいない。\n\n${r.why}`);
+  }
 
   return { placed, todo, notes, version, code: 0, message: null };
 }

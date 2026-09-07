@@ -139,13 +139,15 @@ test("確かめられなかったことは、上書きしたと併せて言う",
 
 // ------------------------------------------------------------ 通しで
 
+// **管理下のものを例に取る。** `devcontainer.json` はプロジェクトのものになったため
+// （AUT-157）、ここでは隔離のロジックを持つ `init-firewall.sh` を使う。
 test("手で変えたら、何も書かずに止まる", () => {
   const root = project();
   place(root);
 
-  const target = join(root, ".devcontainer", "devcontainer.json");
+  const target = join(root, ".devcontainer", "init-firewall.sh");
   const before = readFileSync(target, "utf8");
-  writeFileSync(target, `${before}\n// 手で足した\n`, "utf8");
+  writeFileSync(target, `${before}\n# 手で足した\n`, "utf8");
   // 他の管理下のファイルが、この後で書き換わっていないことを見るために控える。
   const otherBefore = readFileSync(join(root, ".env.example"), "utf8");
 
@@ -154,7 +156,7 @@ test("手で変えたら、何も書かずに止まる", () => {
   assert.equal(r.code, 1);
   assert.ok(r.message.includes("手で足した"), r.message);
   // **一部だけ新しい状態を作らない。**
-  assert.equal(readFileSync(target, "utf8"), `${before}\n// 手で足した\n`, "上書きしている");
+  assert.equal(readFileSync(target, "utf8"), `${before}\n# 手で足した\n`, "上書きしている");
   assert.equal(readFileSync(join(root, ".env.example"), "utf8"), otherBefore, "他を書き換えた");
   assert.deepEqual(r.placed, [], "置いたと報告している");
 });
@@ -162,9 +164,9 @@ test("手で変えたら、何も書かずに止まる", () => {
 test("戻せば、通る", () => {
   const root = project();
   place(root);
-  const target = join(root, ".devcontainer", "devcontainer.json");
+  const target = join(root, ".devcontainer", "init-firewall.sh");
   const before = readFileSync(target, "utf8");
-  writeFileSync(target, `${before}\n// 手で足した\n`, "utf8");
+  writeFileSync(target, `${before}\n# 手で足した\n`, "utf8");
   assert.equal(place(root).code, 1);
 
   writeFileSync(target, before, "utf8");
@@ -178,7 +180,7 @@ test("置いたら、指紋を残す", () => {
 
   const manifest = manifestOf(root);
   assert.ok(manifest !== null, "指紋が無い");
-  for (const path of [".env.example", "docs/autodrive.md", ".devcontainer/devcontainer.json"]) {
+  for (const path of [".env.example", "docs/autodrive.md", ".devcontainer/init-firewall.sh"]) {
     assert.ok(manifest[path] !== undefined, `${path} の指紋が無い`);
     assert.equal(
       manifest[path],
