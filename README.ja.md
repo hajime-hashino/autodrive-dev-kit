@@ -146,6 +146,7 @@ my-app/
 | `.env.example` | init | dev-kit | 必要な資格情報の一覧。**構成から作られる** |
 | `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
 | `.devcontainer/` | init | dev-kit | AIを動かす隔離された作業場。**外向き通信は許可制** |
+| `.devcontainer/devcontainer-lock.json` | init | プロジェクト | バージョンの固定。**最初の一度だけ置く。** 以後は作り直しのたびに Dev Containers CLI が書き換える |
 | `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |

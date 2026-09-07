@@ -269,13 +269,33 @@ export function featuresBlock(config) {
   return `,${lines.join("\n")}`;
 }
 
+/**
+ * `devcontainer-lock.json` の置き場所。
+ *
+ * **管理下に置かない。** 他の管理下ファイルは `(雛形, 構成)` だけで中身が決まる。
+ * これだけは違う。**作業場を作り直すたびに、Dev Containers CLI が解決した版を
+ * 書き込む。** `app.devcontainer_features` で足した機能はもちろん、足していない
+ * 組み込みの3つでも、上流の版が動けば同じことが起きる。
+ *
+ * 管理下に置いたままだと、そのたびに「手で変えられている」と判定され、
+ * `update` が止まる（AUT-153）。**人は誰も触っていないのに。**
+ *
+ * 播種にする。**最初の一度だけ雛形を置き、以後は触らない。** バージョンの固定
+ * という値打ちは、置いた瞬間には残る。作り直した後にCLIが上書きするのは、
+ * kit の管理から見て「消えた」のではなく「プロジェクトが持つ実測値に変わった」
+ * である。
+ */
+function seedLock(root , kitRoot , placed) {
+  seeded(root, ".devcontainer/devcontainer-lock.json", template(kitRoot, "devcontainer/devcontainer-lock.json"), placed);
+}
+
 function placeSandbox(root , kitRoot , config , plan) {
   if (config.ports.sandbox === "none") return false;
 
   const name = basename(root) || "project";
   // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
   const folded = { placed: [], writes: plan.writes };
-  for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "devcontainer-lock.json", "README.md"]) {
+  for (const file of ["devcontainer.json", "init-firewall.sh", "post-create.sh", "check-setup.sh", "README.md"]) {
     managed(
       `.devcontainer/${file}`,
       template(kitRoot, `devcontainer/${file}`, { NAME: name, APP_FEATURES: featuresBlock(config) }),
@@ -353,6 +373,12 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   }
 
   // 播種 ----------------------------------------------------------------------
+  //
+  // **`.devcontainer/` の中でも、これだけ管理下から外れる。** Dev Containers CLI が
+  // 作り直しのたびに書き込むため、`(雛形, 構成)` だけでは中身が決まらない
+  // （AUT-153）。最初の一度だけ置き、以後はプロジェクトの実測値として扱う。
+  if (sandboxPlaced) seedLock(root, kitRoot, placed);
+
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
   seeded(root, "docs/what-why.md", template(kitRoot, "what-why.md"), placed);
   seeded(root, ".gitignore", template(kitRoot, "gitignore"), placed);
