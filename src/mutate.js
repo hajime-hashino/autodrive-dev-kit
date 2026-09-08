@@ -62,7 +62,7 @@ export function runTests(root, exec = execFileSync) {
  *
  * **落ちた理由を捨てない。** 素の状態で落ちたとき、`false` だけでは何が起きたのかが
  * 分からない。手元で通るのに CI で落ちたとき、原因に辿り着けなかった（AUT-150）。
- * **判定の道具が、自分の失敗について黙るべきではない。**
+ * **判定の仕組みが、自分の失敗について黙るべきではない。**
  *
  * @returns {{ ok: boolean, output: string }}
  */

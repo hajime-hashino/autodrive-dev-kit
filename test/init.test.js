@@ -8,8 +8,8 @@ import { init, mergeHook, vendor } from "../src/init.js";
 import { delegateFor } from "../src/cli.js";
 import { tempDir } from "./helpers/tmp.js";
 
-// **本物の参照実装を指す。** 雛形をファイルから読むようになったため、偽の場所では
-// 動かない。ここで偽物を使うと、雛形の欠落を捕まえられない。
+// **本物の参照実装を指す。** テンプレートをファイルから読むようになったため、偽の場所では
+// 動かない。ここで偽物を使うと、テンプレートの欠落を捕まえられない。
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project() {
@@ -39,7 +39,7 @@ test("土台を置く", () => {
   const root = project();
   const r = init(root, KIT);
   assert.equal(r.code, 0);
-  assert.ok(existsSync(join(root, "autodrive", "invariants")), "道具を複製していない");
+  assert.ok(existsSync(join(root, "autodrive", "invariants")), "autodrive-dev-kit を複製していない");
   assert.notEqual(r.version, null, "版を残していない");
   for (const p of [
     ".env.example",
@@ -54,7 +54,7 @@ test("土台を置く", () => {
 });
 
 // **固有のものは生成しない**（BOOTSTRAP 段階5）。テスト・ADR・境界変更履歴は
-// そのプロジェクトのものであり、雛形を置くと中身が無いまま残る。
+// そのプロジェクトのものであり、テンプレートを置くと中身が無いまま残る。
 test("固有のものは生成しない", () => {
   const root = project();
   init(root, KIT);
@@ -163,7 +163,7 @@ test("こちらが置いたものでなければ、削除を促さない", () =>
   );
 });
 
-// **既に配線されている CI が旧名を呼んでいる。** 入れ替えても動き続けること。
+// **既に設定されている CI が旧名を呼んでいる。** 入れ替えても動き続けること。
 test("旧名の入口も複製され、動き続ける", () => {
   const root = project();
   init(root, KIT);
@@ -210,20 +210,20 @@ test("読めない設定を上書きしない", () => {
 // ------------------------------------------------------------ 入口
 
 // **PATH に入れて増えるものを1つにする。** 使う人が打つのは init だけ。
-test("AIが使う道具は、入口の下にまとめる", () => {
+test("AIが使うコマンドは、入口の下にまとめる", () => {
   for (const c of ["begin", "tracker", "telemetry", "invariants"]) {
     assert.notEqual(delegateFor(c), null, `${c} を渡せていない`);
   }
-  // **旧名も通ること。** 既に配線されている CI が呼んでいる（AUT-83）。
+  // **旧名も通ること。** 既に設定されている CI が呼んでいる（AUT-83）。
   assert.equal(delegateFor("verify"), delegateFor("invariants"));
 
   assert.equal(delegateFor("知らない操作"), null);
   assert.equal(delegateFor(undefined), null);
 });
 
-// ------------------------------ 入れ替えは、落ちても道具を消さない（AUT-131）
+// ------------------------------ 入れ替えは、落ちても autodrive-dev-kit を消さない（AUT-131）
 
-/** 複製の途中で必ず落ちる道具置き場を作る。**権限に頼らない**（root でも効く）。 */
+/** 複製の途中で必ず落ちる複製先を作る。**権限に頼らない**（root でも効く）。 */
 function brokenKit() {
   const kit = tempDir("autodrive-brokenkit-");
   writeFileSync(join(kit, "VERSION"), "9.9.9\n", "utf8");
@@ -235,7 +235,7 @@ function brokenKit() {
 }
 
 // **消してから置いていた。** 途中で落ちると、古い版も新しい版も無い状態が残った。
-test("複製が途中で落ちても、古い道具が残る", () => {
+test("複製が途中で落ちても、古い autodrive-dev-kit が残る", () => {
   const root = project();
   init(root, KIT);
   const before = readdirSync(join(root, "autodrive")).sort();
@@ -243,7 +243,7 @@ test("複製が途中で落ちても、古い道具が残る", () => {
 
   assert.throws(() => vendor(root, brokenKit()), "落ちていない。試験になっていない");
 
-  assert.deepEqual(readdirSync(join(root, "autodrive")).sort(), before, "道具が消えた");
+  assert.deepEqual(readdirSync(join(root, "autodrive")).sort(), before, "autodrive-dev-kit が消えた");
   assert.ok(existsSync(join(root, "autodrive", "bin", "autodrive-dev-kit")), "入口が消えた");
 });
 
@@ -266,7 +266,7 @@ test("実行権を写す", () => {
   }
 });
 
-// **再帰の複製に頼らない。** virtiofs の作業場で EACCES になる。
+// **再帰の複製に頼らない。** virtiofs のサンドボックスで EACCES になる。
 test("ディレクトリごとの再帰複製を使わない", () => {
   const src = readFileSync(join(KIT, "src", "init.js"), "utf8")
     .split("\n").filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("//")).join("\n");
@@ -276,12 +276,12 @@ test("ディレクトリごとの再帰複製を使わない", () => {
 
 // ライセンスは、複製された先まで付いていくこと。
 //
-// **ここに置かれるのはこの道具のコードの複製である。** Apache-2.0 は「複製を
+// **ここに置かれるのはこの autodrive-dev-kit のコードの複製である。** Apache-2.0 は「複製を
 // 受け取る人にライセンスの写しを渡す」ことを求めている（§4(a)）。入れ忘れると、
 // **採用先にライセンス文の無いコードの複製が残る。**
 //
 // 誰のものかも残す（§4(d)）。名前の無い複製にしない。
-test("複製された道具に、ライセンスと著作権表示が付いてくる", () => {
+test("複製された autodrive-dev-kit に、ライセンスと著作権表示が付いてくる", () => {
   const root = project();
   init(root, KIT);
 
@@ -296,7 +296,7 @@ test("複製された道具に、ライセンスと著作権表示が付いて�
   assert.match(readFileSync(notice, "utf8"), /Copyright \d{4}/, "著作権表示が無い");
 });
 
-// 元の道具の側にも、置かれていること。
+// 元の autodrive-dev-kit の側にも、置かれていること。
 //
 // **複製にだけ入っていても意味が無い。** 受け取る経路は `init` だけではない。
 // `npx github:` も `git clone` も、このリポジトリを直接読む。
@@ -305,7 +305,7 @@ test("参照実装そのものに、ライセンスと著作権表示がある",
     assert.ok(existsSync(join(KIT, name)), `${name} が無い`);
   }
   const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
-  // **文書とメタデータを食い違わせない。** 道具の一覧に出るのはこちらである。
+  // **文書とメタデータを食い違わせない。** autodrive-dev-kit の一覧に出るのはこちらである。
   assert.equal(pkg.license, "Apache-2.0", "package.json の license が違う");
   assert.match(readFileSync(join(KIT, "NOTICE"), "utf8"), new RegExp(pkg.author ?? "^$"),
     "NOTICE と package.json の author が食い違っている");

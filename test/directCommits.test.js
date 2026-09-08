@@ -17,7 +17,7 @@ function repoWith(log , head = "origin/main\n") {
       if (args[0] === "symbolic-ref") return head;
       if (args[0] === "log") {
         // 既定ブランチを渡していることを確かめる。渡し忘れても履歴が返る形だと、
-        // どの枝を見たのかがテストから読めなくなる。
+        // どのブランチを見たのかがテストから読めなくなる。
         assert.equal(args.at(-1), "origin/main");
         return log;
       }
@@ -58,7 +58,7 @@ test("親を持たない最初のコミットは候補にしない", () => {
   assert.deepEqual(directCommitCandidates(repoWith(root("aaa")), "main"), []);
 });
 
-// AUT-42 の再現。枝を切らずに既定ブランチへコミットした。
+// AUT-42 の再現。ブランチを作らずに既定ブランチへコミットした。
 test("マージでないコミットを候補として出す", () => {
   const found = directCommitCandidates(
     repoWith(history(merge("ccc"), direct("bbb", "AUT-42 直接コミット"), root("aaa"))),

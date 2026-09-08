@@ -5,9 +5,9 @@
  * 設置の3つが要る。手で順に踏む形だと、どれかを飛ばしたことに気づけない。実際に
  * 記録へ残っている失敗は次の3件で、いずれも規約には明記されていた。
  *
- *   AUT-38  マージ済みの提出の枝へ push した（修正が既定ブランチに届かなかった）
+ *   AUT-38  マージ済みの提出のブランチへ push した（修正が既定ブランチに届かなかった）
  *   AUT-42  マーカーを前の作業単位のままにした
- *   AUT-42  枝を切らずに既定ブランチへ直接コミットした
+ *   AUT-42  ブランチを作らずに既定ブランチへ直接コミットした
  *
  * **規約が存在しても、手順を通らなければ思い出す機会が無い。** 通らないと始まら
  * ない入口を置くことで、思い出す必要そのものを減らす。
@@ -28,16 +28,16 @@ import { writeMarker } from "./trackerCli.js";
 
 const USAGE = `作業単位に着手する
 
-  begin <作業単位ID> --repo <対象リポジトリ> [--branch <枝の名前>]
+  begin <作業単位ID> --repo <対象リポジトリ> [--branch <ブランチ名>]
 
 次をまとめて行う。1〜3のどれかが成り立たなければ、進めずに止める。
 
   1. 作業単位を取得し、対象リポジトリを確かめる
-  2. 作業空間を用意する（既定ブランチを最新にし、枝を切る）
+  2. 作業空間を用意する（既定ブランチを最新にし、ブランチを作る）
   3. 状態を started へ進め、対象リポジトリを記し、記録の紐づけ先を設置する
   4. 統合済みなのに着手中のままの作業単位を閉じる
 
-枝の名前を省略すると、作業単位のIDから作る。
+ブランチ名を省略すると、作業単位のIDから作る。
 資格情報は環境変数 LINEAR_API_KEY から読む。4 には Repo の資格情報も要る
 （GH_TOKEN / AUTODRIVE_CI_TOKEN）。無ければ 4 は飛ばす。着手は成立する。`;
 
@@ -50,7 +50,7 @@ export const runGit = (repoPath, args) =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-/** 枝の名前。作業単位のIDを小文字にしたものを既定とする。 */
+/** ブランチ名。作業単位のIDを小文字にしたものを既定とする。 */
 export function branchNameFor(workItemId , given) {
   const trimmed = (given ?? "").trim();
   if (trimmed !== "") return trimmed;
@@ -73,7 +73,7 @@ export function message(error) {
  * `git init` から作った作業ツリーには無い。ここで落とすと、問題の無いリポジトリで
  * 着手できなくなる。
  *
- * 判定器では Repo に尋ねて補っている（AUT-53）。ここでは**資格情報を前提に
+ * `invariants` では Repo に尋ねて補っている（AUT-53）。ここでは**資格情報を前提に
  * できない**ため、手元から引き直す。引けなければ、何をすればよいかを出して止まる。
  */
 export function defaultBranchOf(repoPath , git) {
@@ -153,8 +153,8 @@ export async function run(
   const repoPath = repo === basename(root) ? root : join(root, repo);
   if (!existsSync(join(repoPath, ".git"))) {
     return fail([
-      `対象リポジトリ ${repo} が作業場に無い（${repoPath}）。`,
-      "名前が正しいか、作業場に取得されているかを確かめること。",
+      `対象リポジトリ ${repo} がワークディレクトリに無い（${repoPath}）。`,
+      "名前が正しいか、ワークディレクトリに取得されているかを確かめること。",
     ]);
   }
 
@@ -180,12 +180,12 @@ export async function run(
     ]);
   }
 
-  // **別の枝の上から始めない。** 前の作業の枝に積むと、その提出が閉じている場合、
+  // **別のブランチの上から始めない。** 前の作業のブランチに積むと、その提出が閉じている場合、
   // 変更は既定ブランチへ届かない（AUT-38）。
   if (current !== defaultBranch) {
     return fail([
       `${repo} はいま ${current} にいる（既定ブランチは ${defaultBranch}）。`,
-      "前の作業の枝の上から始めると、その提出が閉じている場合に変更が届かない。",
+      "前の作業のブランチの上から始めると、その提出が閉じている場合に変更が届かない。",
       "",
       "次のどちらかを行うこと。",
       // **先に既定ブランチを進める。** 進めずに切り替えると、統合済みの記録と
@@ -194,7 +194,7 @@ export async function run(
       // トークン消費の記録は**提出のあとにも届く**（提出を作る間と、CI を待つ間）
       // ため、これは例外ではなく毎回起きる。実際に4回とも起きた（AUT-118）。
       //
-      // 進めておけば、記録ファイルは枝と同じ中身になり、**追記はそのまま次の枝へ
+      // 進めておけば、記録ファイルはブランチと同じ中身になり、**追記はそのまま次のブランチへ
       // 持ち越されて、次の提出に乗る。**
       `  - 前の作業が統合済みなら: git -C ${repo} fetch origin ${defaultBranch}:${defaultBranch} && git -C ${repo} checkout ${defaultBranch}`,
       "  - まだ提出していないなら: 先にその作業を提出してから着手する",
@@ -208,7 +208,7 @@ export async function run(
       `${repo} の ${defaultBranch} を最新にできない: ${message(error)}`,
       "既定ブランチに手元だけのコミットが残っている可能性がある。",
       `  git -C ${repo} log --oneline origin/${defaultBranch}..${defaultBranch}`,
-      "出てきたコミットは、枝へ移して提出すること。",
+      "出てきたコミットは、ブランチへ移して提出すること。",
     ]);
   }
 
@@ -217,8 +217,8 @@ export async function run(
     git(repoPath, ["checkout", "-b", branch]);
   } catch (error) {
     return fail([
-      `枝 ${branch} を作れない: ${message(error)}`,
-      "同じ名前の枝が既にある場合は --branch で別の名前を渡すこと。",
+      `ブランチ ${branch} を作れない: ${message(error)}`,
+      "同じ名前のブランチが既にある場合は --branch で別の名前を渡すこと。",
     ]);
   }
 
@@ -229,9 +229,9 @@ export async function run(
   await tracker.advance(item.id, "started", repo);
   writeMarker(root, item.id, repo);
 
-  // 手元に残っている変更は、そのまま新しい枝へ移る。消さないが、黙らない。
+  // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
   const dirty = git(repoPath, ["status", "--short"]).trim();
-  const carried = dirty === "" ? [] : ["", "手元の変更を枝へ持ってきた:", ...dirty.split("\n").map((l) => `  ${l}`)];
+  const carried = dirty === "" ? [] : ["", "手元の変更をブランチへ持ってきた:", ...dirty.split("\n").map((l) => `  ${l}`)];
 
   // 4. 片付け ---------------------------------------------------------------
   //
@@ -270,7 +270,7 @@ export async function run(
       item.url,
       "",
       `対象リポジトリ  ${repo}`,
-      `枝              ${branch}（${defaultBranch} から）`,
+      `ブランチ              ${branch}（${defaultBranch} から）`,
       `記録の紐づけ先  ${repo} の ${item.id}`,
       ...carried,
       ...tidied,

@@ -19,12 +19,12 @@ import { repoFrom } from "../src/adapters/trackerLinear.js";
 
 // --- 提出から作業単位を読む -------------------------------------------------
 
-test("枝の名前から作業単位を読む", () => {
+test("ブランチ名から作業単位を読む", () => {
   assert.equal(workItemOf({ branch: "aut-107", title: "何か" }), "AUT-107");
 });
 
-test("枝の名前を変えていても、題から読む", () => {
-  // `--branch` で名前を変えられる。枝だけを根拠にすると、名前を変えた作業単位が
+test("ブランチ名を変えていても、題から読む", () => {
+  // `--branch` で名前を変えられる。ブランチだけを根拠にすると、名前を変えた作業単位が
   // **永遠に閉じない。**
   assert.equal(workItemOf({ branch: "fix-the-thing", title: "AUT-42 直す" }), "AUT-42");
 });
@@ -85,7 +85,7 @@ test("着手中で、統合済みのものだけを閉じる", () => {
 });
 
 test("いま着手したばかりのものは閉じない", () => {
-  // 前の提出の枝を使い回すと、着手直後に統合済みと判定されうる。
+  // 前の提出のブランチを使い回すと、着手直後に統合済みと判定されうる。
   const items = [view("AUT-1", "started")];
   assert.deepEqual(finished(items, new Set(["AUT-1"]), "AUT-1"), []);
 });

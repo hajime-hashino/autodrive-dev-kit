@@ -2,7 +2,7 @@
  * 管理下のファイルへの編集を、黙って上書きしないこと。
  *
  * **設計意図は前からあった。** `init.js` は「ローカルの編集は参照実装への起票の
- * 契機である」と書いていた。**検出する仕掛けが無かったので、一度も働いていない**
+ * 起票する理由になる」と書いていた。**検出する仕掛けが無かったので、一度も働いていない**
  * （AUT-116）。
  */
 
@@ -244,6 +244,6 @@ test("指紋は追跡される場所に置く", () => {
   // **`.autodrive/` は追跡しない。** そこに置くと、クローンした先で効かない。
   const root = project();
   place(root);
-  assert.ok(existsSync(join(root, "autodrive", "manifest.json")), "道具一式の中に無い");
+  assert.ok(existsSync(join(root, "autodrive", "manifest.json")), "autodrive-dev-kit の中に無い");
   assert.equal(existsSync(join(root, ".autodrive", "manifest.json")), false);
 });

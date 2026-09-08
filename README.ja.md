@@ -145,8 +145,8 @@ my-app/
 | `autodrive/` | init | autodrive-dev-kit | 複製されたもの。`update` で入れ替わる |
 | `.env.example` | init | autodrive-dev-kit | 必要な資格情報の一覧。**構成から作られる** |
 | `.github/workflows/invariants.yml` | init | autodrive-dev-kit | 判定をCIで実行する定義 |
-| `.devcontainer/` | init | autodrive-dev-kit | 隔離のロジック（firewall・支度・許可一覧）。**外向き通信は許可制** |
-| `.devcontainer/devcontainer.json` | init | プロジェクト | サンドボックスの定義。**直接編集してよい。** 隔離の配線は `invariants` が見る |
+| `.devcontainer/` | init | autodrive-dev-kit | 隔離のロジック（firewall・準備・許可ドメイン一覧）。**外向き通信は許可制** |
+| `.devcontainer/devcontainer.json` | init | プロジェクト | サンドボックスの定義。**直接編集してよい。** 隔離の設定は `invariants` が見る |
 | `.devcontainer/devcontainer-lock.json` | init | プロジェクト | バージョンの固定。**最初の一度だけ置く。** 以後は作り直しのたびに Dev Containers CLI が書き換える |
 | `docs/autodrive.md` | init | autodrive-dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |

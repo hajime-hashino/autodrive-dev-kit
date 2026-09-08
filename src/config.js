@@ -10,7 +10,7 @@
  *   既にあるプロジェクトへ、上書きで踏み込む形になる
  *   AIが、そこに何があるかを推測で決める（プレビューが出せるのか等）
  *
- * **プロジェクトのものである。入れ替えで上書きしない。** 道具一式（`autodrive/`）は
+ * **プロジェクトのものである。入れ替えで上書きしない。** autodrive-dev-kit（`autodrive/`）は
  * 参照実装が管理して丸ごと入れ替えるが、これは決めた内容であり、決めた人のものである。
  *
  * **いま抽象化はしない。記録するだけにする。** 今日の時点で選択肢が2つ以上ある
@@ -65,7 +65,7 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
  * }} Config
  */
 
-/** 環境変数として通る名前か。**雛形に書き出す行になるため、形を確かめる。** */
+/** 環境変数として通る名前か。**テンプレートに書き出す行になるため、形を確かめる。** */
 const CREDENTIAL_NAME = /^[A-Z][A-Z0-9_]*$/;
 
 /**
@@ -77,7 +77,7 @@ const CREDENTIAL_NAME = /^[A-Z][A-Z0-9_]*$/;
  *
  * **手で足せば済む話ではない。** `.env.example` は入れ替えのたびに丸ごと書き直される。
  * `.env` に値が残っている限りアプリは動き続けるため、**消えたことに気づけない。**
- * 新しく入った人が雛形を見ても、その資格情報の存在を知れない。
+ * 新しく入った人がテンプレートを見ても、その資格情報の存在を知れない。
  *
  * **欠けていたら、既定で埋めずに止まる。** 名前だけの一覧は役に立たない。何に使う
  * のか、失ったらどうなるのかが書かれていなければ、人は何を取りに行けばよいか
@@ -324,7 +324,7 @@ export function infer(root , gitRemote) {
   const here = (...p) => existsSync(join(root, ...p));
 
   if (gitRemote !== null && gitRemote.includes("github.com")) {
-    because.repo = "git の遠隔が github.com を指している";
+    because.repo = "git のリモートが github.com を指している";
   }
 
   if (here(".github", "workflows")) {
@@ -338,7 +338,7 @@ export function infer(root , gitRemote) {
     because.sandbox = ".devcontainer/ が無い";
   }
 
-  // **雛形を見て決めない。** 置かれるのはこの後であり、いま見えているのは
+  // **テンプレートを見て決めない。** 置かれるのはこの後であり、いま見えているのは
   // プロジェクトが自分で置いたものだけ。
   for (const name of ["wrangler.jsonc", "wrangler.toml", "wrangler.json"]) {
     if (here(name)) {

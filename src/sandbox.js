@@ -92,7 +92,7 @@ export function destinationsFor(config) {
   }
 
   // **アプリ自身の宛先を、最後に足す。** ポートの宛先はどのプロジェクトでも同じだが、
-  // これはこのプロジェクト固有である。分けて並べると、どこまでが道具の都合で、
+  // これはこのプロジェクト固有である。分けて並べると、どこまでが autodrive-dev-kit の都合で、
   // どこからが作っているものの都合かが読み取れる。
   for (const d of config.app?.destinations ?? []) {
     if (seen.has(d.host)) continue;
@@ -140,7 +140,7 @@ export function allowedDomains(config) {
 
   let started = false;
   for (const d of all) {
-    // **アプリ自身のものは、見出しを立てて分ける。** 混ぜると、道具のために開いて
+    // **アプリ自身のものは、見出しを立てて分ける。** 混ぜると、autodrive-dev-kit のために開いて
     // いる穴なのか、作っているもののために開いている穴なのかが読み取れない。
     if (d.ofApp === true && !started) {
       started = true;

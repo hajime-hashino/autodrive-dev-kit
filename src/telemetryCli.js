@@ -170,7 +170,7 @@ export function run(argv , root) {
     output: written.attributed
       ? `記録した: ${written.path}${notice}`
       : `記録したが作業単位に紐づいていない: ${written.path}\n${reason}${notice}`,
-    // 紐づかない記録は残すが、成功として返さない。握りつぶさず、気づける形にする。
+    // 紐づかない記録は残すが、成功として返さない。捨てずに、気づける形にする。
     code: written.attributed ? 0 : 1,
   };
 }
