@@ -94,6 +94,10 @@ The AI files the work item, updates, and submits. You only approve the merge.
 
 **Do not run `update` yourself.** Updating changes files your project tracks, so doing it by hand puts a change on the default branch without a submission.
 
+**You can name the version to move to.** A tag is cut on every merge, so you can pick a specific release instead of the latest ([ADR 0006](docs/adr/0006-version-bump-policy.md)).
+
+> I want autodrive-dev-kit at v0.1.1
+
 ### How development goes
 
 Open Claude Code and say **"I want to start a project."**
@@ -265,6 +269,8 @@ Type annotations cannot be used directly. **Node deliberately does not strip typ
 Do not do that by hand; `npm run mutate` does it. `mutations/regression.json` holds mutations that put previously fixed defects back into the implementation. **When you fix a defect, add the mutation that reintroduces it.** CI runs this too.
 
 **Done by hand, it is the running of it that breaks.** It broke twice here, and both times read as "everything is caught" (AUT-138). The details are at the top of [src/mutate.js](src/mutate.js).
+
+**When you change what gets distributed, raise `VERSION` and the `version` in `package.json`.** Every submission raises it ([ADR 0006](docs/adr/0006-version-bump-policy.md)). CI fails the submission if you forget, and a tag is cut once it merges. Changes to tests or docs alone do not need it.
 
 ## License
 

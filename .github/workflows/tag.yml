@@ -1,0 +1,47 @@
+name: tag
+
+# バージョンに名前を付ける。
+#
+# **統合されたあとに打つ。** 提出の途中で打つと、統合されなかった版にタグが残る。
+#
+# **タグはコミットではない。** したがって、提出を経ずに既定ブランチへ入った変更を
+# 見る判定（`directCommits`）には触れない。上げる操作のほうは提出の中で行う
+# （`invariants.yml` の version ジョブ）。
+#
+# これが打たれると、バージョンを指して入れ替えられるようになる。
+#
+#   npx github:hajimegane/autodrive-dev-kit#v0.1.1 update
+on:
+  push:
+    branches: [main]
+
+# **この実行にだけ、書き込みを許す。** 別に資格情報を置かない。CI が持つ
+# AUTODRIVE_CI_TOKEN は読取専用であり、そのままにする。
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # **既にあるタグが要る。** 無いと、毎回「無い」と判断して打ちに行く。
+          fetch-depth: 0
+
+      - name: バージョンにタグを打つ
+        run: |
+          set -eu
+          version="$(cat VERSION)"
+          tag="v${version}"
+
+          # **同じ名前があれば何もしない。** 配られる中身が変わらない提出では
+          # バージョンが動かないため、これは異常ではなく普通に起きる。
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "${tag} は既にある。何もしない。"
+            exit 0
+          fi
+
+          git tag "${tag}"
+          git push origin "${tag}"
+          echo "打った: ${tag}"

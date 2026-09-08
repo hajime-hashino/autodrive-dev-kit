@@ -31,6 +31,28 @@ jobs:
           node-version: "22.18"
       - run: npm run mutate
 
+  # **配られる中身が変わったなら、バージョンも動いていること。** 置かれた日から
+  # 一度も動かず、164コミットの間ずっと 0.1.0 だった（AUT-155）。記録の
+  # `kit_version` が全部同じ値では、定義§6が求める「後から比べる」が成立しない。
+  #
+  # **上げるのは提出の中で行う。** CI から既定ブランチへ直接 push すると、
+  # `directCommits` が「提出を経ていない変更」として落とす。
+  version:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # **比べる相手の履歴が要る。** 浅いチェックアウトでは差分を取れない。
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.18"
+      - run: >
+          node src/releaseVersion.js
+          --base ${{ github.event.pull_request.base.sha }}
+          --head ${{ github.event.pull_request.head.sha }}
+
   cross:
     needs: test
     runs-on: ubuntu-latest
