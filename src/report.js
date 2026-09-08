@@ -18,7 +18,7 @@ const STATE_KEY = {
   [NOT_IN_SCOPE]: "state.notInScope",
 };
 
-/** 状態の印。**判定と文書で同じものを見るために出す。** */
+/** 状態の記号。**判定と文書で同じものを見るために出す。** */
 export const MARK = Object.fromEntries(
   Object.entries(STATE_KEY).map(([state, key]) => [state, say("ja", key)]),
 );

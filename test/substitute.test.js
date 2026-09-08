@@ -43,7 +43,7 @@ test("代替を記録すると、アダプタ経由で書かれる", async () =>
   const root = workspace();
   const res = await run([
     "--substitute", "boundary_change_logged",
-    "--by", "human", "--detail", "境界表は段階3で置く", "--root", root,
+    "--by", "human", "--detail", "委譲範囲の表は段階3で置く", "--root", root,
   ]);
   assert.equal(res.code, 0);
   const [event] = events(root);

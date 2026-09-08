@@ -80,7 +80,7 @@ export class Result {
 
 export const INVARIANTS = [
   // **名前はここに持たない。** `messages.js` が言語ごとに持つ。2か所に置くと、
-  // 片方だけ古くなる。実際に「境界変更が履歴に残ること」が定義 v0.14 のあとも
+  // 片方だけ古くなる。実際に「委譲範囲の変更が履歴に残ること」が定義 v0.14 のあとも
   // 残っていた（AUT-135）。
   { key: "outer_loop_running" },
   { key: "telemetry_recorded" },

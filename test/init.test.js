@@ -40,7 +40,7 @@ test("土台を置く", () => {
   const r = init(root, KIT);
   assert.equal(r.code, 0);
   assert.ok(existsSync(join(root, "autodrive", "invariants")), "autodrive-dev-kit を複製していない");
-  assert.notEqual(r.version, null, "版を残していない");
+  assert.notEqual(r.version, null, "バージョンを残していない");
   for (const p of [
     ".env.example",
     ".github/workflows/invariants.yml",
@@ -53,7 +53,7 @@ test("土台を置く", () => {
   }
 });
 
-// **固有のものは生成しない**（BOOTSTRAP 段階5）。テスト・ADR・境界変更履歴は
+// **固有のものは生成しない**（BOOTSTRAP 段階5）。テスト・ADR・委譲範囲の変更履歴は
 // そのプロジェクトのものであり、テンプレートを置くと中身が無いまま残る。
 test("固有のものは生成しない", () => {
   const root = project();
@@ -113,26 +113,26 @@ test("既に繋がっていれば、案内を出さない", () => {
   assert.equal(r.todo.some((t) => t.includes("次の1行")), false, r.todo.join(" / "));
 });
 
-// **前の版の残骸を残さない。** 混ざると、どの版で動いているのかが読めなくなる。
-// 版を固定するという目的そのものが崩れる。
-test("入れ替えると、前の版の残骸が消える", () => {
+// **前のバージョンの残骸を残さない。** 混ざると、どのバージョンで動いているのかが読めなくなる。
+// バージョンを固定するという目的そのものが崩れる。
+test("入れ替えると、前のバージョンの残骸が消える", () => {
   const root = project();
   init(root, KIT);
 
-  const stale = join(root, "autodrive", "src", "前の版にだけあったもの.ts");
+  const stale = join(root, "autodrive", "src", "前のバージョンにだけあったもの.ts");
   writeFileSync(stale, "export const x = 1;\n", "utf8");
   assert.ok(existsSync(stale));
 
   init(root, KIT);
-  assert.equal(existsSync(stale), false, "前の版の残骸が残っている");
+  assert.equal(existsSync(stale), false, "前のバージョンの残骸が残っている");
 });
 
 // ------------------------------------------------------------ 旧名からの移行
 
-// **前の版が置いた CI 定義を、黙って消さない。** 判定は invariants に改名したが
+// **前のバージョンが置いた CI 定義を、黙って消さない。** 判定は invariants に改名したが
 // （AUT-83）、古い verify.yml が残ると同じ判定が二重に走る。手を入れられている
 // 可能性があるため、消すのは人に任せ、残っている事実だけを出す。
-test("前の版の CI 定義が残っていたら、消さずに知らせる", () => {
+test("前のバージョンの CI 定義が残っていたら、消さずに知らせる", () => {
   const root = project();
   const stale = join(root, ".github", "workflows", "verify.yml");
   mkdirSync(dirname(stale), { recursive: true });
@@ -234,7 +234,7 @@ function brokenKit() {
   return kit;
 }
 
-// **消してから置いていた。** 途中で落ちると、古い版も新しい版も無い状態が残った。
+// **消してから置いていた。** 途中で落ちると、古いバージョンも新しいバージョンも無い状態が残った。
 test("複製が途中で落ちても、古い autodrive-dev-kit が残る", () => {
   const root = project();
   init(root, KIT);
@@ -252,7 +252,7 @@ test("落ちたあと、作りかけを残さない", () => {
   init(root, KIT);
   try { vendor(root, brokenKit()); } catch { /* 落ちる想定 */ }
   assert.equal(existsSync(join(root, "autodrive.new")), false, "作りかけが残っている");
-  assert.equal(existsSync(join(root, "autodrive.old")), false, "古い版が残っている");
+  assert.equal(existsSync(join(root, "autodrive.old")), false, "古いバージョンが残っている");
 });
 
 // **`copyFileSync` は中身しか写さない。** 権が落ちると打てなくなる。
@@ -289,7 +289,7 @@ test("複製された autodrive-dev-kit に、ライセンスと著作権表示�
   assert.ok(existsSync(license), "**ライセンス文の無いコードの複製になっている**");
   const text = readFileSync(license, "utf8");
   assert.match(text, /Apache License/, "Apache-2.0 の全文が入っていない");
-  assert.match(text, /Version 2\.0, January 2004/, "版が読み取れない");
+  assert.match(text, /Version 2\.0, January 2004/, "バージョンが読み取れない");
 
   const notice = join(root, "autodrive", "NOTICE");
   assert.ok(existsSync(notice), "**誰のものか分からない複製になっている**");

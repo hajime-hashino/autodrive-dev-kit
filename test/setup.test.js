@@ -285,7 +285,7 @@ test("読めない構成では、置かずに止まる", () => {
   assert.equal(r.placed.length, 0);
 });
 
-// **この版が知らない項目を捨てない。** 新しい版が足したものを、古い版が読んで
+// **このバージョンが知らない項目を捨てない。** 新しいバージョンが足したものを、古いバージョンが読んで
 // 書き戻すと消える。
 test("知らない項目を落とさない", () => {
   const root = project();
@@ -299,7 +299,7 @@ test("知らない項目を落とさない", () => {
   assert.equal(config.ports.repo, "github", "欠けているものを補っていない");
 });
 
-test("版が違えば読まない", () => {
+test("バージョンが違えば読まない", () => {
   const root = project();
   writeFileSync(join(root, CONFIG_FILE), JSON.stringify({ version: 2, ports: {} }), "utf8");
   assert.ok(readConfig(root).error?.includes("version"), readConfig(root).error ?? "");

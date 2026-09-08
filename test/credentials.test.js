@@ -248,7 +248,7 @@ const APP_KEY = {
 test("アプリ自身の資格情報が、一覧に入る", () => {
   const found = credentialsFor(withApp([APP_KEY])).find((c) => c.name === APP_KEY.name);
   assert.ok(found !== undefined, "アプリの資格情報が落ちている");
-  assert.equal(found.ofApp, true, "アプリのものだと分かる印が無い");
+  assert.equal(found.ofApp, true, "アプリのものだと分かる見出しが無い");
 });
 
 test("アプリ自身の資格情報が、テンプレートに出る", () => {

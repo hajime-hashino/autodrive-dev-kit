@@ -40,7 +40,7 @@ test("大文字に揃える", () => {
 // --- 応答の読み方 -----------------------------------------------------------
 
 test("統合されたかどうかを持つ。統合されていないものも落とさない", () => {
-  // **落とすと、まだ統合されていない作業単位に印を補えない。** 提出は、統合されて
+  // **落とすと、まだ統合されていない作業単位にマーカーを補えない。** 提出は、統合されて
   // いなくてもどのリポジトリの作業だったかを知っている。
   const res = {
     status: 200,
@@ -90,9 +90,9 @@ test("いま着手したばかりのものは閉じない", () => {
   assert.deepEqual(finished(items, new Set(["AUT-1"]), "AUT-1"), []);
 });
 
-// --- 印の補い -------------------------------------------------------------
+// --- マーカーの補い -------------------------------------------------------------
 
-test("印の無い着手中のものだけを補う", () => {
+test("マーカーの無い着手中のものだけを補う", () => {
   const items = [
     view("AUT-1", "started"),
     view("AUT-2", "started", "agent-playground"),
@@ -109,9 +109,9 @@ test("印の無い着手中のものだけを補う", () => {
   );
 });
 
-// --- 印の読み取り ---------------------------------------------------------
+// --- マーカーの読み取り ---------------------------------------------------------
 
-test("印から対象リポジトリを読む", () => {
+test("マーカーから対象リポジトリを読む", () => {
   assert.equal(repoFrom(["急ぎ", "repo:autodrive-dev-kit"]), "autodrive-dev-kit");
   assert.equal(repoFrom(["急ぎ"]), null);
   assert.equal(repoFrom([]), null);
@@ -140,7 +140,7 @@ function fakeApi(byslug) {
   };
 }
 
-test("統合済みの作業単位を閉じ、印を補う", async () => {
+test("統合済みの作業単位を閉じ、マーカーを補う", async () => {
   const tracker = fakeTracker([
     view("AUT-1", "started"),
     view("AUT-2", "started"),
@@ -164,13 +164,13 @@ test("統合済みの作業単位を閉じ、印を補う", async () => {
 
   assert.deepEqual(got.closed, ["AUT-1"]);
   assert.deepEqual(tracker.advanced, ["AUT-1:done:kit"]);
-  // AUT-2 は統合されていないが着手中で印が無いため、印だけ補う。
+  // AUT-2 は統合されていないが着手中でマーカーが無いため、マーカーだけ補う。
   assert.deepEqual(tracker.marked, ["AUT-2:kit"]);
   // AUT-3 は提出が1件も無いため、どちらも起きない。
   assert.deepEqual(got.marked, ["AUT-2 → kit"]);
 });
 
-test("閉じたものに、印を二重に付けない", async () => {
+test("閉じたものに、マーカーを二重に付けない", async () => {
   const tracker = fakeTracker([view("AUT-1", "started")]);
   await reconcile({
     repos: [{ name: "kit", slug: "me/kit" }],
@@ -183,7 +183,7 @@ test("閉じたものに、印を二重に付けない", async () => {
 });
 
 test("閉じるときも対象リポジトリを渡す", async () => {
-  // **印の無いまま閉じると、履歴として引けない。**
+  // **マーカーの無いまま閉じると、履歴として引けない。**
   const tracker = fakeTracker([view("AUT-1", "started")]);
   await reconcile({
     repos: [{ name: "kit", slug: "me/kit" }],
