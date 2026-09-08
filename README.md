@@ -114,6 +114,22 @@ From there the AI reads the state of the project and drives.
 
 **The environment grows as you need it,** not all at once up front.
 
+#### A submission carries one record from the previous work item
+
+**Normally nothing unrelated to the work shows up in a submission.** This is the one exception, so here it is up front.
+
+A submission may contain a `telemetry/AUT-nnn.jsonl` belonging to a **different** work item. **Nothing is broken, and the AI is not slipping unrelated work in.**
+
+Token usage is recorded when the AI **reports back and stops.** That happens after the commit and the submission, so **the last record cannot make it into its own work item's submission.** It is picked up at the start of the next work item and rides that submission instead.
+
+| What you may wonder | How it is |
+|---|---|
+| What gets carried | Only records under `telemetry/`. No other file is touched |
+| The record itself | **Still belongs to the original work item.** Nothing is re-attributed |
+| What to do | Nothing. Merge as usual |
+
+**This shape is interim.** Keeping records off the branch entirely is being considered separately.
+
 ## What gets placed
 
 ```
