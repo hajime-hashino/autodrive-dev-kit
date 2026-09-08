@@ -182,9 +182,9 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   }
 
   // 必須属性の妥当性は全期間を対象にする。遡って付与できない属性であり、
-  // 境界より前だからといって欠けていてよい理由にはならない。
+  // 有効境界より前だからといって欠けていてよい理由にはならない。
   // 一方、書き込み経路が自動かどうかは「いまどうなっているか」の問いなので、
-  // 境界以降だけを見る。
+  // 有効境界以降だけを見る。
   const boundary = boundaryFor(allEvents, "telemetry_recorded");
   const events = eventsAfter(allEvents, boundary);
 
@@ -394,7 +394,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
     r.observe(`${repo.name}: boundaries.yaml を変更したコミット ${commits.length} 件`);
 
     for (const sha of commits) {
-      // 初期設置は動きではない。親に版が無いコミットがそれにあたる。
+      // 初期設置は動きではない。親にバージョンが無いコミットがそれにあたる。
       const after = repo.git("show", `${sha}:boundaries.yaml`);
       const before = repo.git("show", `${sha}^:boundaries.yaml`);
       if (after === null) continue;
