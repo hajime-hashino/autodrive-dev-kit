@@ -157,7 +157,7 @@ test("手元に残っている変更は、消さずに知らせる", async () =>
 // **提出のあとに書かれた記録は、その作業単位のコミットには入らない。** 持ち越される
 // だけでは、次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
 
-test("取り残された記録を、着手した枝へ載せる", async () => {
+test("取り残された記録を、着手したブランチへ載せる", async () => {
   const root = workspace();
   const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-98.jsonl" });
 
