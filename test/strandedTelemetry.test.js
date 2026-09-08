@@ -71,7 +71,7 @@ test("何も無ければ、何も拾わない", () => {
 
 test("コミットの本文が、どの記録を拾ったのかを言う", () => {
   const msg = commitMessage("AUT-156", ["telemetry/AUT-155.jsonl"]);
-  assert.match(msg.split("\n")[0], /^AUT-156 /, "件名が、この枝の作業単位のものでない");
+  assert.match(msg.split("\n")[0], /^AUT-156 /, "件名が、このブランチの作業単位のものでない");
   assert.match(msg, /telemetry\/AUT-155\.jsonl/, "何を拾ったのかが無い");
   assert.match(msg, /最後の1件は必ず後から来る/, "なぜ起きるのかが無い");
 });
@@ -101,7 +101,7 @@ test("取り残しがあれば、コミットする", () => {
   // **パスを指していること。** 指さないと、手元の他の変更を巻き込む。
   assert.ok(committed.includes("--"), "パスを指さずにコミットしている");
   assert.ok(committed.includes("telemetry/AUT-155.jsonl"), "対象が渡っていない");
-  assert.match(out.join("\n"), /拾って、この枝へ載せた/);
+  assert.match(out.join("\n"), /拾って、このブランチへ載せた/);
 });
 
 test("取り残しが無ければ、コミットしない", () => {
