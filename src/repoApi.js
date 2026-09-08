@@ -37,7 +37,7 @@ export function createRepoApi(token) {
     rulesets: (slug) => get(`repos/${slug}/rulesets`),
     submissionsFor: (slug, sha) => get(`repos/${slug}/commits/${sha}/pulls`),
     // 閉じた提出を新しい順に見る。**統合されたかを、手元の git ではなくここで確かめる。**
-    // まとめて1つに潰す統合だと、枝の先が既定ブランチの祖先にならない。
+    // まとめて1つに潰す統合だと、ブランチの先頭コミットが既定ブランチの祖先にならない。
     submissionsIn: (slug) => get(`repos/${slug}/pulls?state=closed&per_page=100&sort=updated&direction=desc`),
     repository: (slug) => get(`repos/${slug}`),
   };

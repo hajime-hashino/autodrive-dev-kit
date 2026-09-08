@@ -5,7 +5,7 @@
  * 見るのは領域の増減と、`detectable` / `reversible` / `state` の変化に限る。
  *
  * YAML の一般の構文は扱わない。境界表の構造だけを読む。汎用の解析器を持ち込むと
- * 依存が増え、判定器がその挙動に引きずられる。
+ * 依存が増え、`invariants` がその挙動に引きずられる。
  */
 
 /** @typedef {{ id: string, detectable: boolean, reversible: boolean, state: string }} Area */

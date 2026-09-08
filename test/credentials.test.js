@@ -77,7 +77,7 @@ test("使うポートの資格情報は、求める", () => {
 });
 
 // **どの構成でも要るものがある。** 無いと commit そのものが通らない。
-test("身元は、どの構成でも求める", () => {
+test("作者情報は、どの構成でも求める", () => {
   const bare = defaults();
   for (const port of Object.keys(bare.ports)) bare.ports[port] = NONE;
 
@@ -100,30 +100,30 @@ test("それぞれ、何に使うかと失ったときが書いてある", () =>
   for (const c of credentialsFor(defaults())) {
     assert.ok(c.why.trim().length > 0, `${c.name} に用途が無い`);
     assert.ok(c.lost.trim().length > 0, `${c.name} に失ったときが無い`);
-    assert.ok(text.includes(c.why), `${c.name} の用途が雛形に無い`);
-    assert.ok(text.includes(`失ったとき: ${c.lost}`), `${c.name} の失ったときが雛形に無い`);
+    assert.ok(text.includes(c.why), `${c.name} の用途がテンプレートに無い`);
+    assert.ok(text.includes(`失ったとき: ${c.lost}`), `${c.name} の失ったときがテンプレートに無い`);
   }
 });
 
-// **値を書かせない。** 雛形に値が入ると、写した先で古い値が残る。
-test("雛形に値を書かない", () => {
+// **値を書かせない。** テンプレートに値が入ると、写した先で古い値が残る。
+test("テンプレートに値を書かない", () => {
   const text = envExample(defaults());
   for (const line of text.split("\n")) {
     if (!line.includes("=") || line.startsWith("#")) continue;
-    assert.ok(line.endsWith("="), `雛形に値が入っている: ${line}`);
+    assert.ok(line.endsWith("="), `テンプレートに値が入っている: ${line}`);
   }
 });
 
 // **構成から作られていることを、読む人に伝える。**
-test("構成から作られていることを、雛形の中で伝える", () => {
+test("構成から作られていることを、テンプレートの中で伝える", () => {
   const text = envExample(defaults());
   assert.ok(text.includes("autodrive.json"), text.slice(0, 400));
   assert.ok(text.includes("update"), text.slice(0, 400));
 });
 
-// **置かれた雛形が、構成に従うこと。** 静的な雛形に戻すと、片方の構成でしか
+// **置かれたテンプレートが、構成に従うこと。** 静的なテンプレートに戻すと、片方の構成でしか
 // 合わなくなる。**両方向で確かめる。**
-test("置かれた雛形が、構成に従う", () => {
+test("置かれたテンプレートが、構成に従う", () => {
   const without = project();
   setup("init", without, KIT, { answer: (q) => (q.ask.includes("動くもの") ? NONE : null) });
   const a = readFileSync(join(without, ".env.example"), "utf8");
@@ -155,7 +155,7 @@ test("トークンに要る権限を、先に全部言う", () => {
       assert.ok(text.includes(n.permission), `${c.name} に ${n.permission} が出ていない`);
       assert.ok(n.level.trim().length > 0, `${n.permission} に強さが無い`);
       assert.ok(n.why.trim().length > 0, `${n.permission} に理由が無い`);
-      assert.ok(text.includes(n.why), `${n.permission} の理由が雛形に無い`);
+      assert.ok(text.includes(n.why), `${n.permission} の理由がテンプレートに無い`);
     }
   }
 });
@@ -165,7 +165,7 @@ test("実際に止まった権限が、含まれている", () => {
   const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
   const has = (p) => token.needs.some((n) => n.permission === p);
 
-  // この作業場で止まった: シークレットを登録できなかった
+  // このワークディレクトリで止まった: シークレットを登録できなかった
   assert.ok(has("Secrets"), "Secrets が抜けている");
   // 題材アプリ2で止まった: CI の結果と提出を読めなかった
   assert.ok(has("Actions"), "Actions が抜けている");
@@ -174,7 +174,7 @@ test("実際に止まった権限が、含まれている", () => {
 
 // **要らない権限を並べないこと。** 並べると、別の停止を作る（AUT-110）。
 //
-// Checks は、この道具が一度も叩かない口の権限である。人が GitHub の一覧で探して
+// Checks は、autodrive-dev-kit が一度も呼ばない口の権限である。人が GitHub の一覧で探して
 // 見つからず、そこで止まった。**求める理由が無い権限は、書いた側の思い込みである。**
 test("使わない口の権限は、並べない", () => {
   for (const name of ["GH_TOKEN", "AUTODRIVE_CI_TOKEN"]) {
@@ -213,13 +213,13 @@ test("判定が呼ぶ API に要る権限を、求めている", async () => {
   assert.equal(has("Administration"), false, "要らない管理権限を求めている");
 });
 
-// **求めていない理由が、雛形に出ること。**
+// **求めていない理由が、テンプレートに出ること。**
 //
 // 書かないと、足りないと思った人が自分で足す。足せば、渡す必要のない権限が渡る。
-test("置き場所の作成を求めていない理由が、雛形に出る", () => {
+test("置き場所の作成を求めていない理由が、テンプレートに出る", () => {
   const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
   assert.ok(token.note !== undefined, "理由が書かれていない");
-  assert.ok(envExample(defaults()).includes(token.note), "理由が雛形に出ていない");
+  assert.ok(envExample(defaults()).includes(token.note), "理由がテンプレートに出ていない");
 });
 
 // **使わないポートの権限を並べない。** 要らないものを人に付けさせない。
@@ -251,18 +251,18 @@ test("アプリ自身の資格情報が、一覧に入る", () => {
   assert.equal(found.ofApp, true, "アプリのものだと分かる印が無い");
 });
 
-test("アプリ自身の資格情報が、雛形に出る", () => {
+test("アプリ自身の資格情報が、テンプレートに出る", () => {
   const text = envExample(withApp([APP_KEY]));
   assert.ok(text.includes("ANTHROPIC_API_KEY="), "名前が出ていない");
   assert.ok(text.includes(APP_KEY.why), "何に使うのかが出ていない");
   assert.ok(text.includes(APP_KEY.lost), "失ったときの影響が出ていない");
 });
 
-// **どこまでが道具の都合で、どこからが作っているものの都合かを分ける。**
-test("アプリ自身のものは、道具のものと混ざらない", () => {
+// **どこまでが autodrive-dev-kit の都合で、どこからが作っているものの都合かを分ける。**
+test("アプリ自身のものは、autodrive-dev-kit のものと混ざらない", () => {
   const text = envExample(withApp([APP_KEY]));
   assert.ok(text.includes("このプロジェクト自身のもの"), "見出しが無い");
-  // 見出しより後に出ること。前に出ると、道具のものとして読まれる。
+  // 見出しより後に出ること。前に出ると、autodrive-dev-kit のものとして読まれる。
   assert.ok(
     text.indexOf("ANTHROPIC_API_KEY=") > text.indexOf("このプロジェクト自身のもの"),
     "見出しより前に出ている",
@@ -271,7 +271,7 @@ test("アプリ自身のものは、道具のものと混ざらない", () => {
 });
 
 // **直接書くなと言うこと。** 言わないと書かれ、入れ替えで黙って消える。
-test("雛形へ直接書いても消えることを、雛形自身が言う", () => {
+test("テンプレートへ直接書いても消えることを、テンプレート自身が言う", () => {
   const text = envExample(withApp([APP_KEY]));
   assert.ok(text.includes("app.credentials"), "どこに書けばよいかが出ていない");
   assert.ok(text.includes("消える"), "直接書いたものが消えることを言っていない");
@@ -281,13 +281,13 @@ test("1つも無ければ、見出しも出さない", () => {
   assert.equal(envExample(defaults()).includes("このプロジェクト自身のもの"), false);
 });
 
-test("道具の資格情報と同じ名前は、二重に出さない", () => {
+test("autodrive-dev-kit の資格情報と同じ名前は、二重に出さない", () => {
   const config = withApp([{ name: "GH_TOKEN", why: "重なった", lost: "重なった" }]);
   const names = credentialsFor(config).map((c) => c.name);
   assert.equal(names.filter((n) => n === "GH_TOKEN").length, 1, "同じ名前が2行出る");
 });
 
-// 2つの鍵が並んでいる理由を、雛形が持っていること。
+// 2つの鍵が並んでいる理由を、テンプレートが持っていること。
 //
 // **書いていないと、片方で兼ねたくなる。** 同じ GitHub の鍵が2つ並び、なぜ分けて
 // あるかがどこにも無かったため、実際に使い分けを問われた（AUT-139）。
@@ -301,5 +301,5 @@ test("読取専用の鍵に、書ける鍵で兼ねない理由が書いてあ�
   assert.match(ci.note, /判定/, "分けている理由（判定する側が書き換えられる）が書いていない");
 
   const text = envExample(defaults());
-  assert.ok(text.includes(ci.note), "雛形に載っていない。人が読む場所に無ければ届かない");
+  assert.ok(text.includes(ci.note), "テンプレートに載っていない。人が読む場所に無ければ届かない");
 });

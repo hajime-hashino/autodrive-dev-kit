@@ -7,7 +7,7 @@ import { branchNameFor, defaultBranchOf, run } from "../src/beginCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
-/** 作業場と、その直下の対象リポジトリ。 */
+/** ワークディレクトリと、その直下の対象リポジトリ。 */
 function workspace(repos = ["agent-playground"]) {
   const root = tempDir("autodrive-begin-");
   for (const repo of repos) mkdirSync(join(root, repo, ".git"), { recursive: true });
@@ -67,9 +67,9 @@ const marker = (root) =>
 
    ;
 
-// ------------------------------------------------------------------ 枝の名前
+// ------------------------------------------------------------------ ブランチ名
 
-test("枝の名前を省略すると、作業単位のIDから作る", () => {
+test("ブランチ名を省略すると、作業単位のIDから作る", () => {
   assert.equal(branchNameFor("AUT-99", undefined), "aut-99");
   assert.equal(branchNameFor("AUT-99", "  "), "aut-99");
   assert.equal(branchNameFor("AUT-99", "aut-99-begin"), "aut-99-begin");
@@ -79,7 +79,7 @@ test("枝の名前を省略すると、作業単位のIDから作る", () => {
 
 // **手元の設定が無いことを異常としない。** git clone は origin/HEAD を置くが、
 // git init から作った作業ツリーには無い。ここで落とすと着手できなくなる。
-// AUT-53 で判定器に対して直したのと同じ型を、ここでも塞ぐ。
+// AUT-53 で`invariants` に対して直したのと同じ型を、ここでも塞ぐ。
 test("手元に設定が無ければ、引き直して補う", () => {
   let hasHead = false;
   const git = ((_p , args) => {
@@ -127,7 +127,7 @@ test("特定できなければ、直し方を出して止まる", async () => {
 
 // ------------------------------------------------------------------ 成功の道
 
-test("3つをまとめて行う。枝を切り、状態を進め、マーカーを置く", async () => {
+test("3つをまとめて行う。ブランチを作り、状態を進め、マーカーを置く", async () => {
   const root = workspace();
   const tracker = fakeTracker();
   const git = fakeGit();
@@ -135,7 +135,7 @@ test("3つをまとめて行う。枝を切り、状態を進め、マーカー�
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 0);
-  assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b aut-99"), "枝を切っていない");
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b aut-99"), "ブランチを作っていない");
   assert.ok(git.calls.some((a) => a[0] === "pull"), "既定ブランチを最新にしていない");
   assert.deepEqual(tracker.advanced, ["AUT-99:started:agent-playground"]);
   assert.deepEqual(marker(root), { work_item_id: "AUT-99", repo: "agent-playground" });
@@ -148,7 +148,7 @@ test("手元に残っている変更は、消さずに知らせる", async () =>
 
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
-  assert.ok(output.includes("手元の変更を枝へ持ってきた"), output);
+  assert.ok(output.includes("手元の変更をブランチへ持ってきた"), output);
   assert.ok(output.includes("telemetry/AUT-1.jsonl"), output);
 });
 
@@ -197,20 +197,20 @@ test("Tracker を読めない場合は、見つからない場合と区別する
   assert.ok(!output.includes("起票してから"), `見つからない場合と同じ言葉になっている: ${output}`);
 });
 
-test("対象リポジトリが作業場に無ければ着手しない", async () => {
+test("対象リポジトリがワークディレクトリに無ければ着手しない", async () => {
   const root = workspace();
   const git = fakeGit();
 
   const { code, output } = await run(["AUT-99", "--repo", "存在しない"], root, fakeTracker(), git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("作業場に無い"), output);
+  assert.ok(output.includes("ワークディレクトリに無い"), output);
   assert.equal(git.calls.length, 0);
 });
 
-// AUT-38 の再現。前の作業の枝の上から始めると、その提出が閉じている場合に変更が
+// AUT-38 の再現。前の作業のブランチの上から始めると、その提出が閉じている場合に変更が
 // 既定ブランチへ届かない。
-test("別の枝の上からは始めない", async () => {
+test("別のブランチの上からは始めない", async () => {
   const root = workspace();
   const tracker = fakeTracker();
   const git = fakeGit({ "branch --show-current": "aut-98-前の作業" });
@@ -231,7 +231,7 @@ test("別の枝の上からは始めない", async () => {
     output.indexOf("fetch origin main:main") < output.indexOf("checkout main"),
     `進めるより先に切り替えさせている: ${output}`,
   );
-  assert.ok(!git.calls.some((a) => a[0] === "checkout" && a[1] === "-b"), "枝を切ってしまっている");
+  assert.ok(!git.calls.some((a) => a[0] === "checkout" && a[1] === "-b"), "ブランチを作ってしまっている");
   assert.deepEqual(tracker.advanced, [], "状態を進めてしまっている");
 });
 
@@ -247,7 +247,7 @@ test("既定ブランチを最新にできなければ着手しない", async ()
   assert.deepEqual(tracker.advanced, []);
 });
 
-test("枝を作れなければ、状態もマーカーも動かさない", async () => {
+test("ブランチを作れなければ、状態もマーカーも動かさない", async () => {
   const root = workspace();
   const tracker = fakeTracker();
   const git = fakeGit({}, ["checkout -b"]);

@@ -165,7 +165,7 @@ test("apply は既にあるものを見て、それを推奨にする", () => {
 
   // **見て分かったことが、静的な推奨を上書きすること。** ここが効いていないと、
   // 既にあるものを人に否定させることになる。隔離は既定では推奨するが、
-  // この場所には作業場が置かれていない。
+  // この場所にはサンドボックスが置かれていない。
   const sandbox = port.asked.find((q) => q.port === "sandbox");
   assert.equal(sandbox?.recommended, NONE, "既定の推奨が、見て分かったことを押しのけている");
   assert.notEqual(sandbox?.recommended, QUESTIONS[1].recommended, "静的な推奨と区別がついていない");
@@ -210,7 +210,7 @@ test("推測は、見て分かったものだけに根拠を付ける", () => {
   assert.equal(because.preview, undefined);
 });
 
-test("遠隔が無くても、推測は落ちない", () => {
+test("リモートが無くても、推測は落ちない", () => {
   const { because } = infer(project(), null);
   assert.equal(because.repo, undefined);
 });
@@ -232,7 +232,7 @@ test("入れ替えは、構成を読むだけで書き換えない", () => {
   const r = run("update", root, answering({}));
   assert.equal(r.code, 0);
   assert.equal(readFileSync(join(root, CONFIG_FILE), "utf8"), before, "構成を書き換えている");
-  assert.ok(existsSync(join(root, "autodrive", "invariants")), "道具を入れ替えていない");
+  assert.ok(existsSync(join(root, "autodrive", "invariants")), "autodrive-dev-kit を入れ替えていない");
 });
 
 // **済んでいることを頼まない。** 毎回同じ一覧を出すと読まれなくなり、本当に
@@ -450,10 +450,10 @@ test("入れ替えても、アプリ自身の資格情報は残る", () => {
 
   assert.equal(result.message, null, result.message ?? "");
   assert.deepEqual(configOf(root).app.credentials, [GOOD], "入れ替えで消えている");
-  // **雛形にも出ること。** 構成に残っていても、出なければ役目を果たさない。
+  // **テンプレートにも出ること。** 構成に残っていても、出なければ役目を果たさない。
   assert.ok(
     readFileSync(join(root, ".env.example"), "utf8").includes("ANTHROPIC_API_KEY="),
-    "雛形に出ていない",
+    "テンプレートに出ていない",
   );
 });
 

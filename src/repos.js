@@ -14,7 +14,7 @@ const BOUNDARY_HISTORY_NAMES = ["boundary-changes.md", "境界変更履歴.md"];
  * origin の URL から owner/repo を取り出す。取れなければ null。
  *
  * **git の呼び出しから切り離してある。** 呼ぶ側によって git の入手経路が違う
- * （判定器は自前、`begin` は差し込まれたもの）。読み方まで二重に持つと、片方だけ
+ * （`invariants` は自前、`begin` は差し込まれたもの）。読み方まで二重に持つと、片方だけ
  * 直る。
  */
 export function slugFromUrl(raw) {
