@@ -259,5 +259,26 @@
     "from": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"--\", ...files]);",
     "to": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"-a\"]);",
     "why": "手元の他の変更まで一緒にコミットされる"
+  },
+  {
+    "name": "AUT-163 ポート語彙を、文書にも掛ける形へ戻す",
+    "file": "templates/autodrive.md",
+    "from": "**動くものは、ポート語彙で書く。** スキル、アダプタを呼ぶ側、CI 定義、判定、コマンド、",
+    "to": "手順も文書も、定義§16のポート語彙で書く。スキル、アダプタを呼ぶ側、CI 定義、判定、コマンド、",
+    "why": "人に向けた説明まで抽象語になり、広げた読み方から造語が出る"
+  },
+  {
+    "name": "AUT-163 決まった置き換えの表から、繰り返し出た語を落とす",
+    "file": "templates/autodrive.md",
+    "from": "| branch | ブランチ | 枝 |",
+    "to": "",
+    "why": "直した語が規約に残らず、次に書く者が同じ圧力で作り直す"
+  },
+  {
+    "name": "AUT-163 広げたのがどこかを、名指ししない",
+    "file": "templates/autodrive.md",
+    "from": "**なぜこれが起きたか。** 規約は「実装**名**を書かない」としか言っていないのに、",
+    "to": "**なぜこれが起きたか。** ",
+    "why": "「実装の言葉を使わない」が前提として残り、そこから同じ読み替えが起きる"
   }
 ]
