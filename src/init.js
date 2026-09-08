@@ -57,7 +57,7 @@ export const VENDOR_DIR = "autodrive";
  * **採用先にライセンス文の無いコードの複製が残る。** NOTICE も同じ理由で入れる
  * （§4(d)）。誰のものか分からない複製にしない。
  */
-const VENDORED = [
+export const VENDORED = [
   "src",
   "hooks",
   "bin",
