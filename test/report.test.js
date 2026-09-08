@@ -110,11 +110,11 @@ test("不変条件の名前が、定義の語彙と揃っている", () => {
   assert.ok(!out.includes("境界変更"), `旧名が残っている: ${out}`);
 });
 
-// **構成から判定器の出力まで、通しで見る。**
+// **構成から`invariants` の出力まで、通しで見る。**
 //
 // `renderText` を直接呼ぶ判定だけでは、**構成を読む部分が抜けても気づけない。**
 // 実際に、変異テストで通ってしまった（AUT-138）。
-test("autodrive.json の language が、判定器の出力まで届く", async () => {
+test("autodrive.json の language が、`invariants` の出力まで届く", async () => {
   const { mkdirSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");

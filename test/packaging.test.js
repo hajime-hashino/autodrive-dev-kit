@@ -42,7 +42,7 @@ test("node_modules の中からでも動く", () => {
   const out = execFileSync(process.execPath, [entry, "init"], { cwd: root, encoding: "utf8" });
 
   assert.ok(out.includes("土台を置いた"), out.slice(0, 300));
-  assert.ok(statSync(join(root, "autodrive")).isDirectory(), "道具が置かれていない");
+  assert.ok(statSync(join(root, "autodrive")).isDirectory(), "autodrive-dev-kit が置かれていない");
 });
 
 test("node_modules の中からでも、判定が動く", () => {

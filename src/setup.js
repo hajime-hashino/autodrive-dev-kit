@@ -195,7 +195,7 @@ function cannotGenerate(kitRoot) {
       "意図してそうしている（ADR 0004）。プロジェクトがファイルを生成することはない。\n\n" +
       "更新するときは、kit を外から取ってきて打つこと。\n\n" +
       `  ${FROM_SOURCE} update\n\n` +
-      "**人が打つものではない。** 作業単位にして、枝の上で打つこと\n" +
+      "**人が打つものではない。** 作業単位にして、ブランチの上で打つこと\n" +
       "（docs/autodrive.md「autodrive-dev-kit を更新する」）。",
   );
 }

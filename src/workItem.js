@@ -63,7 +63,7 @@ export function resolveWorkItem(root) {
   }
 
   // **無い場所には書かない。** 記録の追記は途中のディレクトリごと作るため、
-  // 指す先が存在しなくても**「記録した」と表示されて成功に見える。** 判定器が
+  // 指す先が存在しなくても**「記録した」と表示されて成功に見える。** `invariants` が
   // 見るのは `<対象リポジトリ>/telemetry/` であり、そこに無い記録は無いのと同じ
   // である。しかも作られた場所は追跡対象外なので、そのまま消える（AUT-143）。
   //
@@ -79,7 +79,7 @@ export function resolveWorkItem(root) {
       item: null,
       unattributedReason:
         `作業単位マーカーが指すリポジトリが無い（${repo} → ${repoPath}）。` +
-        "**そこへ書くと、判定器が見ない場所に記録が作られる。** 起点と repo を確かめること",
+        "**そこへ書くと、`invariants` が見ない場所に記録が作られる。** 起点と repo を確かめること",
     };
   }
 
@@ -89,7 +89,7 @@ export function resolveWorkItem(root) {
 /**
  * 現在の作業単位を読む。
  *
- * **見つからない場合は null を返し、呼び出し側はそれを握りつぶさないこと。**
+ * **見つからない場合は null を返し、呼び出し側はそれを記録を捨てないこと。**
  * 理由まで要る場合は `resolveWorkItem` を使う。
  */
 export function currentWorkItem(root) {

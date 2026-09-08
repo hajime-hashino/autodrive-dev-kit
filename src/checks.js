@@ -108,7 +108,7 @@ async function crossCheckTracker(
  * 別の判定に現れ続ける。
  *
  * 代替の記録が無ければ conclude が UNSUBSTITUTED へ落とす。それは正しい挙動で
- * あり、ここで握りつぶさない。**肩代わりの記録が無ければ、立ち上げ期の例外の条件を
+ * あり、ここで記録を捨てない。**肩代わりの記録が無ければ、立ち上げ期の例外の条件を
  * 満たしていない**（定義§9）。
  */
 function substituted(r , events) {
