@@ -10,10 +10,10 @@ import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
 
 const outerLoop = CHECKS.find((c) => c.key === "outer_loop_running");
 
-/** 領域を1つだけ持つ境界表。 */
+/** 領域を1つだけ持つ委譲範囲の表。 */
 function table(over = {}) {
   const { detectable = false, state = "保留", extra = "" } = over;
-  return `# 境界表
+  return `# 委譲範囲の表
 version: 1
 
 areas:
@@ -32,7 +32,7 @@ ${extra}`;
 /**
  * git の応答を差し替えたリポジトリ。
  *
- * versions は「コミット → その時点の境界表」。親の版が無いコミットが初期設置。
+ * versions は「コミット → その時点の委譲範囲の表」。親のバージョンが無いコミットが初期設置。
  */
 function repoWith(versions , history , slug = "owner/p") {
   const at = new Map(versions);
@@ -105,7 +105,7 @@ function input(repo , responder) {
   };
 }
 
-const HISTORY = `# 境界変更履歴
+const HISTORY = `# 委譲範囲の変更履歴
 
 ## 2026-08-23 見え方を気づける側へ動かした
 
@@ -113,7 +113,7 @@ const HISTORY = `# 境界変更履歴
 - 根拠: 検出漏れ3件
 `;
 
-// ----------------------------------------------------------------- 境界表の読取
+// ----------------------------------------------------------------- 委譲範囲の表の読取
 
 test("根拠の本文に現れた属性名を、属性として読まない", () => {
   const areas = parseAreas(table());
@@ -181,7 +181,7 @@ test("コメントだけを直した変更は、動いたと数えない", async
 test("履歴から参照されていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
-    "# 境界変更履歴\n\n## 別の話\n\n- 根拠: なし\n",
+    "# 委譲範囲の変更履歴\n\n## 別の話\n\n- 根拠: なし\n",
   );
   const r = await outerLoop.run(input(repo, merged));
   assert.equal(r.state, SUBSTITUTED);
@@ -190,7 +190,7 @@ test("履歴から参照されていなければ有効しない", async () => {
 test("根拠が書かれていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
-    "# 境界変更履歴\n\n## 動かした\n\n- 設定変更: commit bbbbbbb\n",
+    "# 委譲範囲の変更履歴\n\n## 動かした\n\n- 設定変更: commit bbbbbbb\n",
   );
   const r = await outerLoop.run(input(repo, merged));
   assert.equal(r.state, SUBSTITUTED);

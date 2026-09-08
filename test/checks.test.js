@@ -271,7 +271,7 @@ test("ruleset が0件なら保護されていないとして観測する", async
   assert.ok(r.observations.some((o) => o.includes("ruleset が1件も無い")));
 });
 
-// --------------------------------------------------------- 境界
+// --------------------------------------------------------- 有効境界
 
 test("boundaries.yaml が無い状態を有効と報告しない", async () => {
   const events = [
@@ -495,14 +495,14 @@ test("有効境界より後の直書きは、判定の対象に入る", async ()
   assert.deepEqual(r.substitutions, ["アダプタが壊れている"]);
 });
 
-test("境界を動かした回数を隠さない", async () => {
+test("有効境界を動かした回数を隠さない", async () => {
   const mark = (ts) => event({ ts, type: "enactment", invariant: "telemetry_recorded" });
   const events = [mark("2026-02-01T00:00:00Z"), mark("2026-03-01T00:00:00Z"), event({ ts: "2026-04-01T00:00:00Z" })];
   const r = await check("telemetry_recorded").run(input({ events }));
   assert.ok(r.observations.some((o) => o.includes("2 回動いている")));
 });
 
-test("境界より前でも、必須属性の欠けは見逃さない", async () => {
+test("有効境界より前でも、必須属性の欠けは見逃さない", async () => {
   const events = [
     event({ ts: "2026-01-01T00:00:00Z", work_item_id: null }),
     event({ ts: "2026-02-01T00:00:00Z", type: "enactment", invariant: "telemetry_recorded" }),
@@ -514,7 +514,7 @@ test("境界より前でも、必須属性の欠けは見逃さない", async ()
 
 // --------------------------------------------------------- 有効かどうかの結論
 
-test("境界変更履歴にエントリがあっても、代替の記録があれば失敗しない", async () => {
+test("委譲範囲の変更履歴にエントリがあっても、代替の記録があれば失敗しない", async () => {
   // 履歴が空でない経路。ここで代替の添付を忘れると UNSUBSTITUTED へ落ちる。
   const repo = {
     ...fakeRepo("r"),
@@ -532,7 +532,7 @@ test("境界変更履歴にエントリがあっても、代替の記録があ�
 
 test("履歴が空の経路でも同じく代替が効く", async () => {
   const events = [
-    event({ type: "substitution", invariant: "outer_loop_running", detail: "境界表が無い" }),
+    event({ type: "substitution", invariant: "outer_loop_running", detail: "委譲範囲の表が無い" }),
   ];
   const r = await check("outer_loop_running").run(input({ events }));
   assert.equal(r.state, SUBSTITUTED);

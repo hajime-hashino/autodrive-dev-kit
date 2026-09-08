@@ -294,7 +294,7 @@ const STRIPE = { host: "api.stripe.com", why: "決済。このアプリが叩く
 test("アプリ自身の宛先が、一覧に入る", () => {
   const found = destinationsFor(withDest([STRIPE])).find((d) => d.host === STRIPE.host);
   assert.ok(found !== undefined, "アプリの宛先が落ちている");
-  assert.equal(found.ofApp, true, "アプリのものだと分かる印が無い");
+  assert.equal(found.ofApp, true, "アプリのものだと分かる見出しが無い");
 });
 
 test("アプリ自身の宛先が、許可一覧に出る", () => {
@@ -503,7 +503,7 @@ test("直接編集しても、update は止まらない", () => {
 
 // ------------------------- devcontainer-lock.json は管理下から外れる（AUT-153）
 
-// **足した機能を作り直すと、CLI が版を解決して lock を書き込む。** そこは
+// **足した機能を作り直すと、CLI がバージョンを解決して lock を書き込む。** そこは
 // `(テンプレート, 構成)` だけでは決まらないため、他の管理下ファイルと同じ扱いにすると
 // 「手で変えられている」と誤って判定され、update が止まる。ここでは実際に
 // setup("update", ...) を通し、その誤判定が起きないことを確かめる。
@@ -530,7 +530,7 @@ test("lock を CLI が書き換えても、update は止まらない", () => {
 });
 
 // **組み込みの3つだけの、素のプロジェクトでも起きる。** 機能を1つも足していなくても、
-// 上流の版が動けば CLI は lock を書き換える。devcontainer_features の有無とは
+// 上流のバージョンが動けば CLI は lock を書き換える。devcontainer_features の有無とは
 // 関係がないことを、ここで確かめる。
 test("機能を足していなくても、lock の書き換えで update は止まらない", () => {
   const root = project();
