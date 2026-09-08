@@ -1,8 +1,8 @@
 /**
  * 入口。
  *
- * **PATH に入れて増えるものを1つにする。** 道具ごとに実行ファイルを置くと、
- * 使う人の PATH に道具の数だけ生える。使う人が打つのは `init` だけであり、
+ * **PATH に入れて増えるものを1つにする。** コマンドごとに実行ファイルを置くと、
+ * 使う人の PATH にコマンドの数だけ生える。使う人が打つのは `init` だけであり、
  * 残りはAIが打つ。
  */
 
@@ -16,7 +16,7 @@ import { say } from "./messages.js";
 
 const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const USAGE = `AIに開発を任せて回すための道具一式
+const USAGE = `AIに開発を任せて回すための autodrive-dev-kit
 
   autodrive-dev-kit init                    新しく始める。構成を聞いて、土台を置く
   autodrive-dev-kit apply                   既にあるものへ入れる。構成を推測して確かめる
@@ -28,7 +28,7 @@ AIが使うもの（人は打たなくてよい）
   autodrive-dev-kit tracker <操作> ...      作業単位を扱う
   autodrive-dev-kit telemetry <操作> ...    記録する
   autodrive-dev-kit invariants [--root <場所>]  不変条件の状態を判定する
-  autodrive-dev-kit reconcile [--dry-run]   統合された作業単位を閉じる（begin が兼ねる）
+  autodrive-dev-kit reconcile [--dry-run]   統合された作業単位を完了にする（begin が兼ねる）
 
 使い方の全体は README を参照。`;
 

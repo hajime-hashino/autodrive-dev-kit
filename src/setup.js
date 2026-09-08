@@ -220,7 +220,7 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
   if (mode !== "update" && present) {
     return refuse(
       `${CONFIG_FILE} が既にある。**上書きすると、決めた内容が消える。**\n\n` +
-        "  道具を新しい版へ入れ替えるなら:  autodrive-dev-kit update\n" +
+        "  autodrive-dev-kit を新しいバージョンへ入れ替えるなら:  autodrive-dev-kit update\n" +
         `  構成を決め直すなら:              ${CONFIG_FILE} を消してから もう一度`,
     );
   }
@@ -261,7 +261,7 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
   if (result.message !== null) return { ...result, notes: result.notes ?? [], config: null, decisions: [] };
 
   // **入れ替えでは触らない。** 決めた内容はプロジェクトのものである。読んだものを
-  // 書き戻すだけでも、整形の違いや、この版が知らない項目の欠落が入りうる。
+  // 書き戻すだけでも、整形の違いや、このバージョンが知らない項目の欠落が入りうる。
   if (mode === "update") {
     result.placed.push({ path: CONFIG_FILE, placement: "skipped" });
     // 入れ替えは、既に動いているプロジェクトに対して打つ。始め方の案内は要らない。

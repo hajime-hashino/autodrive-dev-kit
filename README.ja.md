@@ -1,6 +1,6 @@
 # autodrive-dev-kit
 
-**システム開発に精通していなくても、AIの案内で開発を進められるようにするための道具一式。**
+**システム開発に精通していなくても、AIの案内で開発を進められるようにするための autodrive-dev-kit。**
 
 [AIオートドライビング開発](https://github.com/hajimegane/autodrive-dev-definition)の参照実装。
 
@@ -30,15 +30,15 @@
 |---|---|
 | **不変条件** | 提出を経ない変更が既定ブランチへ入らない。本番の資格情報を手元に置かない |
 | **記録** | 停止、手戻り、検出漏れ、委譲範囲の変更、トークン消費が自動で残る |
-| **点検** | 上の2つが実際に機能しているかを機械的に判定する。宣言ではなく実測 |
+| **判定** | 上の2つが実際に機能しているかを機械的に判定する。宣言ではなく実測 |
 
 記録は、仕組みを改善するために利用される。
 
 ## いまの状態
 
-**育てている途中である。** まだ公開しておらず、この道具で作っているプロジェクトは2つ。
+**育てている途中である。** まだ公開しておらず、autodrive-dev-kit で作っているプロジェクトは2つ。
 
-**この道具自身が、この手法で開発されている。** 参照実装の変更も、作業単位の起票から提出・統合まで、ここに書かれている手順を通っている。**書いた本人が従わない規約にしないため。**
+**autodrive-dev-kit 自身が、この手法で開発されている。** 参照実装の変更も、作業単位の起票から提出・統合まで、ここに書かれている手順を通っている。**書いた本人が従わない規約にしないため。**
 
 不変条件の4つのうち3つが有効で、1つは人が手で代替している（判定がその状態を出す）。詳しくは [docs/invariants.md](docs/invariants.md)。
 
@@ -46,9 +46,9 @@
 
 | コンポーネント | 用途 | 要否 |
 |---|---|---|
-| Node 22.18 以上 | ツールセットの実行 | 必須 |
+| Node 22.18 以上 | autodrive-dev-kit の実行 | 必須 |
 | Linear | 作業単位の起票、状態管理、記録の紐づけ | 必須 |
-| GitHub | 提出を経た統合。点検がここを読む | 必須 |
+| GitHub | 提出を経た統合。判定がここを読む | 必須 |
 | Cloudflare Workers | 画面の見え方を確認するためのプレビュー | 画面を持つ場合 |
 
 ## 使い方
@@ -116,7 +116,7 @@ Claude Code を開いて、**「プロジェクトを始めたい」と伝えて
 
 ```
 my-app/
-├── autodrive/                       ツールセットの複製
+├── autodrive/                       autodrive-dev-kit の複製
 ├── autodrive.json                   構成
 ├── boundaries.yaml                  委譲範囲の表
 ├── CLAUDE.md                        プロジェクト固有の規約
@@ -127,7 +127,7 @@ my-app/
 ├── .claude/
 │   └── settings.json                記録のフックの登録
 ├── .github/
-│   └── workflows/invariants.yml         点検をCIで実行する定義
+│   └── workflows/invariants.yml         判定をCIで実行する定義
 ├── docs/
 │   ├── autodrive.md                 AI向けの作業規約
 │   ├── what-why.md                  何を作るか、なぜ作るか
@@ -142,13 +142,13 @@ my-app/
 
 | ファイル | 作成 | 所有 | 内容 |
 |---|---|---|---|
-| `autodrive/` | init | dev-kit | ツールセットの複製。`update` で入れ替わる |
-| `.env.example` | init | dev-kit | 必要な資格情報の一覧。**構成から作られる** |
-| `.github/workflows/invariants.yml` | init | dev-kit | 点検をCIで実行する定義 |
-| `.devcontainer/` | init | dev-kit | 隔離のロジック（firewall・支度・許可一覧）。**外向き通信は許可制** |
-| `.devcontainer/devcontainer.json` | init | プロジェクト | 作業場の定義。**直接編集してよい。** 隔離の配線は `invariants` が見る |
+| `autodrive/` | init | autodrive-dev-kit | 複製されたもの。`update` で入れ替わる |
+| `.env.example` | init | autodrive-dev-kit | 必要な資格情報の一覧。**構成から作られる** |
+| `.github/workflows/invariants.yml` | init | autodrive-dev-kit | 判定をCIで実行する定義 |
+| `.devcontainer/` | init | autodrive-dev-kit | 隔離のロジック（firewall・支度・許可一覧）。**外向き通信は許可制** |
+| `.devcontainer/devcontainer.json` | init | プロジェクト | サンドボックスの定義。**直接編集してよい。** 隔離の配線は `invariants` が見る |
 | `.devcontainer/devcontainer-lock.json` | init | プロジェクト | バージョンの固定。**最初の一度だけ置く。** 以後は作り直しのたびに Dev Containers CLI が書き換える |
-| `docs/autodrive.md` | init | dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
+| `docs/autodrive.md` | init | autodrive-dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
@@ -161,9 +161,9 @@ my-app/
 | `docs/adr/` | 設計判断が生じたとき | プロジェクト | 設計判断の記録 |
 | `docs/boundary-changes.md` | 委譲範囲の表を動かしたとき | プロジェクト | 委譲範囲の変更の履歴 |
 
-dev-kit が所有するファイルは `update` で上書きされる。プロジェクトが所有するファイルは、既に存在する場合は変更されない。
+autodrive-dev-kit が所有するファイルは `update` で上書きされる。プロジェクトが所有するファイルは、既に存在する場合は変更されない。
 
-`init` の時点では、下4つは作成されない。**プロジェクト固有の内容を持つため、空の雛形は置かない。**
+`init` の時点では、下4つは作成されない。**プロジェクト固有の内容を持つため、空のテンプレートは置かない。**
 
 ## 仕組み
 
@@ -171,19 +171,19 @@ dev-kit が所有するファイルは `update` で上書きされる。プロ�
 
 ![構築例。人・サンドボックス・記録・実行の4つの区画と、1件の変更が流れる経路](docs/environment.svg)
 
-### ツールセットはプロジェクトの中に複製される
+### autodrive-dev-kit はプロジェクトの中に複製される
 
 ```
   <参照実装>                        <あなたのプロジェクト>
 
   autodrive-dev-kit/                my-app/
-    src/          ───── init ─────▶   autodrive/       ツールセットの複製
+    src/          ───── init ─────▶   autodrive/       autodrive-dev-kit の複製
     invariants                        autodrive.json   構成
     VERSION                           docs/            規約 / What・Why
     templates/                        .github/         CI
 ```
 
-dev-kit を更新しても、`update` を実行するまでプロジェクトは変化しない。プロジェクトごとに異なる版で動作する（[ADR 0004](docs/adr/0004-vendored-kit.md)）。
+autodrive-dev-kit を更新しても、`update` を実行するまでプロジェクトは変化しない。プロジェクトごとに異なるバージョンで動作する（[ADR 0004](docs/adr/0004-vendored-kit.md)）。
 
 ### 内側ループと外側ループ
 
@@ -196,7 +196,7 @@ dev-kit を更新しても、`update` を実行するまでプロジェクトは
 
 どの領域をAIに任せているかは `boundaries.yaml` が持つ。**この表のセルを動かす変更は外側ループであり、人の承認を要する。** 新しい検出手段の導入も同様である。
 
-### 不変条件の点検
+### 不変条件の判定
 
 配置された仕組みが実際に機能しているかを `invariants` が判定する。CIから自動実行され、手動でも実行できる。
 
@@ -243,7 +243,7 @@ autodrive/invariants --root . --scope self
 | [docs/invariants.md](docs/invariants.md) | 判定基準の全文 |
 | [docs/adr/](docs/adr/) | 設計判断の記録。**覆す提案をする前に読む** |
 
-## dev-kit そのものを直す
+## autodrive-dev-kit そのものを直す
 
 ```sh
 npm test      # node:test。テストフレームワークの依存は無い
@@ -254,7 +254,7 @@ npm run mutate  # 過去に直した誤りを戻し、テストが落ちるか�
 
 型注釈をそのまま実行する形は採れない。**Node は `node_modules` の下にあるファイルの型注釈を剥がさないため**、`npx` で配れなくなる（[ADR 0001](docs/adr/0001-implementation-language.md)）。
 
-**`dependencies` を置かないこと。** 依存ゼロであることが、dev-kit のサプライチェーン上の防御である。追加が必要になった場合は [ADR 0001](docs/adr/0001-implementation-language.md) を読み、必要なら更新の提案から始める。
+**`dependencies` を置かないこと。** 依存ゼロであることが、autodrive-dev-kit のサプライチェーン上の防御である。追加が必要になった場合は [ADR 0001](docs/adr/0001-implementation-language.md) を読み、必要なら更新の提案から始める。
 
 **確認の手段を作った時点で、その手段自体を検証する。** テストが書けるものは書く。書けないものは動作を確認してから提出する。**壊した実装に対してテストが落ちることまで確かめる**（通ることの確認だけでは、何も見ていないテストと区別できない）。
 
@@ -274,15 +274,15 @@ npm run mutate  # 過去に直した誤りを戻し、テストが落ちるか�
 
 ## フォークする
 
-ライセンスの上では自由に分岐してよい。ただし**この参照実装には、この作業場に固有のものが3つ入っており、フォーク先では動かない。**
+ライセンスの上では自由に分岐してよい。ただし**この参照実装には、このワークディレクトリに固有のものが3つ入っており、フォーク先では動かない。**
 
 | 何が | なぜ | どうするか |
 |---|---|---|
-| `telemetry/*.jsonl` | 記録がこの作業場の Tracker の作業単位を指している。判定器が**存在しない作業単位を指していると報告する** | 中身を空にする。記録は最初の作業単位から始まる |
+| `telemetry/*.jsonl` | 記録がこのワークディレクトリの Tracker の作業単位を指している。`invariants` が**存在しない作業単位を指していると報告する** | 中身を空にする。記録は最初の作業単位から始まる |
 | `.github/workflows/invariants.yml` の `cross` ジョブ | ここにしか無い4つのリポジトリを clone している | ジョブを外すか、自分の構成に書き換える |
 | `mutations/regression.json` | ここで直した誤りを実装へ戻す変異。実装を変えると当たらなくなり、**「当てられなかった」と出る** | 自分が直したものの変異へ、順に置き換える |
 
-**記録を引き継ぐかは、決めるべきことである。** 残すと判定が通らない。捨てると、この道具がどう育ったかの記録は元のリポジトリにしか残らない。**捨てるほうを勧める。** その履歴は引き継ぐ側のものではなく、元は元で読める場所に在り続ける。
+**記録を引き継ぐかは、決めるべきことである。** 残すと判定が通らない。捨てると、autodrive-dev-kit がどう育ったかの記録は元のリポジトリにしか残らない。**捨てるほうを勧める。** その履歴は引き継ぐ側のものではなく、元は元で読める場所に在り続ける。
 
 `NOTICE` には自分の行を足してよい。Apache-2.0 が認めている。ファイルを変えたときは、変えたと書くこと（§4(b)）。
 
