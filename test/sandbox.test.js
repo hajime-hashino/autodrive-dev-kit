@@ -415,7 +415,10 @@ test("データが外へ出ない保証ではない、と書く", () => {
 test("配布物と devcontainer の説明も、同じことを言っている", () => {
   const readme = readFileSync(join(KIT, "templates", "devcontainer", "README.md"), "utf8");
   assert.equal(readme.includes("無い宛先へは\n出られない"), false, "説明に嘘が残っている");
-  assert.ok(readme.includes("閉じる仕掛けではなく、減らす仕掛け"), "限界を書いていない");
+  assert.ok(
+    readme.includes("通信を遮断する仕組みではなく、出られる先を減らす仕組み"),
+    "限界を書いていない",
+  );
 });
 
 // ------------------------- IP が入れ替わる宛先（AUT-63）
