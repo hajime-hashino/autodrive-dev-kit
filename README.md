@@ -140,13 +140,13 @@ These appear as the project needs them.
 
 | File | Created | Owned by | Contents |
 |---|---|---|---|
-| `autodrive/` | init | dev-kit | Copy of the toolkit. Replaced by `update` |
-| `.env.example` | init | dev-kit | Credentials you need. **Generated from your setup** |
-| `.github/workflows/invariants.yml` | init | dev-kit | Runs the checks in CI |
-| `.devcontainer/` | init | dev-kit | Isolation logic (firewall, setup, allowlist). **Outbound traffic is allowlisted** |
+| `autodrive/` | init | autodrive-dev-kit | Copy of the toolkit. Replaced by `update` |
+| `.env.example` | init | autodrive-dev-kit | Credentials you need. **Generated from your setup** |
+| `.github/workflows/invariants.yml` | init | autodrive-dev-kit | Runs the checks in CI |
+| `.devcontainer/` | init | autodrive-dev-kit | Isolation logic (firewall, setup, allowlist). **Outbound traffic is allowlisted** |
 | `.devcontainer/devcontainer.json` | init | project | The workspace definition. **Edit it directly.** `invariants` checks the isolation wiring |
 | `.devcontainer/devcontainer-lock.json` | init | project | Version pins. **Placed once.** After that, the Dev Containers CLI rewrites it on every rebuild |
-| `docs/autodrive.md` | init | dev-kit | The rules the AI follows. **Includes how it should behave** |
+| `docs/autodrive.md` | init | autodrive-dev-kit | The rules the AI follows. **Includes how it should behave** |
 | `autodrive.json` | init | project | Your setup. Never changed by `update` |
 | `boundaries.yaml` | init | project | The delegation table. What you have handed to the AI |
 | `docs/what-why.md` | init | project | What you are building, and why |
@@ -159,7 +159,7 @@ These appear as the project needs them.
 | `docs/adr/` | when a design decision comes up | project | Design decisions |
 | `docs/boundary-changes.md` | when the delegation table moves | project | History of delegation changes |
 
-Files owned by dev-kit are overwritten by `update`. Files owned by the project are left alone if they already exist.
+Files owned by autodrive-dev-kit are overwritten by `update`. Files owned by the project are left alone if they already exist.
 
 The last four are not created by `init`. **They hold project-specific content, so no empty stubs are placed.**
 
@@ -183,7 +183,7 @@ The setup, and the path a single change takes. **Every element is a port and can
     templates/                        .github/         CI
 ```
 
-Updating dev-kit changes nothing in your project until you run `update`. Each project runs its own pinned version ([ADR 0004](docs/adr/0004-vendored-kit.md)).
+Updating autodrive-dev-kit changes nothing in your project until you run `update`. Each project runs its own pinned version ([ADR 0004](docs/adr/0004-vendored-kit.md)).
 
 ### Inner loop and outer loop
 

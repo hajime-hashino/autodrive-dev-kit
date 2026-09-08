@@ -2,7 +2,7 @@
  * 人に見せる文。
  *
  * **AIが動く前に人が見るものだけを、ここに置く。** `init` の質問と案内、置かれる
- * 雛形の説明。開発が始まればAIが相手の言語で話すため、そこは翻訳の対象ではない。
+ * テンプレートの説明。開発が始まればAIが相手の言語で話すため、そこは翻訳の対象ではない。
  *
  * ## 規約と定義は訳さない
  *
@@ -10,7 +10,7 @@
  * 訳が古くなる。AIが従う規約と人が読む規約が食い違うのは、一言語で持つより悪い。**
  *
  * 代わりに、配布物が「人の言語で話す」ことを求めている。規約を聞かれたら、AIが
- * その場で相手の言語に言い直す。**常に最新版を読むので、古くならない。**
+ * その場で相手の言語に言い直す。**常に最新のものを読むので、古くならない。**
  *
  * ## 増やすとき
  *
@@ -32,9 +32,9 @@ export const LANGUAGES = ["ja", "en"];
 const MESSAGES = {
   ja: {
     // --- 見出し ---
-    "headline.init": "土台を置いた（版 {version}）。",
-    "headline.apply": "既にあるものへ土台を入れた（版 {version}）。",
-    "headline.update": "道具を入れ替えた（版 {version}）。",
+    "headline.init": "土台を置いた（バージョン {version}）。",
+    "headline.apply": "既にあるものへ土台を入れた（バージョン {version}）。",
+    "headline.update": "autodrive-dev-kit を入れ替えた（バージョン {version}）。",
     "section.config": "構成:",
     "section.todo": "**ここから先は人にしかできない。**",
 
@@ -58,7 +58,7 @@ const MESSAGES = {
       "画面の見え方は、動くものを見ないと決められません。用意すると、提出ごとに URL が出ます。",
     "ask.preview.cloudflare": "用意する（Cloudflare Workers）",
     "ask.preview.none": "用意しない（画面の無いものを作る、あとで決める）",
-    "ask.sandbox": "AIを、隔離された作業場の中で動かしますか？",
+    "ask.sandbox": "AIを、隔離された環境（サンドボックス）の中で動かしますか？",
     "ask.sandbox.why": "手元の環境から切り離すと、消してはいけないものへ手が届かなくなります。",
     "ask.sandbox.devcontainer": "隔離する（devcontainer）",
     "ask.sandbox.none": "隔離しない",
@@ -75,7 +75,7 @@ const MESSAGES = {
     // --- 人にしかできないこと ---
     "todo.env": ".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）",
     "todo.reopen":
-      "作業場を開き直す（VS Code なら「Reopen in Container」）。" +
+      "サンドボックスを開き直す（VS Code なら「Reopen in Container」）。" +
       "**.env を作ってから行うこと。** 環境を作るときに読まれる",
     "todo.start": "Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める",
     "todo.pointer": "CLAUDE.md に次の1行を足すこと: 「作業の進め方は docs/autodrive.md に従う」",
