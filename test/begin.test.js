@@ -152,6 +152,51 @@ test("手元に残っている変更は、消さずに知らせる", async () =>
   assert.ok(output.includes("telemetry/AUT-1.jsonl"), output);
 });
 
+// ------------------------------------------------- 取り残された記録（AUT-156）
+//
+// **提出のあとに書かれた記録は、その作業単位のコミットには入らない。** 持ち越される
+// だけでは、次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
+
+test("取り残された記録を、着手したブランチへ載せる", async () => {
+  const root = workspace();
+  const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-98.jsonl" });
+
+  const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+
+  const committed = git.calls.find((a) => a[0] === "commit");
+  assert.ok(committed, `拾っていない: ${output}`);
+  assert.ok(committed.includes("telemetry/AUT-98.jsonl"), "対象が渡っていない");
+  assert.ok(output.includes("取り残された記録を拾って"), output);
+});
+
+test("取り残しが無ければ、コミットを作らない", async () => {
+  const root = workspace();
+  const git = fakeGit();
+
+  const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+
+  assert.equal(git.calls.some((a) => a[0] === "commit"), false, "拾うものが無いのにコミットした");
+  assert.equal(output.includes("取り残された記録"), false, output);
+});
+
+// **他のリポジトリの取り残しは拾えないが、黙らない。** 測った時点で4つとも残って
+// いた。そのリポジトリで次の作業が起きるまで、誰も知らないままになる。
+test("他のリポジトリの取り残しを、知らせる", async () => {
+  const root = workspace(["agent-playground", "autodrive-dev-work"]);
+  const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-98.jsonl" });
+
+  const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+
+  assert.ok(output.includes("他のリポジトリに、取り残された記録がある"), output);
+  assert.ok(output.includes("autodrive-dev-work"), output);
+  // **対象リポジトリを、他のリポジトリとして二重に出さない。**
+  assert.equal(
+    output.split("他のリポジトリに")[1].includes("agent-playground"),
+    false,
+    `対象リポジトリを他のリポジトリとして並べている: ${output}`,
+  );
+});
+
 // ------------------------------------------------------------------ 止まる道
 //
 // **止まることがこの入口の目的である。** どの前提が崩れたかと、何をすればよいかを
