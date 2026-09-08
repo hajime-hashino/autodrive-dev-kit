@@ -194,7 +194,7 @@ test("始まりの合図が、指した先に実在する", () => {
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
 
   // 判断の表の行から、見る先と印を読む。**本文の他の言及ではなく、表の行から取る。**
-  const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("雛形のまま"));
+  const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("テンプレートのまま"));
   assert.ok(row, "どこから始めるかの表が無い");
 
   const [, path, marker] = row.match(/`([^`]+)`.*`([^`]+)`/) ?? [];
