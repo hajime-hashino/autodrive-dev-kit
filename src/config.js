@@ -271,7 +271,7 @@ export function readConfig(root) {
     return { config: null, error: `${CONFIG_FILE} に ports が無い` };
   }
 
-  // **知らないポートを捨てない。** 新しい版が足したものを、古い版が読んで書き戻すと
+  // **知らないポートを捨てない。** 新しいバージョンが足したものを、古いバージョンが読んで書き戻すと
   // 消える。既定で補うのは欠けているものだけにする。
   const base = defaults();
   const ports = { ...base.ports, ...raw.ports };

@@ -10,7 +10,7 @@ function ev(ts , over = {}) {
 const KEY = "telemetry_recorded";
 const mark = (ts) => ev(ts, { type: "enactment", invariant: KEY });
 
-test("印が無ければ全期間が判定の対象", () => {
+test("有効境界の記録が無ければ全期間が判定の対象", () => {
   const events = [ev("2026-01-01T00:00:00Z"), ev("2026-02-01T00:00:00Z")];
   const b = boundaryFor(events, KEY);
   assert.equal(b.since, null);
@@ -18,7 +18,7 @@ test("印が無ければ全期間が判定の対象", () => {
   assert.equal(eventsAfter(events, b).length, 2);
 });
 
-test("印以降だけが判定の対象になる。印より前の記録は消さない", () => {
+test("有効境界の記録以降だけが判定の対象になる。有効境界の記録より前の記録は消さない", () => {
   const events = [
     ev("2026-01-01T00:00:00Z", { emitter: "manual" }),
     mark("2026-02-01T00:00:00Z"),
@@ -33,7 +33,7 @@ test("印以降だけが判定の対象になる。印より前の記録は消�
   assert.equal(events.length, 3);
 });
 
-test("印は最後のものが効く。動かした回数も数える", () => {
+test("有効境界の記録は最後のものが効く。動かした回数も数える", () => {
   const events = [
     mark("2026-02-01T00:00:00Z"),
     ev("2026-02-15T00:00:00Z", { emitter: "manual" }),
@@ -46,12 +46,12 @@ test("印は最後のものが効く。動かした回数も数える", () => {
   assert.equal(eventsAfter(events, b).some((e) => e.emitter === "manual"), false);
 });
 
-test("別の不変条件の印は効かない", () => {
+test("別の不変条件の有効境界の記録は効かない", () => {
   const events = [ev("2026-02-01T00:00:00Z", { type: "enactment", invariant: "outer_loop_running" })];
   assert.equal(boundaryFor(events, KEY).since, null);
 });
 
-test("印より後に直書きが現れれば、再び判定の対象に入る", () => {
+test("有効境界の記録より後に直書きが現れれば、再び判定の対象に入る", () => {
   const events = [mark("2026-02-01T00:00:00Z"), ev("2026-04-01T00:00:00Z", { emitter: "manual" })];
   const after = eventsAfter(events, boundaryFor(events, KEY));
   assert.equal(after.some((e) => e.emitter === "manual"), true);
@@ -67,10 +67,10 @@ test("時刻はオフセットを解いて比べる。文字列のまま比べ�
   assert.equal(after.some((e) => e.emitter === "manual"), false);
 });
 
-// **どの印が最後かも、オフセットを解いて決める。** 絞り込み側だけを実時刻で
-// 比べても、選んだ印が誤っていれば境界そのものが誤る。上のテストは印が1つの場合
+// **どの有効境界の記録が最後かも、オフセットを解いて決める。** 絞り込み側だけを実時刻で
+// 比べても、選んだ有効境界の記録が誤っていれば有効境界そのものが誤る。上のテストは有効境界の記録が1つの場合
 // しか通しておらず、この経路を覆っていなかった（AUT-42 で照合して判明）。
-test("どの印が最後かも、オフセットを解いて決める", () => {
+test("どの有効境界の記録が最後かも、オフセットを解いて決める", () => {
   const events = [
     mark("2026-08-22T10:00:00+09:00"), // = 01:00Z。辞書順では後ろに来る
     mark("2026-08-22T05:00:00Z"), // 実時刻ではこちらが後
@@ -80,11 +80,11 @@ test("どの印が最後かも、オフセットを解いて決める", () => {
 
   assert.equal(parseTs(b.since), Date.parse("2026-08-22T05:00:00Z"));
   assert.equal(b.moves, 2);
-  // 辞書順で選ぶと境界が 01:00Z になり、03:00Z の直書きが対象に残ってしまう。
+  // 辞書順で選ぶと有効境界が 01:00Z になり、03:00Z の直書きが対象に残ってしまう。
   assert.equal(eventsAfter(events, b).some((e) => e.emitter === "manual"), false);
 });
 
-test("印が覆う範囲を持っていれば、印の時刻ではなくそちらを使う", () => {
+test("有効境界の記録が覆う範囲を持っていれば、有効境界の記録の時刻ではなくそちらを使う", () => {
   const events = [
     ev("2026-08-21T16:00:00Z", { type: "enactment", invariant: KEY, boundary: "2026-08-22T15:00:00+09:00" }),
     ev("2026-08-22T14:00:00+09:00", { emitter: "manual" }),

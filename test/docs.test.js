@@ -186,6 +186,38 @@ test("参照実装を触る人向けの内容が、移した先にある", () =>
   }
 });
 
+// ------------------------------------------------------------ ADR の索引
+
+// **索引が、リンク先と食い違っていないこと。**
+//
+// 索引には「新しい ADR を追加したら、この索引に1行足す」と書いてあるが、
+// **足したかどうかも、内容が合っているかも確かめる手段が無かった。** 実際に
+// 0001 が改訂されたあと索引だけが古いまま残り、TypeScript と書き続けていた。
+// 索引は「計画の冒頭でここを参照すること」と言っている場所であり、**最初に読む
+// ところが実際とは逆のことを言っていた**（AUT-160）。
+//
+// **見出しで始まっているかだけを見る。** 索引が見出しより詳しいのは構わない。
+// 曖昧な判断を入れると、判定そのものが信用されなくなる。
+test("ADR の索引が、リンク先の見出しと合っている", () => {
+  const dir = join(KIT, "docs", "adr");
+  const index = readFileSync(join(dir, "README.md"), "utf8");
+  const rows = [...index.matchAll(/^\| \[(\d+)\]\(([^)]+)\) \| (.+?) \|/gm)];
+  assert.ok(rows.length > 0, "索引の行を拾えていない。拾い方が壊れている");
+
+  // **数も合っていること。** 足し忘れも、消し忘れも、ここで出る。
+  const files = readdirSync(dir).filter((n) => /^\d{4}-.+\.md$/.test(n)).sort();
+  assert.deepEqual(rows.map((r) => r[2]).sort(), files, "索引と ADR が1対1になっていない");
+
+  for (const [, num, link, judgment] of rows) {
+    const title = readFileSync(join(dir, link), "utf8").split("\n")[0];
+    const core = title.replace(/^#\s*ADR\s*\d+:\s*/, "").trim();
+    assert.ok(
+      judgment.startsWith(core),
+      `索引の ${num} が見出しと違う:\n  索引   = ${judgment}\n  見出し = ${core}`,
+    );
+  }
+});
+
 // ------------------------------------------------------------ 置かれるものの一覧
 
 // **README の一覧が、実際に置かれるものと一致すること。** 一覧は手で保たれており、
@@ -280,7 +312,7 @@ test("助詞が続く強調を、実際に見つける", () => {
   assert.equal(brokenEmphasis("**履歴に載っていないと固定にならない**ため。").length, 1);
 
   // 閉じられる形は、見つけない。
-  assert.equal(brokenEmphasis("**この版で動く。** 参照実装を更新しても変わらない。").length, 0);
+  assert.equal(brokenEmphasis("**このバージョンで動く。** 参照実装を更新しても変わらない。").length, 0);
   assert.equal(brokenEmphasis("**既存の CI が呼んでいるため**、壊さない。").length, 0);
   assert.equal(brokenEmphasis("英語なら **bold** is fine.").length, 0);
 
@@ -335,12 +367,12 @@ test("配るものに、使う側が要らないものを含めない", () => {
 // 済ませ、公開そのものは人が決める。private を外すのは、その判断の場である。
 test("下ごしらえだけで、公開はしない", () => {
   const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
-  assert.equal(pkg.private, true, "公開を止める印が外れている。**これは人の判断を要する**");
+  assert.equal(pkg.private, true, "公開を止める設定が外れている。**これは人の判断を要する**");
 });
 
-// **判定できる形にしておく。** ここが緩むと、要る版に届いていないことに気づけず
+// **判定できる形にしておく。** ここが緩むと、要るバージョンに届いていないことに気づけず
 // 黙って落ちる。**確認そのものが型注釈を必要としてはいけない。**
-test("要る版に届いていなければ、断る", async () => {
+test("要るバージョンに届いていなければ、断る", async () => {
   const { NEEDS, tooOld, tooOldMessage } = await import("../bin/node-version.js");
 
   for (const old of ["18.20.0", "20.11.0", "22.0.0", "22.17.9", "22.17"]) {
@@ -360,7 +392,7 @@ test("要る版に届いていなければ、断る", async () => {
   assert.ok(said.includes("案内します"), "詰まったときの受け皿が無い");
 });
 
-// **確認の手前で落ちない形であること。** 入口が型注釈を含むと、要る版に届いて
+// **確認の手前で落ちない形であること。** 入口が型注釈を含むと、要るバージョンに届いて
 // いない人には、確認そのものが動かない。
 test("入口だけは、型注釈を使わない", () => {
   const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"))
@@ -377,7 +409,7 @@ test("入口だけは、型注釈を使わない", () => {
   // ここだけは中身を読んで確かめる。**古い Node を用意して動かすことができない**
   // ため、他に確かめる手段が無い。
   const entry = readFileSync(join(KIT, pkg.bin["autodrive-dev-kit"]), "utf8");
-  assert.ok(entry.includes("tooOld(process.versions.node)"), "入口が版を確かめていない");
+  assert.ok(entry.includes("tooOld(process.versions.node)"), "入口がバージョンを確かめていない");
 
   // **「直接実行されたか」で分岐しない。** npx は別名を経由するため、分岐を置くと
   // npx 経由で何も起きなくなる。実際にそうなった（AUT-96）。
@@ -620,7 +652,7 @@ test("互いを指している", () => {
 
 // **載せる出力は、実物であること。** 無い出力を載せると、読んだ人が信じる。
 test("英語版が載せている判定の出力が、実物と同じ形をしている", async () => {
-  // **判定が使う印を、そのまま引く。** 手で写すと、変わったときに気づけない。
+  // **判定が使う目印を、そのまま引く。** 手で写すと、変わったときに気づけない。
   // 言語ごとに綴りが違うため、全部の言語から集める。
   const { LANGUAGES, say } = await import("../src/messages.js");
   const real = LANGUAGES.flatMap((l) =>
@@ -634,7 +666,7 @@ test("英語版が載せている判定の出力が、実物と同じ形をし�
     const inReadme = [...text().matchAll(/^\[([^\]]+)\](?!\()/gm)].map((m) => m[1]);
     assert.ok(inReadme.length > 0, `${file}: 出力例が載っていない`);
     for (const m of inReadme) {
-      assert.ok(real.includes(m), `${file}: 実物に無い印を載せている: [${m}]`);
+      assert.ok(real.includes(m), `${file}: 実物に無い目印を載せている: [${m}]`);
     }
   }
 });

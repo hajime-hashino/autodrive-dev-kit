@@ -36,7 +36,7 @@ const USAGE = `不変条件の状態を判定する
   --format  text（既定）または json
   --enact   有効境界を進める。これ以降の記録が判定の対象になる。
             記録を自動で残す仕掛けが登録されていなければ拒否する。
-            境界はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
+            有効境界はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
   --substitute
             有効になっていない不変条件について、何が手で代替しているかを記録する。
             定義§9の立ち上げ期の例外は、この記録があることを条件としている。
@@ -48,11 +48,11 @@ const USAGE = `不変条件の状態を判定する
 /**
  * 有効境界を進める。
  *
- * 仕掛けが登録されていることを先に確かめる。登録が無い状態で境界だけ進めると、
+ * 仕掛けが登録されていることを先に確かめる。登録が無い状態で有効境界だけ進めると、
  * 記録が続く保証が無いまま有効を名乗ることになる。
  *
- * 境界はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
- * 証明になる。壊れていれば境界を進められず、直書きのまま有効を名乗れない。
+ * 有効境界はアダプタ経由で書く。この経路を通れること自体が、アダプタが動いている
+ * 証明になる。壊れていれば有効境界を進められず、直書きのまま有効を名乗れない。
  */
 function enact(invariant , root , repos) {
   const known = INVARIANTS.map((i) => i.key);
@@ -63,7 +63,7 @@ function enact(invariant , root , repos) {
   if (registeredIn === null) {
     return {
       output: "記録を自動で残す仕掛けが .claude/settings.json に登録されていない。\n" +
-        "登録しないまま境界を進めると、記録が続く保証が無いまま有効を名乗ることになる。",
+        "登録しないまま有効境界を進めると、記録が続く保証が無いまま有効を名乗ることになる。",
       code: 1,
     };
   }
@@ -77,7 +77,7 @@ function enact(invariant , root , repos) {
   const written = telemetry.lastWrite;
   if (written === null || !written.attributed) {
     return {
-      output: "境界の記録が作業単位に紐づかなかった。着手してから実行すること。",
+      output: "有効境界の記録が作業単位に紐づかなかった。着手してから実行すること。",
       code: 1,
     };
   }
@@ -159,7 +159,7 @@ export async function run(argv) {
   }
   const scope = values.scope;
 
-  // 境界を進める操作も代替の記録も、リポジトリをまたいだ状態に対して行う。
+  // 有効境界を進める操作も代替の記録も、リポジトリをまたいだ状態に対して行う。
   const writing = values.enact !== undefined || values.substitute !== undefined;
   const repos = discoverRepos(values.root, writing ? "cross" : scope);
   if (repos.length === 0) {

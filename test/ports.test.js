@@ -56,10 +56,10 @@ test("停止を記録すると、必須属性がアダプタ側で付く", () =>
   assert.equal(event.stop_type, "手戻り");
   assert.equal(event.work_item_id, "AUT-12");
   assert.equal(event.model, "claude-opus-5");
-  // **固定の値と比べない。** 版はファイルから読むようになった。ここに literal を
-  // 書くと、版を上げるたびにテストを直すことになり、テストが版の正しさを見なくなる。
+  // **固定の値と比べない。** バージョンはファイルから読むようになった。ここに literal を
+  // 書くと、バージョンを上げるたびにテストを直すことになり、テストがバージョンの正しさを見なくなる。
   assert.equal(event.kit_version, KIT_VERSION);
-  assert.notEqual(KIT_VERSION, "不明", "版を読めていない");
+  assert.notEqual(KIT_VERSION, "不明", "バージョンを読めていない");
   assert.equal(event.emitter, "adapter");
 });
 

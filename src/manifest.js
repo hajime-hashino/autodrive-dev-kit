@@ -102,7 +102,7 @@ export function findEdits(root, writes, manifest) {
 
     const known = manifest?.[w.path];
     if (known === undefined) {
-      // **指紋が無い。** 手で変えたのか、前の版の中身なのかを区別できない。
+      // **指紋が無い。** 手で変えたのか、前のバージョンの中身なのかを区別できない。
       unchecked.push(w.path);
       continue;
     }

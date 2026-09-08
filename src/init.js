@@ -5,8 +5,8 @@
  * 形にすると、人の関与を減らすという目的と噛み合わない。
  *
  * **autodrive-dev-kit はプロジェクトの中へ複製する。** 手元の参照実装を指す形にすると、参照実装を
- * 更新した瞬間に、全てのプロジェクトが同時に変わる。プロジェクトごとに違う版で
- * 動けることが要る。記録に付く `kit_version` も、複製した時点の版になる。
+ * 更新した瞬間に、全てのプロジェクトが同時に変わる。プロジェクトごとに違うバージョンで
+ * 動けることが要る。記録に付く `kit_version` も、複製した時点のバージョンになる。
  *
  * 置くものは3つに分かれる（BOOTSTRAP 段階5）。
  *
@@ -46,7 +46,7 @@ import { say } from "./messages.js";
 import { defaults, retired } from "./config.js";
 
 
-/** 複製先。**追跡する。** 版を固定するには、履歴に載っている必要がある。 */
+/** 複製先。**追跡する。** バージョンを固定するには、履歴に載っている必要がある。 */
 export const VENDOR_DIR = "autodrive";
 
 /**
@@ -139,7 +139,7 @@ export function mergeHook(existing , command) {
 /**
  * autodrive-dev-kit を複製する。
  *
- * **入れ替えではなく置き換えにする。** 前の版の残骸が混ざると、どの版で動いて
+ * **入れ替えではなく置き換えにする。** 前のバージョンの残骸が混ざると、どのバージョンで動いて
  * いるのかが読めなくなる。複製先はまるごと捨ててから置く。
  */
 /**
@@ -168,11 +168,11 @@ function copyInto(from , to) {
  * autodrive-dev-kit を複製する。
  *
  * **置いてから消す。** 以前は消してから置いていたため、複製の途中で落ちると
- * **古い版も新しい版も無い状態が残った。** 実際に、autodrive-dev-kit が消えて `invariants` も
+ * **古いバージョンも新しいバージョンも無い状態が残った。** 実際に、autodrive-dev-kit が消えて `invariants` も
  * 打てなくなった（AUT-131）。git から戻すしかない失敗になっていた。
  *
  * いまは別の場所へ組み立て、**出来上がってから入れ替える。** 途中で落ちても、
- * 古い版はそのまま残る。
+ * 古いバージョンはそのまま残る。
  */
 export function vendor(root , kitRoot) {
   const dest = join(root, VENDOR_DIR);
@@ -191,7 +191,7 @@ export function vendor(root , kitRoot) {
       copyInto(from, join(staging, name));
     }
   } catch (error) {
-    // **古い版を消さずに戻る。** 打てなくなるより、古いままのほうがよい。
+    // **古いバージョンを消さずに戻る。** 打てなくなるより、古いままのほうがよい。
     rmSync(staging, { recursive: true, force: true });
     throw error;
   }
@@ -475,7 +475,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
 
   if (pointer !== null) todo.push(pointer);
 
-  // **前の版が置いた CI 定義を、黙って消さない。** 判定は `invariants` に改名した
+  // **前のバージョンが置いた CI 定義を、黙って消さない。** 判定は `invariants` に改名した
   // が（AUT-83）、古い `verify.yml` が残ると同じ判定が二重に走る。手を入れられて
   // いる可能性があるため、消すのは人に任せ、残っている事実だけを出す。
   const stale = join(root, ".github", "workflows", "verify.yml");

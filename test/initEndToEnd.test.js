@@ -6,7 +6,7 @@
  *   土台が正しく置かれ、それだけで判定が通るか   → 決定的。速い。ここで見る
  *   AIが置かれた規約に従うか                     → 非決定的。人が見る
  *
- * 前者だけでも、置き忘れ・参照の食い違い・版の固定漏れは捕まる。**後者を混ぜると、
+ * 前者だけでも、置き忘れ・参照の食い違い・バージョンの固定漏れは捕まる。**後者を混ぜると、
  * 判定基準そのものが曖昧になる。**
  *
  * 人の目で何度も不具合が出るようなら、そのときに後者も見る形を考える。**きっかけは
@@ -62,7 +62,7 @@ function run(root , args) {
 // ------------------------------------------------------------ autodrive-dev-kit が動くか
 
 // **手元の参照実装を指していないこと。** 参照実装を更新した瞬間に全プロジェクトが
-// 変わる形だと、プロジェクトごとに違う版で動けない。
+// 変わる形だと、プロジェクトごとに違うバージョンで動けない。
 test("autodrive-dev-kit がプロジェクトの中に置かれ、そこから動く", () => {
   const root = initialized();
 
@@ -74,12 +74,12 @@ test("autodrive-dev-kit がプロジェクトの中に置かれ、そこから�
   assert.ok(out.includes("不変条件"), `判定が動いていない: ${out.slice(0, 200)}`);
 });
 
-test("複製した時点の版が、置かれた先に残る", () => {
+test("複製した時点のバージョンが、置かれた先に残る", () => {
   const root = initialized();
   const there = readFileSync(join(root, VENDOR_DIR, "VERSION"), "utf8").trim();
   const here = readFileSync(join(KIT, "VERSION"), "utf8").trim();
   assert.equal(there, here);
-  assert.notEqual(there, "", "版が空");
+  assert.notEqual(there, "", "バージョンが空");
 });
 
 // ------------------------------------------------------------ 参照の食い違い
@@ -187,18 +187,18 @@ test("置かれた文書が、どこから始めるかを言っている", () =>
 });
 
 // **始まりの合図が、機械的に決まること。** 「テンプレートのまま」を目で判断させると、
-// 判断がぶれる。指している文書が実在し、その中に「残っていればテンプレート」と分かる印が
+// 判断がぶれる。指している文書が実在し、その中に「残っていればテンプレート」と分かる目印が
 // あって初めて、合図として働く。**どちらが欠けても空振りする。**
 test("始まりの合図が、指した先に実在する", () => {
   const root = initialized();
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
 
-  // 判断の表の行から、見る先と印を読む。**本文の他の言及ではなく、表の行から取る。**
+  // 判断の表の行から、見る先と目印を読む。**本文の他の言及ではなく、表の行から取る。**
   const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("テンプレートのまま"));
   assert.ok(row, "どこから始めるかの表が無い");
 
   const [, path, marker] = row.match(/`([^`]+)`.*`([^`]+)`/) ?? [];
-  assert.ok(path && marker, `表の行から見る先と印を読めない: ${row}`);
+  assert.ok(path && marker, `表の行から見る先と目印を読めない: ${row}`);
 
   const target = join(root, path);
   assert.ok(existsSync(target), `${path} を指しているが、置かれていない`);
