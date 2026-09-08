@@ -1,5 +1,5 @@
 /**
- * 隔離の配線の判定。
+ * 隔離の設定の判定。
  *
  * **この判定は、防止の代わりに置いたものである**（AUT-157）。`devcontainer.json` を
  * プロジェクトのものにしたため、ここが唯一の網になる。**通ることの確認だけでは、
@@ -39,12 +39,12 @@ const gapsOf = (root) => isolationGaps(root).map((g) => g.gap);
 // ------------------------------------------------------------ 素の状態
 
 // **置いたままなら通ること。** ここが落ちると、直し方の分からない警告が初日に出る。
-test("置いたままの作業場には、穴が無い", () => {
+test("置いたままのサンドボックスには、穴が無い", () => {
   assert.deepEqual(isolationGaps(placed()), []);
 });
 
-// **使っていないものを見ない。** 作業場を持たないプロジェクトに、隔離の話をしない。
-test("作業場を使っていなければ、何も言わない", () => {
+// **使っていないものを見ない。** サンドボックスを持たないプロジェクトに、隔離の話をしない。
+test("サンドボックスを使っていなければ、何も言わない", () => {
   const root = tempDir("autodrive-isolation-none-");
   mkdirSync(join(root, ".git"), { recursive: true });
   assert.deepEqual(isolationGaps(root), []);
@@ -52,7 +52,7 @@ test("作業場を使っていなければ、何も言わない", () => {
 
 // ------------------------------------------------------------ 壊し方を当てる
 
-// **AUT-121 で実際に起きた形。** この10日間、ファイルは雛形と1バイトも違わなかった。
+// **AUT-121 で実際に起きた形。** この10日間、ファイルはテンプレートと1バイトも違わなかった。
 // 指紋では捕まらない。**ここで捕まえられなければ、置いた意味が無い。**
 test("出口を閉じる処理が、作ったときにしか走らない形を捕まえる", () => {
   const root = placed();
@@ -156,26 +156,26 @@ test("穴が無ければ、何も言わない", () => {
 
 // **見つけても落ちなければ、誰も気づかない。**
 //
-// 判定器を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
+// `invariants` を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
 // **判断そのものを直接見る**（`tracked.test.js` と同じ理由）。
-test("不変条件が全部通っていても、配線が欠けていれば落ちる", async () => {
+test("不変条件が全部通っていても、設定が欠けていれば落ちる", async () => {
   const { exitCode } = await import("../src/main.js");
   const allPassing = [{ failing: false }, { failing: false }];
 
   assert.equal(exitCode(allPassing, 0, 0), 0, "何も無いのに落ちている");
-  assert.equal(exitCode(allPassing, 0, 1), 1, "**配線が欠けているのに落ちていない**");
+  assert.equal(exitCode(allPassing, 0, 1), 1, "**設定が欠けているのに落ちていない**");
   // 追跡してはいけないものと、両方あっても落ちること。
   assert.equal(exitCode(allPassing, 1, 1), 1);
 });
 
-// **判定器の出力に出ること。** 終了コードだけでは、何が起きたのか分からない。
-test("判定器を通しても、配線の欠けが出力に出る", async () => {
+// **`invariants` の出力に出ること。** 終了コードだけでは、何が起きたのか分からない。
+test("`invariants` を通しても、設定の欠けが出力に出る", async () => {
   const root = placed();
   edit(root, (s) => s.replace('"remoteUser": "vscode",', '"remoteUser": "root",'));
 
   const { run } = await import("../src/main.js");
   const { output } = await run(["--root", root, "--scope", "self"]);
 
-  assert.ok(output.includes("隔離の配線が欠けている"), output.slice(-500));
+  assert.ok(output.includes("隔離の設定が欠けている"), output.slice(-500));
   assert.ok(output.includes("remoteUser"), "どこが欠けているかを出していない");
 });

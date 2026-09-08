@@ -101,7 +101,7 @@ test("新しい使用量が無ければ何も書かない", () => {
   assert.equal(again.written, 0);
 });
 
-test("作業単位が解決できなければ work_item_id を null で残す。握りつぶさない", () => {
+test("作業単位が解決できなければ work_item_id を null で残す。記録を捨てない", () => {
   const { root, transcript } = fixture([assistant("claude-opus-5", "r1", { output_tokens: 7 })]);
   const result = record({ transcript_path: transcript, session_id: "s1" }, root);
   assert.equal(result.written, 1);

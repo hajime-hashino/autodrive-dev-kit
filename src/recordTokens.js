@@ -2,7 +2,7 @@
  * トークン消費の記録。実行基盤のフックから呼ばれる。
  *
  * フックはトークン量を受け取らない。受け取るのはセッション記録への道筋
- * （transcript_path）と識別子だけである。したがってフックは引き金であり、
+ * （transcript_path）と識別子だけである。したがってフックはきっかけであり、
  * 値の出どころはセッション記録になる。
  *
  * 定義§16の補足により、トークン消費とモデル識別子はアダプタが自動で付与する。
@@ -53,7 +53,7 @@ export function record(input , root , now = new Date()) {
     appendEvent(path, {
       ts,
       // 作業単位が解決できない場合は null を書く。埋めずに残すことで、帰属しない
-      // 始めた作業を invariants が検出できる。握りつぶすと記録から消えてしまう。
+      // 始めた作業を invariants が検出できる。黙って消すと記録から消えてしまう。
       work_item_id: item?.workItemId ?? null,
       model: usage.model,
       kit_version: KIT_VERSION,

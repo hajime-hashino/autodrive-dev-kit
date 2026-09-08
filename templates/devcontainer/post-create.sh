@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 環境を作った後の支度。確認は check-setup.sh が行う。
+# 環境を作った後の準備。確認は check-setup.sh が行う。
 set -uo pipefail
 
 ENV_FILE="$PWD/.env"
 
-# --- 支度 -------------------------------------------------------------------
+# --- 準備 -------------------------------------------------------------------
 
 # 設定の置き場所を、この環境の利用者が書けるようにする。
 #
@@ -27,7 +27,7 @@ if [ -f "$ENV_FILE" ]; then
       printf '\n# このプロジェクトの資格情報\n[ -f %s ] && { %s; }\n' "$ENV_FILE" "$LOADER" >> "$rc"
     }
   done
-  # この先の支度でも使う。
+  # この先の準備でも使う。
   set -a
   # shellcheck disable=SC1090
   . "$ENV_FILE"
@@ -38,7 +38,7 @@ fi
 git config --global credential."https://github.com".helper \
   '!f() { echo username=x-access-token; echo "password=${GH_TOKEN}"; }; f'
 
-# コミットの身元。**ホストの設定は引き継がれない**ため、環境を作り直すたびに要る。
+# コミットの作者情報。**ホストの設定は引き継がれない**ため、環境を作り直すたびに要る。
 # 無いと commit そのものが通らない。値は人が決めるものなので .env から取る。
 [ -n "${GIT_USER_NAME:-}" ]  && git config --global user.name  "$GIT_USER_NAME"
 [ -n "${GIT_USER_EMAIL:-}" ] && git config --global user.email "$GIT_USER_EMAIL"

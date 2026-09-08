@@ -65,8 +65,8 @@ test("資格情報と鍵ファイルを見つける", () => {
   assert.deepEqual(found, [".env", "deploy.pem", "id_rsa"]);
 });
 
-// **`.env.example` は追跡するのが正しい。** 値を持たない雛形である。
-test("雛形は見つけない", () => {
+// **`.env.example` は追跡するのが正しい。** 値を持たないテンプレートである。
+test("テンプレートは見つけない", () => {
   const root = repoWith({ ".env.example": "GH_TOKEN=\n", "README.md": "# x\n" });
   assert.deepEqual(forbidden(root, new Repo(root).trackedFiles()), []);
 });
@@ -113,16 +113,16 @@ test("ELF でなくても、core という名前なら捕まえる", () => {
   assert.deepEqual(found.map((f) => f.path), ["core"], "名前の規則が効いていない");
 });
 
-// ------------------------------------------- 判定器に載っているか
+// ------------------------------------------- `invariants` に載っているか
 
-/** 判定器を、その場のリポジトリに対して走らせる。 */
+/** `invariants` を、その場のリポジトリに対して走らせる。 */
 async function invariantsOn(root) {
   const { run } = await import("../src/main.js");
   return run(["--root", root, "--scope", "self"]);
 }
 
-// **仕掛けを作っても、判定器が呼ばなければ何も起きない。**
-test("判定器が、追跡してはいけないものを出す", async () => {
+// **仕掛けを作っても、`invariants` が呼ばなければ何も起きない。**
+test("`invariants` が、追跡してはいけないものを出す", async () => {
   const root = repoWith({ core: elf(), "src.js": "//\n" });
   const { output } = await invariantsOn(root);
   assert.ok(output.includes("追跡してはいけないものが追跡されている"), output.slice(-400));
@@ -131,7 +131,7 @@ test("判定器が、追跡してはいけないものを出す", async () => {
 
 // **CI が落ちなければ、気づかない。**
 //
-// 判定器を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
+// `invariants` を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
 // **判断そのものを直接見る。**
 test("不変条件が全部通っていても、見つかれば落ちる", async () => {
   const { exitCode } = await import("../src/main.js");
@@ -141,7 +141,7 @@ test("不変条件が全部通っていても、見つかれば落ちる", async
   assert.equal(exitCode([{ failing: true }], 0), 1, "不変条件の失敗で落ちていない");
 });
 
-test("何も無ければ、判定器は何も言わない", async () => {
+test("何も無ければ、`invariants` は何も言わない", async () => {
   const clean = repoWith({ "src.js": "//\n" });
   const { code, output } = await invariantsOn(clean);
   assert.equal(output.includes("追跡してはいけないもの"), false, "何も無いのに出している");

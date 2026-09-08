@@ -79,8 +79,8 @@ test("構成の記録と、置かれたものが一致する", () => {
   }
 });
 
-// 作業場の名前が、そのプロジェクトのものになること。
-test("作業場の名前が、プロジェクトのものになる", () => {
+// サンドボックスの名前が、そのプロジェクトのものになること。
+test("サンドボックスの名前が、プロジェクトのものになる", () => {
   const root = project("my-app-");
   setup("init", root, KIT, useRecommended);
 
@@ -90,9 +90,9 @@ test("作業場の名前が、プロジェクトのものになる", () => {
   assert.equal(json.includes("{{KIT}}"), false, "置き換えが残っている");
 });
 
-// **この作業場に固有のものを配らない。** 子リポジトリが揃っているかを見る確認は、
-// この作業場だけのものである。
-test("この作業場に固有のものは配らない", () => {
+// **このワークディレクトリに固有のものを配らない。** 子リポジトリが揃っているかを見る確認は、
+// このワークディレクトリだけのものである。
+test("このワークディレクトリに固有のものは配らない", () => {
   const root = project();
   setup("init", root, KIT, useRecommended);
 
@@ -214,14 +214,14 @@ test("環境の定義が呼ぶ手順が、すべて置かれている", () => {
 
 // **置いたものを使えと言う。** 開き直さなければ、隔離されていない場所でAIが動く。
 // 構成は隔離すると記録しているのに、実際には隔離されない（AUT-99）。
-test("作業場を置いたなら、開き直せと言う", () => {
+test("サンドボックスを置いたなら、開き直せと言う", () => {
   // **中にいるかを差し込む。** 実行する場所で結果が変わると、判定にならない。
   const result = setup("init", project(), KIT, useRecommended, false);
   const said = result.todo.join("\n");
 
   assert.ok(said.includes("Reopen in Container"), said);
   // **`.env` の後に言う。** 支度は環境を作るときに .env を読む。先に開き直すと、
-  // 資格情報が入らないまま作業場ができる。
+  // 資格情報が入らないままサンドボックスができる。
   assert.ok(said.indexOf(".env を作り") < said.indexOf("Reopen in Container"), said);
   assert.ok(said.includes(".env を作ってから"), "順序の理由が書かれていない");
 });
@@ -233,14 +233,14 @@ test("開き直してから、AIに話しかける順で言う", () => {
 });
 
 // **使わないと決めたなら、言わない。** 置いていないものを開けとは言えない。
-test("作業場を使わないなら、開き直せと言わない", () => {
+test("サンドボックスを使わないなら、開き直せと言わない", () => {
   const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
   const said = setup("init", project(), KIT, port, false).todo.join("\n");
   assert.equal(said.includes("Reopen in Container"), false, said);
 });
 
 // **中にいるなら言わない。** 済んでいることを頼まない。
-test("作業場の中で打ったなら、開き直せと言わない", () => {
+test("サンドボックスの中で打ったなら、開き直せと言わない", () => {
   const said = setup("init", project(), KIT, useRecommended, true).todo.join("\n");
   assert.equal(said.includes("Reopen in Container"), false, said);
 });
@@ -267,7 +267,7 @@ test("置き場所とシークレットは、AIの手順として配られてい
   // **表の行として在ること。** 本文で触れているだけでは、確かめる手順にならない。
   const rows = section.split("\n").filter((l) => l.startsWith("|"));
   assert.ok(
-    rows.some((l) => l.includes("置き場所") && l.includes("遠隔")),
+    rows.some((l) => l.includes("置き場所") && l.includes("リモート")),
     `置き場所を確かめる行が無い:\n${rows.join("\n")}`,
   );
   assert.ok(
@@ -303,8 +303,8 @@ test("アプリ自身の宛先が、許可一覧に出る", () => {
   assert.ok(text.includes(STRIPE.why), "なぜ要るのかが出ていない");
 });
 
-// **どこまでが道具の都合で開いている穴かを分ける。**
-test("アプリ自身のものは、道具のものと混ざらない", () => {
+// **どこまでが autodrive-dev-kit の都合で開いている穴かを分ける。**
+test("アプリ自身のものは、autodrive-dev-kit のものと混ざらない", () => {
   const text = allowedDomains(withDest([STRIPE]));
   assert.ok(text.includes("このプロジェクト自身の宛先"), "見出しが無い");
   assert.ok(
@@ -326,7 +326,7 @@ test("許可一覧へ直接足せ、とは言わない", () => {
   assert.ok(text.includes("app.destinations"), "どこに書けばよいかが出ていない");
 });
 
-test("道具の宛先と同じものは、二重に出さない", () => {
+test("autodrive-dev-kit の宛先と同じものは、二重に出さない", () => {
   const config = withDest([{ host: "api.github.com", why: "重なった" }]);
   const hosts = destinationsFor(config).map((d) => d.host);
   assert.equal(hosts.filter((h) => h === "api.github.com").length, 1, "同じ宛先が2行出る");
@@ -352,9 +352,9 @@ function devcontainerJson() {
   return JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
 }
 
-// **規則はコンテナの停止で消える。** 作ったときにしか走らない契機へ置くと、
+// **規則はコンテナの停止で消える。** 作ったときにしか走らないフックへ置くと、
 // 1回目の起動以降は隔離が無い。実際に10日間そうなっていた。
-test("出口を閉じる手順は、起動のたびに走る契機に置かれている", () => {
+test("出口を閉じる手順は、起動のたびに走るフックに置かれている", () => {
   const dc = devcontainerJson();
   assert.ok(
     (dc.postStartCommand ?? "").includes("init-firewall.sh"),
@@ -362,12 +362,12 @@ test("出口を閉じる手順は、起動のたびに走る契機に置かれ�
   );
 });
 
-test("出口を閉じる手順を、作成時だけの契機に置かない", () => {
+test("出口を閉じる手順を、作成時だけのフックに置かない", () => {
   const dc = devcontainerJson();
   assert.equal(
     (dc.postCreateCommand ?? "").includes("init-firewall.sh"),
     false,
-    "作成時にしか走らない契機に置いている",
+    "作成時にしか走らないフックに置いている",
   );
 });
 
@@ -377,7 +377,7 @@ test("出口を閉じる手順は、権限を持って走る", () => {
 });
 
 // **支度は作ったときだけでよい。** 起動のたびに走らせる必要は無い。
-test("支度は作成時の契機に残っている", () => {
+test("支度は作成時のフックに残っている", () => {
   assert.ok(devcontainerJson().postCreateCommand.includes("post-create.sh"));
 });
 
@@ -464,11 +464,11 @@ test("引き直す対象が、一覧にある名前に限られている", () =>
   assert.ok(sh.includes("一覧にある名前だけ"), "その意図が書かれていない");
 });
 
-// ------------------------- 作業場の定義は、プロジェクトのもの（AUT-157）
+// ------------------------- サンドボックスの定義は、プロジェクトのもの（AUT-157）
 
 // **差し込み口を持たない。** app.devcontainer_features は撤去した。足したい機能は
 // devcontainer.json へ直接書く。守るのは所有権ではなく、隔離の判定である。
-test("差し込み口の置き換えが、雛形に残っていない", () => {
+test("差し込み口の置き換えが、テンプレートに残っていない", () => {
   const text = template(KIT, "devcontainer/devcontainer.json", { NAME: "x" });
   assert.equal(text.includes("{{APP_FEATURES}}"), false, "置き換えが残っている");
   assert.equal(text.includes("{{"), false, `置き換えが残っている: ${text.slice(0, 200)}`);
@@ -504,7 +504,7 @@ test("直接編集しても、update は止まらない", () => {
 // ------------------------- devcontainer-lock.json は管理下から外れる（AUT-153）
 
 // **足した機能を作り直すと、CLI が版を解決して lock を書き込む。** そこは
-// `(雛形, 構成)` だけでは決まらないため、他の管理下ファイルと同じ扱いにすると
+// `(テンプレート, 構成)` だけでは決まらないため、他の管理下ファイルと同じ扱いにすると
 // 「手で変えられている」と誤って判定され、update が止まる。ここでは実際に
 // setup("update", ...) を通し、その誤判定が起きないことを確かめる。
 test("lock を CLI が書き換えても、update は止まらない", () => {

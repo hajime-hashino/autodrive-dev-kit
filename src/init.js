@@ -1,17 +1,17 @@
 /**
- * 対象プロジェクトに、道具一式を置く。
+ * 対象プロジェクトに、autodrive-dev-kit を置く。
  *
  * **人が打つのはこれだけである。** 着手も記録も判定もAIが行う。人に手順を打たせる
  * 形にすると、人の関与を減らすという目的と噛み合わない。
  *
- * **道具はプロジェクトの中へ複製する。** 手元の参照実装を指す形にすると、参照実装を
+ * **autodrive-dev-kit はプロジェクトの中へ複製する。** 手元の参照実装を指す形にすると、参照実装を
  * 更新した瞬間に、全てのプロジェクトが同時に変わる。プロジェクトごとに違う版で
  * 動けることが要る。記録に付く `kit_version` も、複製した時点の版になる。
  *
  * 置くものは3つに分かれる（BOOTSTRAP 段階5）。
  *
- *   管理下  道具一式、CI定義、AI向けの規約、.env の雛形   → 上書きする
- *   播種    委譲範囲の表の初期状態、What/Why の雛形            → **既にあれば触らない**
+ *   管理下  autodrive-dev-kit、CI定義、AI向けの規約、.env のテンプレート   → 上書きする
+ *   播種    委譲範囲の表の初期状態、What/Why のテンプレート            → **既にあれば触らない**
  *   固有    テスト、ADR、委譲範囲の変更履歴                     → 生成しない
  *
  * **何度実行しても壊れないこと。** 途中で失敗したときに、やり直せる必要がある。
@@ -52,7 +52,7 @@ export const VENDOR_DIR = "autodrive";
 /**
  * 複製するもの。テストや文書は要らない（プロジェクトは `init` を打たない）。
  *
- * **ライセンスは要る。** ここに置くのはこの道具のコードの複製であり、Apache-2.0 は
+ * **ライセンスは要る。** ここに置くのはこの autodrive-dev-kit のコードの複製であり、Apache-2.0 は
  * 「複製を受け取る人にライセンスの写しを渡す」ことを求めている（§4(a)）。入れないと、
  * **採用先にライセンス文の無いコードの複製が残る。** NOTICE も同じ理由で入れる
  * （§4(d)）。誰のものか分からない複製にしない。
@@ -76,7 +76,7 @@ function write(full , body) {
 }
 /** @typedef {{ placed: Placed[], todo: string[], notes: string[], version: string | null, code: number, message: string | null }} InitResult */
 /**
- * 管理下。上書きする。**ローカルの編集は参照実装への起票の契機である。**
+ * 管理下。上書きする。**ローカルの編集は、参照実装へ起票する理由になる。**
  *
  * **ここでは書かない。溜めるだけにする。** 手で変えられているかを先に全部
  * 確かめてから書く。書きながら確かめると、**一部だけ新しい状態**ができる
@@ -98,9 +98,9 @@ function seeded(root , path , body , out) {
 }
 
 /**
- * 雛形を読む。`{{KIT}}` は複製先に置き換える。
+ * テンプレートを読む。`{{KIT}}` は複製先に置き換える。
  *
- * **雛形をコードの中に文字列で持たない。** ファイルにしておくと、アプリの種別や
+ * **テンプレートをコードの中に文字列で持たない。** ファイルにしておくと、アプリの種別や
  * エージェントの種別ごとに差し替えるとき、置き場所を変えるだけで済む。
  */
 export function template(kitRoot , name , vars = {}) {
@@ -137,7 +137,7 @@ export function mergeHook(existing , command) {
 }
 
 /**
- * 道具一式を複製する。
+ * autodrive-dev-kit を複製する。
  *
  * **入れ替えではなく置き換えにする。** 前の版の残骸が混ざると、どの版で動いて
  * いるのかが読めなくなる。複製先はまるごと捨ててから置く。
@@ -145,11 +145,11 @@ export function mergeHook(existing , command) {
 /**
  * 1ファイルずつ複製する。
  *
- * **`cpSync` の再帰に頼らない。** virtiofs（macOS + Lima の作業場）では
+ * **`cpSync` の再帰に頼らない。** virtiofs（macOS + Lima のサンドボックス）では
  * ディレクトリごとの再帰複製が `EACCES` で落ちる。1ファイルずつなら通る
  * （AUT-131）。
  *
- * **実行権も写す。** `copyFileSync` は中身しか写さない。`bin/autodrive-dev-kit`・
+ * **実行権もコピーする。** `copyFileSync` は中身しか写さない。`bin/autodrive-dev-kit`・
  * `invariants`・`verify`・`hooks/*` は実行ファイルであり、権が落ちると打てなくなる。
  */
 function copyInto(from , to) {
@@ -165,10 +165,10 @@ function copyInto(from , to) {
 }
 
 /**
- * 道具一式を複製する。
+ * autodrive-dev-kit を複製する。
  *
  * **置いてから消す。** 以前は消してから置いていたため、複製の途中で落ちると
- * **古い版も新しい版も無い状態が残った。** 実際に、道具が消えて `invariants` も
+ * **古い版も新しい版も無い状態が残った。** 実際に、autodrive-dev-kit が消えて `invariants` も
  * 打てなくなった（AUT-131）。git から戻すしかない失敗になっていた。
  *
  * いまは別の場所へ組み立て、**出来上がってから入れ替える。** 途中で落ちても、
@@ -216,7 +216,7 @@ export function vendor(root , kitRoot) {
  * 開けない。
  */
 /**
- * いま隔離された作業場の中にいるか。
+ * いま隔離されたサンドボックスの中にいるか。
  *
  * **確かめられない場合は「外にいる」とする。** 中にいるのに言われるのは冗長なだけ
  * だが、外にいるのに言われないと、隔離されないまま動く。
@@ -248,7 +248,7 @@ export function insideSandbox() {
 }
 
 /**
- * 作業場のうち、プロジェクトが持つもの。
+ * サンドボックスのうち、プロジェクトが持つもの。
  *
  * **kit はロジックを持ち、プロジェクトは設定を持つ。**
  *
@@ -272,19 +272,19 @@ export function insideSandbox() {
  * 実際に守っているのは2つある。
  *
  *   init-firewall.sh   起動のたびに走り、実際の到達可否を両方向で確かめる
- *   isolation.js       その配線があるかを判定する。CI で落ちる
+ *   isolation.js       その設定があるかを判定する。CI で落ちる
  *
  * ## なぜ lock も同じ扱いか
  *
- * 他の管理下ファイルは `(雛形, 構成)` だけで中身が決まる。**lock は違う。**
- * 作業場を作り直すたびに Dev Containers CLI が解決したバージョンを書き込むため、
+ * 他の管理下ファイルは `(テンプレート, 構成)` だけで中身が決まる。**lock は違う。**
+ * サンドボックスを作り直すたびに Dev Containers CLI が解決したバージョンを書き込むため、
  * 管理下に置くと毎回「手で変えられている」と誤判定され、`update` が止まる
  * （AUT-153）。**人は誰も触っていないのに。**
  */
 const PROJECT_OWNED_SANDBOX = ["devcontainer.json", "devcontainer-lock.json"];
 
 /**
- * プロジェクトが持つ作業場のファイルを置く。
+ * プロジェクトが持つサンドボックスのファイルを置く。
  *
  * **最初の一度だけ置き、以後は触らない。** 既にあれば、テンプレートが変わって
  * いても書き換えない。代わりに、変わっていることを言う（`driftNotes`）。
@@ -352,7 +352,7 @@ function placeSandbox(root , kitRoot , config , plan) {
   for (const file of ["init-firewall.sh", "post-create.sh", "check-setup.sh", "README.md"]) {
     managed(`.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`), folded);
   }
-  // **一覧は構成から作る。** 雛形を写すと、使わないポートの宛先が付いてくる。
+  // **一覧は構成から作る。** テンプレートを写すと、使わないポートの宛先が付いてくる。
   managed(".devcontainer/allowed-domains.txt", allowedDomains(config), folded);
 
   // **1つにまとめて報告する。** 中の1つ1つを並べると、出力の大半が
@@ -381,7 +381,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   }
 
   // 管理下 --------------------------------------------------------------------
-  // **構成から作る。** 雛形を写すと、使わないポートの資格情報を求めることになり、
+  // **構成から作る。** テンプレートを写すと、使わないポートの資格情報を求めることになり、
   // 使うポートのものが抜けても気づけない。実際に GH_TOKEN が抜けていた（AUT-98）。
   managed(".env.example", envExample(config ?? defaults()), plan);
   managed(".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), plan);
@@ -395,15 +395,15 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **書く前に、全部を確かめる。** 見つかったら何も書かずに止まる。書きながら
   // 確かめると、一部だけ新しい状態ができる（AUT-116）。
   //
-  // **道具一式を入れ替える前でもある。** 先に入れ替えると、止めたときに
-  // 道具だけ新しく、管理下のファイルが古い状態が残る。
+  // **autodrive-dev-kit を入れ替える前でもある。** 先に入れ替えると、止めたときに
+  // autodrive-dev-kit だけ新しく、管理下のファイルが古い状態が残る。
   const previous = readManifest(manifestPath(root, VENDOR_DIR));
   const { edited, unchecked } = findEdits(root, plan.writes, previous);
   if (edited.length > 0) {
     return { placed: [], todo: [], notes: [], version: null, code: 1, message: describeEdits(edited) };
   }
 
-  // 道具一式 ------------------------------------------------------------------
+  // autodrive-dev-kit ------------------------------------------------------------------
   const version = vendor(root, kitRoot);
   placed.push({ path: `${VENDOR_DIR}/`, placement: "managed" });
 
@@ -425,7 +425,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // 播種 ----------------------------------------------------------------------
   //
   // **`.devcontainer/` の中でも、これだけ管理下から外れる。** Dev Containers CLI が
-  // 作り直しのたびに書き込むため、`(雛形, 構成)` だけでは中身が決まらない
+  // 作り直しのたびに書き込むため、`(テンプレート, 構成)` だけでは中身が決まらない
   // （AUT-153）。最初の一度だけ置き、以後はプロジェクトの実測値として扱う。
   if (sandboxPlaced) seedSandbox(root, kitRoot, placed);
 
@@ -458,7 +458,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // 残すのは、AIに実行できないものだけである。
   //
   //   資格情報の発行    外部サービスでの操作
-  //   作業場を開き直す  そこにAIがまだ動いていない。立ち上げそのもの
+  //   サンドボックスを開き直す  そこにAIがまだ動いていない。立ち上げそのもの
   if (!existsSync(join(root, ".env"))) {
     todo.push(t("todo.env"));
   }
@@ -466,7 +466,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // 動く。構成は隔離すると記録しているのに、実際には隔離されない。
   //
   // **`.env` の後に言う。** 支度は環境を作るときに `.env` を読む。先に開き直すと、
-  // 資格情報が入らないまま作業場ができる。
+  // 資格情報が入らないままサンドボックスができる。
   //
   // **既に中にいるなら言わない。** 済んでいることを頼まない。
   if (sandboxPlaced && !inside) {

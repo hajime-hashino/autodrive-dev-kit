@@ -108,7 +108,7 @@ export class JsonlTelemetry {
 
     appendEvent(path, {
       ts: this.#now().toISOString(),
-      // 解決できない属性は握りつぶさず null で残す。理由を添えて残すことで、
+      // 解決できない属性は捨てずに null で残す。理由を添えて残すことで、
       // 紐づく先が無いのか、仕掛けが壊れているのかを後から読める。
       work_item_id: item?.workItemId ?? null,
       model: session.last_model,

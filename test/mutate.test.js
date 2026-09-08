@@ -153,7 +153,7 @@ test("この実行で残ったものだけを掃く", async () => {
   const dir = tempDir("autodrive-掃除-");
   const 古い = join(dir, "autodrive-前からある");
   const 新しい = join(dir, "autodrive-いま作った");
-  const 無関係 = join(dir, "他の道具のもの");
+  const 無関係 = join(dir, "他のツールのもの");
   for (const p of [古い, 新しい, 無関係]) mkdirSync(p, { recursive: true });
 
   const 境界 = Date.now();
@@ -182,7 +182,7 @@ test("この実行で残ったものだけを掃く", async () => {
 // 素の状態で落ちたとき、理由を残すこと。
 //
 // **「落ちている」だけでは直せない。** 手元で通るのに CI で落ちたとき、原因に
-// 辿り着けなかった（AUT-150）。判定の道具が、自分の失敗について黙るべきではない。
+// 辿り着けなかった（AUT-150）。判定の仕組みが、自分の失敗について黙るべきではない。
 test("素の状態で落ちたら、そのときの出力を出す", () => {
   const { describe: say } = { describe };
   const 落ちる = () => {

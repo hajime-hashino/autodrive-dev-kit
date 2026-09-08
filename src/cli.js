@@ -39,7 +39,7 @@ const DELEGATES = {
   telemetry: "telemetryCli.js",
   reconcile: "reconcileCli.js",
   invariants: "main.js",
-  // **旧名。invariants と同じものを指す。** 既に配線されている CI が呼んでいる。
+  // **旧名。invariants と同じものを指す。** 既に設定されている CI が呼んでいる。
   verify: "main.js",
 };
 
