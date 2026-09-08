@@ -186,6 +186,38 @@ test("参照実装を触る人向けの内容が、移した先にある", () =>
   }
 });
 
+// ------------------------------------------------------------ ADR の索引
+
+// **索引が、リンク先と食い違っていないこと。**
+//
+// 索引には「新しい ADR を追加したら、この索引に1行足す」と書いてあるが、
+// **足したかどうかも、内容が合っているかも確かめる手段が無かった。** 実際に
+// 0001 が改訂されたあと索引だけが古いまま残り、TypeScript と書き続けていた。
+// 索引は「計画の冒頭でここを参照すること」と言っている場所であり、**最初に読む
+// ところが実際とは逆のことを言っていた**（AUT-160）。
+//
+// **見出しで始まっているかだけを見る。** 索引が見出しより詳しいのは構わない。
+// 曖昧な判断を入れると、判定そのものが信用されなくなる。
+test("ADR の索引が、リンク先の見出しと合っている", () => {
+  const dir = join(KIT, "docs", "adr");
+  const index = readFileSync(join(dir, "README.md"), "utf8");
+  const rows = [...index.matchAll(/^\| \[(\d+)\]\(([^)]+)\) \| (.+?) \|/gm)];
+  assert.ok(rows.length > 0, "索引の行を拾えていない。拾い方が壊れている");
+
+  // **数も合っていること。** 足し忘れも、消し忘れも、ここで出る。
+  const files = readdirSync(dir).filter((n) => /^\d{4}-.+\.md$/.test(n)).sort();
+  assert.deepEqual(rows.map((r) => r[2]).sort(), files, "索引と ADR が1対1になっていない");
+
+  for (const [, num, link, judgment] of rows) {
+    const title = readFileSync(join(dir, link), "utf8").split("\n")[0];
+    const core = title.replace(/^#\s*ADR\s*\d+:\s*/, "").trim();
+    assert.ok(
+      judgment.startsWith(core),
+      `索引の ${num} が見出しと違う:\n  索引   = ${judgment}\n  見出し = ${core}`,
+    );
+  }
+});
+
 // ------------------------------------------------------------ 置かれるものの一覧
 
 // **README の一覧が、実際に置かれるものと一致すること。** 一覧は手で保たれており、

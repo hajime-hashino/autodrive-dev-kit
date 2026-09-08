@@ -217,5 +217,12 @@
     "from": "const PROJECT_OWNED_SANDBOX = [\"devcontainer.json\", \"devcontainer-lock.json\"];",
     "to": "const PROJECT_OWNED_SANDBOX = [\"devcontainer-lock.json\"];",
     "why": "触りたい項目が多いのに、触ると update が止まる状態へ戻る"
+  },
+  {
+    "name": "AUT-160 索引に、改訂前の判断を戻す",
+    "file": "docs/adr/README.md",
+    "from": "| 参照実装は Node で動かし、型は JSDoc で書く。依存を持たない |",
+    "to": "| `invariants` と参照実装の実装言語を TypeScript とする。依存を持たない |",
+    "why": "最初に読む場所が、リンク先と逆のことを言う。改訂しても索引だけが古いまま残る"
   }
 ]
