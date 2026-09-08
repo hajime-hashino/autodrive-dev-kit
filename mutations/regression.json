@@ -238,5 +238,26 @@
     "from": "  if (base === head) {",
     "to": "  if (false) {",
     "why": "VERSION が動かないまま統合され、記録の kit_version が同じ値のままになる"
+  },
+  {
+    "name": "AUT-156 記録以外も巻き込む",
+    "file": "src/strandedTelemetry.js",
+    "from": "const TELEMETRY = /^telemetry\\/[^/]+\\.jsonl$/;",
+    "to": "const TELEMETRY = /./;",
+    "why": "作業中の変更を、着手の時点で勝手に履歴へ載せる"
+  },
+  {
+    "name": "AUT-156 拾わず、持ち越すだけに戻す",
+    "file": "src/strandedTelemetry.js",
+    "from": "  if (files.length === 0) return [];",
+    "to": "  if (files.length >= 0) return [];",
+    "why": "最後の1件が次の作業単位のコミットに紛れるか、次が無ければ残り続ける"
+  },
+  {
+    "name": "AUT-156 パスを指さずにコミットする",
+    "file": "src/strandedTelemetry.js",
+    "from": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"--\", ...files]);",
+    "to": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"-a\"]);",
+    "why": "手元の他の変更まで一緒にコミットされる"
   }
 ]

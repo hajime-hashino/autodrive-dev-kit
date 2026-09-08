@@ -9,6 +9,10 @@
  *   AUT-42  マーカーを前の作業単位のままにした
  *   AUT-42  ブランチを作らずに既定ブランチへ直接コミットした
  *
+ * **拾う仕事もここに置く。** 提出のあとに書かれた記録は、その作業単位のコミットには
+ * 入らない（AUT-156）。持ち越すだけでは次の作業単位のコミットに紛れて入る。`begin` は
+ * 必ず通り、そこには既定ブランチから作ったばかりの枝がある。
+ *
  * **規約が存在しても、手順を通らなければ思い出す機会が無い。** 通らないと始まら
  * ない入口を置くことで、思い出す必要そのものを減らす。
  *
@@ -23,7 +27,8 @@ import { parseArgs } from "node:util";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { createRepoApi } from "./repoApi.js";
 import { describe, reconcile } from "./reconcile.js";
-import { slugFromUrl } from "./repos.js";
+import { discoverRepos, slugFromUrl } from "./repos.js";
+import { describeOthers, strandedFiles, sweep } from "./strandedTelemetry.js";
 import { writeMarker } from "./trackerCli.js";
 
 const USAGE = `作業単位に着手する
@@ -35,7 +40,8 @@ const USAGE = `作業単位に着手する
   1. 作業単位を取得し、対象リポジトリを確かめる
   2. 作業空間を用意する（既定ブランチを最新にし、ブランチを作る）
   3. 状態を started へ進め、対象リポジトリを記し、記録の紐づけ先を設置する
-  4. 統合済みなのに着手中のままの作業単位を閉じる
+  4. 提出のあとに書かれ、取り残された記録を拾う
+  5. 統合済みなのに着手中のままの作業単位を閉じる
 
 ブランチ名を省略すると、作業単位のIDから作る。
 資格情報は環境変数 LINEAR_API_KEY から読む。4 には Repo の資格情報も要る
@@ -229,9 +235,33 @@ export async function run(
   await tracker.advance(item.id, "started", repo);
   writeMarker(root, item.id, repo);
 
+  // 取り残された記録 -------------------------------------------------------
+  //
+  // **提出のあとに書かれた記録を、ここで拾う。** 報告して止まった時点でフックが
+  // 走るため、最後の1件は構造的にコミットされない（AUT-156）。持ち越されるだけでは
+  // 次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
+  const swept = sweep(repoPath, item.id, git);
+
   // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
   const dirty = git(repoPath, ["status", "--short"]).trim();
   const carried = dirty === "" ? [] : ["", "手元の変更をブランチへ持ってきた:", ...dirty.split("\n").map((l) => `  ${l}`)];
+
+  // **他のリポジトリの取り残しは、言うだけにする。** 1つの作業単位が書き込む
+  // リポジトリは1つに限るため、ここでは拾えない。黙ると、そのリポジトリで次の作業が
+  // 起きるまで誰も知らない。実際に4つとも残っていた。
+  const others = describeOthers(
+    discoverRepos(root, "cross")
+      .filter((r) => r.path !== repoPath)
+      .map((r) => {
+        let status = "";
+        try {
+          status = git(r.path, ["status", "--porcelain", "-uall"]);
+        } catch {
+          status = "";
+        }
+        return { name: r.name, files: strandedFiles(status) };
+      }),
+  );
 
   // 4. 片付け ---------------------------------------------------------------
   //
@@ -272,7 +302,9 @@ export async function run(
       `対象リポジトリ  ${repo}`,
       `ブランチ              ${branch}（${defaultBranch} から）`,
       `記録の紐づけ先  ${repo} の ${item.id}`,
+      ...swept,
       ...carried,
+      ...others,
       ...tidied,
     ].join("\n"),
     code: 0,
