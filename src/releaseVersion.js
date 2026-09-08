@@ -223,3 +223,5 @@ if (invokedDirectly) {
   (ok ? console.log : console.error)(message);
   process.exit(ok ? 0 : 1);
 }
+
+// 判定の検証用。配られる中身を変えて VERSION を上げていない。
