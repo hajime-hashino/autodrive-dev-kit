@@ -55,7 +55,7 @@ test("構成がサンドボックスを使うなら、置く", () => {
 // **使わないと決めたものを置かない。** 置くと、構成の記録と実物が食い違う。
 test("使わないと決めたら、置かない", () => {
   const root = project();
-  const port = answering({ "AIを、隔離された作業場の中で動かしますか？": NONE });
+  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
   const result = setup("init", root, KIT, port);
 
   assert.equal(existsSync(join(root, ".devcontainer")), false, "使わないのに置いている");
@@ -71,7 +71,7 @@ test("構成の記録と、置かれたものが一致する", () => {
     [NONE, false],
   ] ) {
     const root = project();
-    const port = answering({ "AIを、隔離された作業場の中で動かしますか？": answer });
+    const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": answer });
     const result = setup("init", root, KIT, port);
 
     assert.equal(result.config?.ports.sandbox, answer);
@@ -234,7 +234,7 @@ test("開き直してから、AIに話しかける順で言う", () => {
 
 // **使わないと決めたなら、言わない。** 置いていないものを開けとは言えない。
 test("作業場を使わないなら、開き直せと言わない", () => {
-  const port = answering({ "AIを、隔離された作業場の中で動かしますか？": NONE });
+  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
   const said = setup("init", project(), KIT, port, false).todo.join("\n");
   assert.equal(said.includes("Reopen in Container"), false, said);
 });
@@ -549,7 +549,7 @@ test("機能を足していなくても、lock の書き換えで update は止�
 // 置いてはいけない。
 test("サンドボックスを使わないなら、lock も置かない", () => {
   const root = project();
-  const port = answering({ "AIを、隔離された作業場の中で動かしますか？": NONE });
+  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
   setup("init", root, KIT, port);
 
   assert.equal(existsSync(join(root, ".devcontainer", "devcontainer-lock.json")), false);
