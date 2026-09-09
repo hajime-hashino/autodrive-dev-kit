@@ -77,6 +77,9 @@ const MESSAGES = {
     "todo.reopen":
       "サンドボックスを開き直す（VS Code なら「Reopen in Container」）。" +
       "**.env を作ってから行うこと。** 環境を作るときに読まれる",
+    "todo.trackerLink":
+      "{tracker} と {repo} を連携させ、変更が統合されたら作業単位が完了になるよう設定する\n" +
+      "（{tracker} の設定画面から行う。**これをしないと、作業単位は着手中のまま溜まり続ける**）",
     "todo.start": "Claude Code を開き、「はじめる」と伝える。あとはAIが聞き始める",
     "todo.pointer": "CLAUDE.md に次の1行を足すこと: 「作業の進め方は docs/autodrive.md に従う」",
     // --- 判定の出力 ---
@@ -154,6 +157,9 @@ const MESSAGES = {
     "todo.reopen":
       "Reopen the workspace (in VS Code, \"Reopen in Container\"). " +
       "**Create .env first.** It is read when the environment is built",
+    "todo.trackerLink":
+      "Connect {tracker} to {repo} so that work items complete when changes are integrated\n" +
+      "(configure this in {tracker}'s settings. **Without it, work items pile up as started**)",
     "todo.start": "Open Claude Code and say \"let's start\". The AI takes it from there",
     "todo.pointer":
       "Add this line to CLAUDE.md: \"Follow docs/autodrive.md for how to work\"",

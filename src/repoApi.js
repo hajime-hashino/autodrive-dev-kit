@@ -61,3 +61,38 @@ export function isPlanLimited(res) {
   const message = (res.body)?.message;
   return typeof message === "string" && message.includes("Upgrade");
 }
+
+/**
+ * 応答から提出を取り出す。統合されたかどうかも併せて持つ。
+ *
+ * 読めなかった場合は null を返す。**空と区別する。** 空を返すと「統合された提出は
+ * 無かった」と読めてしまい、読めなかったことが消える。
+ *
+ * @param {ApiResponse} res
+ * @returns {Array<{ branch: string, title: string, merged: boolean }> | null}
+ */
+export function submissionsFrom(res) {
+  if (res.status !== 200 || !Array.isArray(res.body)) return null;
+  return res.body.map((p) => ({
+    branch: p?.head?.ref ?? "",
+    title: p?.title ?? "",
+    merged: Boolean(p?.merged_at),
+  }));
+}
+
+/**
+ * 提出から作業単位のIDを読む。
+ *
+ * **ブランチ名と題の両方を見る。** ブランチ名は着手のときに変えられるため、それだけを
+ * 根拠にすると、名前を変えた作業単位を取り逃がす。
+ *
+ * @param {{ branch: string, title: string }} submission
+ * @returns {string | null}
+ */
+export function workItemOf(submission) {
+  for (const text of [submission.branch, submission.title]) {
+    const found = /\b([A-Za-z]{2,10}-\d+)\b/.exec(text ?? "");
+    if (found !== null) return found[1].toUpperCase();
+  }
+  return null;
+}

@@ -329,54 +329,20 @@ test("着手のとき、対象リポジトリを Tracker にも記す", async ()
 
 // ------------------------------------------------------------------ 片付け
 
-/** 提出を返す Repo。 */
-function fakeApi(submissions) {
-  return {
-    available: true,
-    async submissionsIn() { return { status: 200, body: submissions }; },
-  };
-}
-
-test("統合済みなのに着手中のままの作業単位を、着手のついでに閉じる", async () => {
+test("着手は、他の作業単位を完了させない", async () => {
+  // **完了は Tracker と Repo の連携が動かす**（ADR 0007）。着手のついでに閉じる形は、
+  // 着手するリポジトリ1つ分しか見ず、4リポジトリを渡り歩くと取り残した（AUT-165）。
+  //
+  // 戻すなら、まず「なぜ連携では届かないか」を先に示すこと。
   const root = workspace();
   const stale = { ...item, id: "AUT-1", state: "started" };
   const tracker = fakeTracker(item);
   tracker.list = async () => [item, stale];
 
-  const { code, output } = await run(
-    ["AUT-99", "--repo", "agent-playground"],
-    root,
-    tracker,
-    fakeGit(),
-    fakeApi([{ merged_at: "2026-08-30", head: { ref: "aut-1" }, title: "AUT-1" }]),
-  );
-
-  assert.equal(code, 0);
-  assert.ok(tracker.advanced.includes("AUT-1:done:agent-playground"), tracker.advanced.join(","));
-  assert.ok(output.includes("AUT-1"), `何を閉じたか出していない: ${output}`);
-});
-
-test("片付けに失敗しても、着手は成立する", async () => {
-  // **片付けられないことを理由に着手できなくなるのは本末転倒である。**
-  const root = workspace();
-  const tracker = fakeTracker();
-  const api = {
-    available: true,
-    async submissionsIn() { throw new Error("繋がらない"); },
-  };
-
-  const { code, output } = await run(
-    ["AUT-99", "--repo", "agent-playground"], root, tracker, fakeGit(), api,
-  );
+  const { code } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, fakeGit());
 
   assert.equal(code, 0);
   assert.equal(marker(root).work_item_id, "AUT-99");
-  // **ただし黙らない。**
-  assert.ok(output.includes("繋がらない"), `失敗を黙っている: ${output}`);
-});
-
-test("Repo を読めなくても、着手は成立する", async () => {
-  const root = workspace();
-  const { code } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), fakeGit());
-  assert.equal(code, 0);
+  const closed = tracker.advanced.filter((a) => a.includes(":done"));
+  assert.deepEqual(closed, [], `着手が完了へ動かしている: ${closed.join(",")}`);
 });

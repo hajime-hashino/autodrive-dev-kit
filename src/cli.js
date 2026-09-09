@@ -28,7 +28,6 @@ AIが使うもの（人は打たなくてよい）
   autodrive-dev-kit tracker <操作> ...      作業単位を扱う
   autodrive-dev-kit telemetry <操作> ...    記録する
   autodrive-dev-kit invariants [--root <場所>]  不変条件の状態を判定する
-  autodrive-dev-kit reconcile [--dry-run]   統合された作業単位を完了にする（begin が兼ねる）
 
 使い方の全体は README を参照。`;
 
@@ -37,7 +36,6 @@ const DELEGATES = {
   begin: "beginCli.js",
   tracker: "trackerCli.js",
   telemetry: "telemetryCli.js",
-  reconcile: "reconcileCli.js",
   invariants: "main.js",
   // **旧名。invariants と同じものを指す。** 既に設定されている CI が呼んでいる。
   verify: "main.js",
