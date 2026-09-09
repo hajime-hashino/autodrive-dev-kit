@@ -25,9 +25,7 @@ import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { LinearTracker } from "./adapters/trackerLinear.js";
-import { createRepoApi } from "./repoApi.js";
-import { describe, reconcile } from "./reconcile.js";
-import { discoverRepos, slugFromUrl } from "./repos.js";
+import { discoverRepos } from "./repos.js";
 import { describeOthers, strandedFiles, sweep } from "./strandedTelemetry.js";
 import { writeMarker } from "./trackerCli.js";
 
@@ -111,7 +109,6 @@ export async function run(
   root ,
   tracker ,
   git = runGit,
-  api = undefined,
 ) {
   if (argv.length === 0 || argv[0] === "--help") return { output: USAGE, code: argv.length === 0 ? 0 : 0 };
 
@@ -263,36 +260,14 @@ export async function run(
       }),
   );
 
-  // 4. 片付け ---------------------------------------------------------------
+  // **ここで片付けはしない。** 統合された作業単位を完了へ動かすのは Tracker と Repo の
+  // 連携であり、ハーネスの仕事ではない（ADR 0007）。
   //
-  // **着手のついでに閉じる。** 閉じるための手順を別に置くと、思い出す必要が増える。
-  // ここは必ず通るため、思い出さなくても片付く。
+  // 以前はここで閉じていた。着手のついでにしか走らず、しかも着手するリポジトリ1つ分
+  // しか見なかったため、**4リポジトリを渡り歩くと取り残された**（AUT-165）。連携なら
+  // 統合の瞬間に、どのリポジトリでも動く。
   //
-  // **失敗しても着手は成立させる。** 片付けられないことを理由に着手できなくなるのは
-  // 本末転倒である。ただし黙らない。
-  let tidied = [];
-  if (api !== undefined) {
-    try {
-      // **置き場所も、差し込まれた git から引く。** ここで自前の git を呼ぶと、
-      // 差し込みが効かず、判定できない経路が残る。
-      let origin = null;
-      try {
-        origin = git(repoPath, ["remote", "get-url", "origin"]);
-      } catch {
-        origin = null;
-      }
-      tidied = describe(
-        await reconcile({
-          repos: [{ name: repo, slug: slugFromUrl(origin) }],
-          tracker,
-          api,
-          except: item.id,
-        }),
-      );
-    } catch (error) {
-      tidied = ["", `統合済みの作業単位を片付けられなかった: ${message(error)}`];
-    }
-  }
+  // 効いていないことには判定が気づく（`invariants` の「統合済みなのに着手中」）。
 
   return {
     output: [
@@ -305,7 +280,6 @@ export async function run(
       ...swept,
       ...carried,
       ...others,
-      ...tidied,
     ].join("\n"),
     code: 0,
   };
@@ -321,10 +295,8 @@ if (invokedDirectly) {
     process.exit(2);
   }
   const tracker = new LinearTracker(token ?? "", process.env.AUTODRIVE_TRACKER_TEAM);
-  // 片付けは提出を読むだけである。**読取で足りるものに、書ける資格情報を要求しない。**
-  const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN ?? process.env.GH_TOKEN);
   try {
-    const { output, code } = await run(argv, root, tracker, runGit, api);
+    const { output, code } = await run(argv, root, tracker, runGit);
     (code === 0 ? console.log : console.error)(output);
     process.exit(code);
   } catch (error) {

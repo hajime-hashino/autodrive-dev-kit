@@ -16,7 +16,13 @@ import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail, isUnattributed
 import { boundaryFor, eventsAfter } from "./enactment.js";
 import { movedAreas, parseAreas } from "./boundaries.js";
 import { directCommitCandidates, localDefaultBranch } from "./directCommits.js";
-import { defaultBranchOf, hasMergedSubmission, isPlanLimited } from "./repoApi.js";
+import {
+  defaultBranchOf,
+  hasMergedSubmission,
+  isPlanLimited,
+  submissionsFrom,
+  workItemOf,
+} from "./repoApi.js";
 
 /** @typedef {import("./repos.js").Repo} Repo */
 /** @typedef {import("./repoApi.js").RepoApi} RepoApi */
@@ -64,11 +70,17 @@ export function hookRegistered(repos) {
  * 記録の無い完了済み作業単位は観測として出す。作業が無かったのか、記録が別の
  * 作業単位へ流れたのかを、この情報だけでは区別できない。区別できないものを
  * 失敗として扱うと、失敗の意味が薄まる。
+ *
+ * **Tracker の状態そのものも、ここで見る。** 完了させる仕組みを連携へ渡した以上
+ * （ADR 0007）、それが効いていないことに気づく場所が要る。閉じ忘れも、外れない
+ * ままの作業単位マーカーも、記録がどの作業単位に紐づくかを直接左右する。
  */
 async function crossCheckTracker(
   r ,
   events ,
   tracker ,
+  repos ,
+  api ,
 ) {
   const items = await tracker.list();
   const known = new Set(items.map((i) => i.id));
@@ -97,7 +109,89 @@ async function crossCheckTracker(
         "（作業が無かったか、記録が別の作業単位へ流れた可能性。区別はできない）",
     );
   }
+
+  await observeUnclosed(r, items, repos, api);
+  observeStaleMarker(r, items, repos);
   return true;
+}
+
+/**
+ * 統合済みの提出があるのに、着手中のまま残っている作業単位。
+ *
+ * **完了させる仕組みは、もうここには無い。** Tracker と Repo の連携が動かす（ADR 0007）。
+ * だから**効いていないことに気づく手段が要る。** 実際に、連携へ移す前に4件が統合済みの
+ * まま数日 In Progress で残り、毎朝の横断判定は一度も何も言わなかった（AUT-165）。
+ *
+ * 連携を設定していない配布先、途中で外れた配布先でも同じ信号が出る。
+ *
+ * **失敗にはしない。観測に留める。** 不変条件は定義§9のものであり、Tracker 側の設定は
+ * その範囲外にある。連携の設定漏れで「テレメトリが記録されること」が落ちるのは、
+ * 判定の意味が合わない。**見えれば足りる。**
+ *
+ * 提出を読めなかったリポジトリは、読めなかったことを言う。**黙ると「取り残しは
+ * 無かった」と読める。**
+ */
+async function observeUnclosed(r , items , repos , api ) {
+  if (api === undefined || !api.available) {
+    r.observe("Repo の資格情報が無く、統合済みの作業単位が閉じているかを確かめられない");
+    return;
+  }
+  const started = new Set(items.filter((i) => i.state === "started").map((i) => i.id));
+  if (started.size === 0) return;
+
+  const merged = new Set();
+  for (const repo of repos) {
+    const slug = repo.remoteSlug();
+    if (slug === null) {
+      r.observe(`${repo.name}: 置き場所を特定できず、提出を確かめられない`);
+      continue;
+    }
+    const submissions = submissionsFrom(await api.submissionsIn(slug));
+    if (submissions === null) {
+      r.observe(`${repo.name}: 提出を読めず、取り残しを確かめられない`);
+      continue;
+    }
+    for (const s of submissions) {
+      if (!s.merged) continue;
+      const id = workItemOf(s);
+      if (id !== null) merged.add(id);
+    }
+  }
+
+  const unclosed = [...started].filter((id) => merged.has(id)).sort();
+  if (unclosed.length > 0) {
+    r.observe(`統合済みなのに着手中の作業単位: ${unclosed.join(", ")}`);
+    r.observe("Tracker と Repo の連携が効いていない可能性がある（統合で完了へ動く設定を確かめること）");
+  }
+}
+
+/**
+ * 完了した作業単位を指したままの作業単位マーカー。
+ *
+ * **ここは連携では届かない。** マーカーは手元のファイルであり、Tracker が状態を
+ * 動かしても残る。外れないまま記録が続くと、**完了した作業単位に以降の記録が
+ * 紐づく。** 実際にこの形が起きている（AUT-163 が統合済みなのにマーカーは
+ * AUT-163 を指したままだった）。
+ *
+ * 着手のたびに上書きされるため、次の着手までの間だけ起こる。**その間に書かれた
+ * 記録は、間違った作業単位に入る。**
+ */
+function observeStaleMarker(r , items , repos ) {
+  const closed = new Set(items.filter((i) => i.state === "done" || i.state === "canceled").map((i) => i.id));
+  for (const repo of repos) {
+    const path = join(repo.path, ".autodrive", "current-work-item.json");
+    if (!existsSync(path)) continue;
+    let marker;
+    try {
+      marker = JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      continue;
+    }
+    const id = marker?.work_item_id;
+    if (typeof id !== "string" || !closed.has(id)) continue;
+    r.observe(`作業単位マーカーが完了済みの作業単位を指している: ${id}（${repo.name}）`);
+    r.observe("次に着手するまでの間に書かれた記録は、この作業単位に紐づく");
+  }
 }
 
 /**
@@ -168,7 +262,7 @@ function hasValue(event, attr) {
   return typeof value === "string" && value.trim() !== "";
 }
 
-const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker }) => {
+const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker, api }) => {
   const r = resultFor("telemetry_recorded");
 
   if (allEvents.length === 0) {
@@ -276,7 +370,9 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
       return r.conclude(UNSUBSTITUTED);
     }
     try {
-      if (!(await crossCheckTracker(r, allEvents, tracker))) return r.conclude(UNSUBSTITUTED);
+      if (!(await crossCheckTracker(r, allEvents, tracker, repos, api))) {
+        return r.conclude(UNSUBSTITUTED);
+      }
     } catch (error) {
       r.observe(`Tracker を読めない: ${error instanceof Error ? error.message : String(error)}`);
       return r.conclude(UNSUBSTITUTED);

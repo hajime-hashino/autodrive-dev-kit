@@ -98,14 +98,28 @@ export class LinearTracker {
     return found.id;
   }
 
+  /**
+   * ポートの状態を、実装側の状態へ解決する。
+   *
+   * **同じ型の状態が複数あることを前提にする。** 型は種別であって、状態そのものでは
+   * ない。実装側は同じ型の状態をいくつでも置ける。
+   *
+   * **並び順の先頭を採る。** 実装側が持つ並びは、作業が進む向きに並んでいる。同じ型の
+   * 中で最も手前にあるものが、その型に入るときの状態である。
+   *
+   * 応答の順に頼ってはいけない。**順序は保証されない。** 実際に、連携を有効にしたことで
+   * `started` 型が2つ（In Progress / In Review）になった直後、着手が In Review を
+   * 引き当てた（AUT-165）。**それまでは1つしか無かったため、誤りが表に出なかった。**
+   */
   async #stateId(to) {
     const teamId = await this.#team();
     const data = await this.#call(
-      "query($id:String!){ team(id:$id){ states { nodes { id type } } } }",
+      "query($id:String!){ team(id:$id){ states { nodes { id type position } } } }",
       { id: teamId },
     );
-    const states = data.team.states.nodes;
-    const found = states.find((s) => s.type === STATE_TYPE[to]);
+    const found = data.team.states.nodes
+      .filter((s) => s.type === STATE_TYPE[to])
+      .sort((a, b) => a.position - b.position)[0];
     if (found === undefined) throw new Error(`対応する状態が実装側に無い: ${to}`);
     return found.id;
   }

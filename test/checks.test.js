@@ -55,11 +55,14 @@ function repoWithHook(name) {
   return { ...fakeRepo(name), path };
 }
 
-function fakeApi(responder , available = true) {
+function fakeApi(responder , available = true, extra = {}) {
   return {
     available,
     rulesets: async (slug) => responder(slug),
     submissionsFor: async () => ({ status: 200, body: [] }),
+    // 既定は「提出はあるが、統合されたものは無い」。取り残しの観測は出ない。
+    submissionsIn: async () => ({ status: 200, body: [] }),
+    ...extra,
   };
 }
 
@@ -177,6 +180,114 @@ test("記録の無い完了済み作業単位は観測として出すが、失�
   );
   assert.equal(r.state, ACTIVE);
   assert.ok(r.observations.some((o) => o.includes("AUT-2")));
+});
+
+/** 着手中の AUT-1 だけを持つ Tracker。 */
+function trackerWith(items) {
+  return {
+    async get() { return null; },
+    async list() { return items; },
+    async create() { throw new Error("未使用"); },
+    async advance() { throw new Error("未使用"); },
+    async note() {},
+  };
+}
+
+test("統合済みなのに着手中の作業単位を観測として出すが、失敗にはしない", async () => {
+  // **完了させる仕組みはハーネスに無い**（ADR 0007）。連携が効いていないことに
+  // 気づく手段がこれである。実際に4件が統合済みのまま数日開いていた（AUT-165）。
+  const tracker = trackerWith([{ id: "AUT-1", title: "", url: "", body: "", state: "started" }]);
+  const api = fakeApi(() => ({ status: 200, body: [] }), true, {
+    submissionsIn: async () => ({
+      status: 200,
+      body: [{ merged_at: "2026-09-06", head: { ref: "aut-1" }, title: "AUT-1 なにか" }],
+    }),
+  });
+
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker, api, repos: [repoWithHook("r")] }),
+  );
+
+  // **不変条件は定義§9のもの。Tracker 側の設定はその範囲外にある。**
+  assert.equal(r.state, ACTIVE);
+  assert.ok(
+    r.observations.some((o) => o.includes("統合済みなのに着手中") && o.includes("AUT-1")),
+    r.observations.join("\n"),
+  );
+});
+
+test("統合されていない提出しか無ければ、取り残しとは言わない", async () => {
+  const tracker = trackerWith([{ id: "AUT-1", title: "", url: "", body: "", state: "started" }]);
+  const api = fakeApi(() => ({ status: 200, body: [] }), true, {
+    submissionsIn: async () => ({
+      status: 200,
+      body: [{ merged_at: null, head: { ref: "aut-1" }, title: "AUT-1 なにか" }],
+    }),
+  });
+
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker, api, repos: [repoWithHook("r")] }),
+  );
+
+  assert.equal(r.state, ACTIVE);
+  assert.ok(!r.observations.some((o) => o.includes("統合済みなのに着手中")), r.observations.join("\n"));
+});
+
+test("提出を読めなければ、読めなかったことを言う", async () => {
+  // **黙ると「取り残しは無かった」と読める。**
+  const tracker = trackerWith([{ id: "AUT-1", title: "", url: "", body: "", state: "started" }]);
+  const api = fakeApi(() => ({ status: 200, body: [] }), true, {
+    submissionsIn: async () => ({ status: 401, body: {} }),
+  });
+
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker, api, repos: [repoWithHook("r")] }),
+  );
+
+  assert.ok(r.observations.some((o) => o.includes("提出を読めず")), r.observations.join("\n"));
+});
+
+test("完了済みの作業単位を指したままのマーカーを観測として出す", async () => {
+  // **ここは連携では届かない。** マーカーは手元のファイルであり、Tracker が状態を
+  // 動かしても残る。外れないまま記録が続くと、完了した作業単位に紐づく（AUT-165）。
+  const repo = repoWithHook("r");
+  mkdirSync(join(repo.path, ".autodrive"), { recursive: true });
+  writeFileSync(
+    join(repo.path, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-2", repo: "r" }),
+    "utf8",
+  );
+  const tracker = trackerWith([
+    { id: "AUT-1", title: "", url: "", body: "", state: "started" },
+    { id: "AUT-2", title: "", url: "", body: "", state: "done" },
+  ]);
+
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker, repos: [repo] }),
+  );
+
+  assert.equal(r.state, ACTIVE);
+  assert.ok(
+    r.observations.some((o) => o.includes("マーカーが完了済み") && o.includes("AUT-2")),
+    r.observations.join("\n"),
+  );
+});
+
+test("着手中の作業単位を指すマーカーは、何も言わない", async () => {
+  const repo = repoWithHook("r");
+  mkdirSync(join(repo.path, ".autodrive"), { recursive: true });
+  writeFileSync(
+    join(repo.path, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-1", repo: "r" }),
+    "utf8",
+  );
+  const tracker = trackerWith([{ id: "AUT-1", title: "", url: "", body: "", state: "started" }]);
+
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker, repos: [repo] }),
+  );
+
+  assert.ok(!r.observations.some((o) => o.includes("マーカーが完了済み")), r.observations.join("\n"));
 });
 
 test("Tracker の資格情報が無ければ判定不能として失敗する", async () => {
