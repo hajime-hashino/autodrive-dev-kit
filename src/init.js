@@ -473,6 +473,20 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
     todo.push(t("todo.reopen"));
   }
 
+  // **完了させる仕組みは、ここでは配れない。** Tracker と Repo の連携が動かす
+  // （ADR 0007）。ファイルは置けるが、**外部サービスの設定画面は押せない。**
+  //
+  // **実装名で書く。** 人が実際に開く画面の名前だからである（AUT-163）。構成に
+  // 記録された実装を差し込むため、差し替えても案内が古くならない。
+  if (config !== null && config !== undefined) {
+    todo.push(
+      say(config.language ?? "ja", "todo.trackerLink", {
+        tracker: config.ports.tracker,
+        repo: config.ports.repo,
+      }),
+    );
+  }
+
   if (pointer !== null) todo.push(pointer);
 
   // **前のバージョンが置いた CI 定義を、黙って消さない。** 判定は `invariants` に改名した
