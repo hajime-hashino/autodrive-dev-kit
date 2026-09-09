@@ -259,5 +259,19 @@
     "from": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"--\", ...files]);",
     "to": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"-a\"]);",
     "why": "手元の他の変更まで一緒にコミットされる"
+  },
+  {
+    "name": "AUT-163 カタカナを避ける、へ戻す",
+    "file": "templates/autodrive.md",
+    "from": "**カタカナを避けない。**",
+    "to": "**カタカナを避ける。**",
+    "why": "通じる語から造語が作られる。鍵・印・枝・引き金はすべてこれで出た"
+  },
+  {
+    "name": "AUT-163 作る側の規約を、配布物へ混ぜ戻す",
+    "file": "templates/autodrive.md",
+    "from": "コマンドの名前は、定義§16のポートの語をそのまま使っている。",
+    "to": "**動くものは、ポート語彙で書く。** 手順も文書も、定義§16のポート語彙で書く。",
+    "why": "利用する側に要らない規約が配られ、広げた読み方が造語を生む"
   }
 ]
