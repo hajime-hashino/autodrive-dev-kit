@@ -1,5 +1,11 @@
 [
   {
+    "name": "AUT-165 状態の解決を、型が一致した最初の1件へ戻す",
+    "file": "src/adapters/trackerLinear.js",
+    "from": "    const found = data.team.states.nodes\n      .filter((s) => s.type === STATE_TYPE[to])\n      .sort((a, b) => a.position - b.position)[0];",
+    "to": "    const found = data.team.states.nodes.find((s) => s.type === STATE_TYPE[to]);"
+  },
+  {
     "name": "AUT-165 統合の有無を無視して取り残しと言う",
     "file": "src/checks.js",
     "from": "      if (!s.merged) continue;",
