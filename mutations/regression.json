@@ -1,15 +1,21 @@
 [
   {
-    "name": "AUT-114 統合の有無を無視して閉じる",
-    "file": "src/reconcile.js",
-    "from": "for (const item of finished(items, mergedIds, except)) {",
-    "to": "for (const item of finished(items, new Set(repoOf.keys()), except)) {"
+    "name": "AUT-165 統合の有無を無視して取り残しと言う",
+    "file": "src/checks.js",
+    "from": "      if (!s.merged) continue;",
+    "to": "      "
   },
   {
-    "name": "AUT-114 読めなかったことを黙る",
-    "file": "src/reconcile.js",
-    "from": "      out.unreadable.push(`${repo.name}: 提出を読めない`);",
+    "name": "AUT-165 提出を読めなかったことを黙る",
+    "file": "src/checks.js",
+    "from": "      r.observe(`${repo.name}: 提出を読めず、取り残しを確かめられない`);",
     "to": "      "
+  },
+  {
+    "name": "AUT-165 着手中の作業単位を指すマーカーまで咎める",
+    "file": "src/checks.js",
+    "from": "  const closed = new Set(items.filter((i) => i.state === \"done\" || i.state === \"canceled\").map((i) => i.id));",
+    "to": "  const closed = new Set(items.map((i) => i.id));"
   },
   {
     "name": "AUT-116 手で変えられていても上書きする",
