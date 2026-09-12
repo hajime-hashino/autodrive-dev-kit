@@ -46,13 +46,27 @@ fi
 #
 # ここでは直さない。**直すのは init-firewall.sh であり、起動のたびに走る。**
 # ここは、それが走らなかったことに気づくための最後の網である。
+#
+# **したがって、閉じたあとに走らなければ意味が無い。** postCreateCommand に
+# 置いていた間は閉じる前に走っており、配った先すべてで毎回「効いていない」と
+# 報告していた（AUT-169）。呼ぶ場所は devcontainer.json の postStartCommand。
+#
+# **出られないことだけでは、閉じていることの根拠にならない。** 通信そのものが
+# 死んでいても、規則が厳しすぎて許可した宛先にも届かなくても、同じように
+# 出られない。**両方向を見て、初めて「閉じている」と言える。**
 if [ -f "$ROOT/.devcontainer/allowed-domains.txt" ]; then
-  if curl -fsS --max-time 5 -o /dev/null https://example.com 2>/dev/null; then
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "⚠ 出口制限を確かめられない。curl が入っていない。"
+    echo "    **確かめられないことを、効いていることにしない。**"
+  elif curl -fsS --max-time 5 -o /dev/null https://example.com 2>/dev/null; then
     echo "⚠ 出口制限が効いていない。許可していない宛先へ出られる。"
     echo "    sudo bash .devcontainer/init-firewall.sh を打つこと。"
     echo "    **効かないまま動くと、隔離されていると思ったまま作業することになる。**"
-  else
+  elif curl -fsS --max-time 5 -o /dev/null https://api.github.com 2>/dev/null; then
     echo "✓ 出口制限が効いている"
+  else
+    echo "⚠ 出口制限を確かめられない。許可した宛先にも届かない。"
+    echo "    規則が厳しすぎるか、通信そのものが落ちている。"
   fi
 fi
 

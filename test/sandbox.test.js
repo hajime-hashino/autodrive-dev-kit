@@ -388,6 +388,56 @@ test("支度の確認が、出口の状態を見る", () => {
   assert.ok(sh.includes("init-firewall.sh"), "どう直すかを出していない");
 });
 
+// ------------------------------------------ 確認は閉じたあとに走る（AUT-169）
+
+// **網が、閉じる前に置かれていた。** 確認は post-create.sh から呼ばれており、
+// つまり postCreateCommand で走る。devcontainer は postCreate → postStart の順に
+// 走るため、**確認の時点では必ず規則が無い。** 配った先すべてで、環境を作り直す
+// たびに「出口制限が効いていない」と誤って報告していた。
+test("支度の確認は、出口を閉じたあとに走る", () => {
+  const dc = devcontainerJson();
+  const cmd = dc.postStartCommand ?? "";
+  assert.ok(cmd.includes("check-setup.sh"), `確認の機会が無い: postStart=${cmd}`);
+  // **順序まで見る。** 同じ行にあっても、確認が先なら閉じる前に走る。
+  assert.ok(
+    cmd.indexOf("init-firewall.sh") < cmd.indexOf("check-setup.sh"),
+    `確認が init-firewall.sh より先に走る: ${cmd}`,
+  );
+});
+
+// **直接でも、post-create.sh 経由でも同じである。** AUT-169 は後者だった。
+test("支度の確認を、作成時だけのフックから呼ばない", () => {
+  const dc = devcontainerJson();
+  assert.equal(
+    (dc.postCreateCommand ?? "").includes("check-setup.sh"),
+    false,
+    "作成時のフックが確認を直接呼んでいる。**出口を閉じる前に走る**",
+  );
+
+  const sh = readFileSync(join(KIT, "templates", "devcontainer", "post-create.sh"), "utf8");
+  const body = sh
+    .split("\n")
+    .filter((l) => !/^\s*#/.test(l))
+    .join("\n");
+  assert.equal(
+    body.includes("check-setup.sh"),
+    false,
+    "post-create.sh が確認を呼んでいる。**出口を閉じる前に走る**（AUT-169）",
+  );
+});
+
+// **出られないことは、閉じていることの根拠にならない。** curl が無くても、通信
+// そのものが落ちていても、規則が厳しすぎても、同じように出られない。直す前は
+// そのすべてを「効いている」と読んでいた。**確かめられないことを、正しいことに
+// していた。**
+test("確かめられないことを、効いていることにしない", () => {
+  const sh = readFileSync(join(KIT, "templates", "devcontainer", "check-setup.sh"), "utf8");
+  assert.ok(sh.includes("command -v curl"), "確かめる道具があるかを見ていない");
+  assert.ok(sh.includes("確かめられない"), "確かめられない場合を言い分けていない");
+  // **許可した宛先へ届くことまで見て、初めて「閉じている」と言える。**
+  assert.ok(sh.includes("api.github.com"), "許可した宛先の側を見ていない");
+});
+
 // --------------------------- 出口制限は閉じる仕掛けではない（AUT-122）
 
 // **「ここに無い宛先へは出られない」と書いていた。嘘だった。**
