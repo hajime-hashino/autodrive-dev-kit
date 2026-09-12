@@ -9,7 +9,7 @@
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
-import { resolveWorkItem } from "./workItem.js";
+import { defaultRoot, resolveWorkItem } from "./workItem.js";
 import { STOP_TYPES } from "./ports/telemetry.js";
 
 
@@ -177,7 +177,7 @@ export function run(argv , root) {
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const root = defaultRoot();
   const { output, code } = run(process.argv.slice(2), root);
   (code === 0 ? console.log : console.error)(output);
   process.exit(code);

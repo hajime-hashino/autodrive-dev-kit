@@ -284,5 +284,23 @@
     "file": "src/strandedTelemetry.js",
     "from": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n\n  return [",
     "to": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n  git(repoPath, [\"add\", \"--\", ...files]);\n  git(repoPath, [\"commit\", \"-m\", \"拾う\", \"--\", ...files]);\n\n  return ["
+  },
+  {
+    "name": "AUT-172 ブランチで引くのをやめ、マーカーだけに戻す",
+    "file": "src/workItem.js",
+    "from": "  const here = currentBranch(root, cwd, git);\n  if (here !== null) {",
+    "to": "  const here = null;\n  if (here !== null) {"
+  },
+  {
+    "name": "AUT-172 対応表を毎回作り直す（前の作業単位の対応が消える）",
+    "file": "src/workItem.js",
+    "from": "  const map = readBranchMap(root);\n  map[branchKey(repo, branch)]",
+    "to": "  const map = {};\n  map[branchKey(repo, branch)]"
+  },
+  {
+    "name": "AUT-172 起点の外のリポジトリも認める",
+    "file": "src/workItem.js",
+    "from": "  if (top !== base && dirname(top) !== base) return null;",
+    "to": "  void base;"
   }
 ]
