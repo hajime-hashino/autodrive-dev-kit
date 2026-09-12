@@ -27,6 +27,7 @@ import { parseArgs } from "node:util";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { discoverRepos } from "./repos.js";
 import { describeOthers, detect, strandedFiles } from "./strandedTelemetry.js";
+import { defaultRoot, rememberBranch } from "./workItem.js";
 import { writeMarker } from "./trackerCli.js";
 
 const USAGE = `作業単位に着手する
@@ -237,6 +238,10 @@ export async function run(
   // **提出のあとに書かれた記録を、ここで拾う。** 報告して止まった時点でフックが
   // 走るため、最後の1件は構造的にコミットされない（AUT-156）。持ち越されるだけでは
   // 次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
+  // **ブランチと作業単位の対応を書き残す。** マーカーは次の着手で入れ替わるが、
+  // ブランチは残る。戻って書いた記録が、正しい作業単位へ向かうため（AUT-172）。
+  rememberBranch(root, repo, branch, item.id);
+
   const stranded = detect(repoPath, git);
 
   // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
@@ -287,7 +292,7 @@ export async function run(
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const root = defaultRoot();
   const token = process.env.LINEAR_API_KEY;
   const argv = process.argv.slice(2);
   if (token === undefined && argv.length > 0) {

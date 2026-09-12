@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { branchNameFor, defaultBranchOf, run } from "../src/beginCli.js";
+import { rememberBranch } from "../src/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -344,4 +345,30 @@ test("着手は、他の作業単位を完了させない", async () => {
   assert.equal(marker(root).work_item_id, "AUT-99");
   const closed = tracker.advanced.filter((a) => a.includes(":done"));
   assert.deepEqual(closed, [], `着手が完了へ動かしている: ${closed.join(",")}`);
+});
+
+// **ブランチと作業単位の対応を残すこと**（AUT-172）。マーカーは次の着手で
+// 入れ替わるが、ブランチは残る。戻って書いた記録が正しい先へ向かうために要る。
+test("着手のときに、ブランチと作業単位の対応を書き残す", async () => {
+  const root = workspace();
+  await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), fakeGit());
+
+  const map = JSON.parse(
+    readFileSync(join(root, ".autodrive", "work-items.json"), "utf8"),
+  );
+  assert.equal(map["agent-playground/aut-99"]?.work_item_id, "AUT-99");
+});
+
+test("前の作業単位の対応を、消さずに足す", async () => {
+  const root = workspace();
+  // 先に前の作業単位の対応があるところへ、次の着手を重ねる
+  rememberBranch(root, "agent-playground", "aut-98", "AUT-98");
+  await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), fakeGit());
+
+  const map = JSON.parse(
+    readFileSync(join(root, ".autodrive", "work-items.json"), "utf8"),
+  );
+  // **消すと、前のブランチへ戻って書いた記録が迷子になる。** それがこの表の目的。
+  assert.equal(map["agent-playground/aut-98"]?.work_item_id, "AUT-98", "前の対応が消えている");
+  assert.equal(map["agent-playground/aut-99"]?.work_item_id, "AUT-99");
 });
