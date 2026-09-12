@@ -152,24 +152,23 @@ test("手元に残っている変更は、消さずに知らせる", async () =>
   assert.ok(output.includes("telemetry/AUT-1.jsonl"), output);
 });
 
-// ------------------------------------------------- 取り残された記録（AUT-156）
+// ------------------------------------------------- 取り残された記録（AUT-162）
 //
-// **提出のあとに書かれた記録は、その作業単位のコミットには入らない。** 持ち越される
-// だけでは、次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
+// **以前はここで拾ってコミットしていた。** それは別の作業単位の記録を、いま着手した
+// 作業単位の提出に載せる形だった。いまは言うだけにする。
 
-test("取り残された記録を、着手したブランチへ載せる", async () => {
+test("取り残された記録があっても、コミットしない", async () => {
   const root = workspace();
   const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-98.jsonl" });
 
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
-  const committed = git.calls.find((a) => a[0] === "commit");
-  assert.ok(committed, `拾っていない: ${output}`);
-  assert.ok(committed.includes("telemetry/AUT-98.jsonl"), "対象が渡っていない");
-  assert.ok(output.includes("取り残された記録を拾って"), output);
+  assert.equal(git.calls.some((a) => a[0] === "commit"), false, `拾ってコミットしている: ${output}`);
+  assert.ok(output.includes("取り残された記録がある"), output);
+  assert.ok(output.includes("telemetry/AUT-98.jsonl"), output);
 });
 
-test("取り残しが無ければ、コミットを作らない", async () => {
+test("取り残しが無ければ、何も言わない", async () => {
   const root = workspace();
   const git = fakeGit();
 
