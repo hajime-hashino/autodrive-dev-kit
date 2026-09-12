@@ -19,7 +19,15 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { resolveRepo, resolveWorkItem, telemetryPath } from "../src/workItem.js";
+import {
+  currentBranch,
+  defaultRoot,
+  findRoot,
+  rememberBranch,
+  resolveRepo,
+  resolveWorkItem,
+  telemetryPath,
+} from "../src/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 
 function withMarker(repo) {
@@ -103,4 +111,98 @@ test("置き場所は絶対パスで返す", () => {
   } finally {
     process.chdir(before);
   }
+});
+
+// --------------------------------------------- ブランチで引く（AUT-172）
+//
+// **マーカー1つで引いていた間、提出のあとに書いた記録が次の作業単位へ紐づいた。**
+// 提出したあとに人の指摘が来るのは普通のことで、そのときマーカーは既に次を指す。
+// 実際に3件が誤った先へ向かった。**帰属しないより悪い。誰も気づかない。**
+
+/** 起点と、その下のリポジトリを作る。git は偽物を渡す。 */
+function workspace(repos) {
+  const root = tempDir("autodrive-branch-");
+  mkdirSync(join(root, ".autodrive"), { recursive: true });
+  for (const r of repos) mkdirSync(join(root, r), { recursive: true });
+  return root;
+}
+
+/** いま居る作業ツリーを装う git。 */
+function fakeGit(top, branch) {
+  return (_cwd, args) => {
+    if (args[0] === "rev-parse") return `${top}\n`;
+    if (args[0] === "branch") return `${branch}\n`;
+    throw new Error(`想定外: ${args.join(" ")}`);
+  };
+}
+
+test("ブランチの対応が、マーカーより優先される", () => {
+  const root = workspace(["kit"]);
+  // マーカーは次の作業単位を指している。**これが実際に起きた形である。**
+  writeFileSync(
+    join(root, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-174", repo: "kit" }),
+    "utf8",
+  );
+  rememberBranch(root, "kit", "aut-162", "AUT-162");
+
+  const { item } = resolveWorkItem(root, join(root, "kit"), fakeGit(join(root, "kit"), "aut-162"));
+  assert.equal(item?.workItemId, "AUT-162", "マーカーの側を拾っている");
+});
+
+test("対応表に無いブランチなら、マーカーへ落ちる", () => {
+  const root = workspace(["kit"]);
+  writeFileSync(
+    join(root, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-174", repo: "kit" }),
+    "utf8",
+  );
+
+  const { item } = resolveWorkItem(root, join(root, "kit"), fakeGit(join(root, "kit"), "main"));
+  assert.equal(item?.workItemId, "AUT-174");
+});
+
+// **名前の形から逆算しない。** `--branch` で別名を渡された場合に外れ、作業単位で
+// ないブランチ名から存在しないIDを作ってしまう。
+test("作業単位のように見えるブランチ名でも、対応が無ければ引かない", () => {
+  const root = workspace(["kit"]);
+  const { item, unattributedReason } = resolveWorkItem(
+    root,
+    join(root, "kit"),
+    fakeGit(join(root, "kit"), "aut-999"),
+  );
+  assert.equal(item, null, "名前から作業単位IDを作っている");
+  assert.match(String(unattributedReason), /マーカーが無い/);
+});
+
+test("起点の外のリポジトリでは引かない", () => {
+  const root = workspace(["kit"]);
+  rememberBranch(root, "kit", "aut-162", "AUT-162");
+  // 起点の下ではない作業ツリー
+  const outside = resolve(root, "..", "よその作業ツリー");
+  assert.equal(currentBranch(root, outside, fakeGit(outside, "aut-162")), null);
+});
+
+test("切り離された HEAD では引かない", () => {
+  const root = workspace(["kit"]);
+  assert.equal(currentBranch(root, join(root, "kit"), fakeGit(join(root, "kit"), "")), null);
+});
+
+// **打つ場所で結果が変わらないこと。** 子リポジトリの中から打つと起点が見つからず、
+// 「作業単位に紐づかないやり取りである可能性がある」と誤った理由が残っていた。
+test("子リポジトリの中から打っても、起点を探し上げる", () => {
+  const root = workspace(["kit"]);
+  mkdirSync(join(root, "kit", "src", "深い場所"), { recursive: true });
+  assert.equal(findRoot(join(root, "kit", "src", "深い場所")), root);
+});
+
+test("起点が無ければ、探し上げは null を返す", () => {
+  const nowhere = tempDir("autodrive-noroot-");
+  assert.equal(findRoot(nowhere), null);
+});
+
+test("環境変数の起点は、探し上げより優先される", () => {
+  const root = workspace(["kit"]);
+  assert.equal(defaultRoot({ CLAUDE_PROJECT_DIR: "/指定された場所" }, join(root, "kit")), "/指定された場所");
+  assert.equal(defaultRoot({}, join(root, "kit")), root);
 });

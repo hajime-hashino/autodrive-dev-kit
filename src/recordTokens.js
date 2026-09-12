@@ -32,7 +32,7 @@ import { KIT_VERSION } from "./kitVersion.js";
 import { readUsageSince } from "./transcript.js";
 import { writeSessionState } from "./sessionState.js";
 import { buildPayload, otlpTarget, send } from "./adapters/tokensOtlp.js";
-import { resolveWorkItem, cursorPath, readCursor, writeCursor } from "./workItem.js";
+import { defaultRoot, resolveWorkItem, cursorPath, readCursor, writeCursor } from "./workItem.js";
 
 /** @typedef {{ transcript_path?: unknown, session_id?: unknown, cwd?: unknown, hook_event_name?: unknown }} HookInput */
 /** @typedef {{ sent: number, note: string }} RecordResult */
@@ -106,7 +106,7 @@ const invokedDirectly =
   process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 
 if (invokedDirectly) {
-  const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const root = defaultRoot();
   let input = {};
   try {
     const raw = await readStdin();

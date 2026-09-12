@@ -1,0 +1,1 @@
+{"ts":"2026-09-12T13:05:07.619Z","work_item_id":"AUT-172","model":"claude-opus-5","kit_version":"0.3.3","emitter":"adapter","type":"stop","stop_kind":"設計判断","stop_type":"入力","detail":"AUT-172 の打ち手を、ブランチと作業単位の対応表で引く形に決めた。ADR 0002 が「成立しない」とした根拠（セッション記録の gitBranch が全行 HEAD）は、実測で崩れている。ただし採ったのはセッション記録ではなく、書く時点の作業ツリーそのものを見る形であり、実行基盤の都合に依存しない。","resolved":false}
