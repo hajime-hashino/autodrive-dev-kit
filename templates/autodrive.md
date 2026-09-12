@@ -236,7 +236,8 @@ autodrive-dev-kit は `{{KIT}}/` にある。**このバージョンで動く。
 
 ```jsonc
 "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],   // 規則を置くのに要る
-"postStartCommand": "sudo bash .devcontainer/init-firewall.sh",  // 起動のたびに規則を置き直す
+// 起動のたびに規則を置き直し、そのあとで閉じたことを確かめる
+"postStartCommand": "sudo bash .devcontainer/init-firewall.sh && { bash .devcontainer/check-setup.sh || true; }",
 "remoteUser": "vscode",                                     // root で動かさない
 ```
 
@@ -245,6 +246,10 @@ autodrive-dev-kit は `{{KIT}}/` にある。**このバージョンで動く。
 **`postCreateCommand` へ移さないこと。** あれは作ったときにしか走らない。iptables の
 規則はコンテナのネットワーク名前空間にあるため停止すると消えるので、**2回目以降の
 起動で隔離が無くなる。** 実際にそうなっていた（AUT-121）。10日間、誰も気づかなかった。
+
+**確認も、同じ理由で postCreateCommand に置かない。** postCreate → postStart の順に
+走るため、**確認の時点では必ず規則が無く、毎回「効いていない」と報告する**
+（AUT-169）。誤って出る警告は、本物の警告を「また誤りだろう」で流させる。
 
 **判定は、書いてあるかしか見ない。** 実際に出られるかどうかは `init-firewall.sh` が
 起動のたびに両方向で確かめる。**どちらも要る。**

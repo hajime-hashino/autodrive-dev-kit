@@ -29,6 +29,8 @@
   },
 
   // 支度は作ったときだけでよい。rc への追記も git の設定も、残る。
+  // **確認はここに置かない。** 出口を閉じるより前に走るため、必ず「効いていない」
+  // と誤って報告することになる（下記）。
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   // **出口を閉じるのは、起動のたびに行う。** iptables の規則はコンテナの
@@ -37,7 +39,17 @@
   // 実際にそうなっていた（AUT-121）。
   //
   // 出口を閉じるには root が要る。エージェントは root では動かさない。
-  "postStartCommand": "sudo bash .devcontainer/init-firewall.sh",
+  //
+  // **準備の確認は、閉じたあとに続けて走らせる。** postCreateCommand に置いて
+  // いた間、確認は毎回「出口制限が効いていない」と報告していた。**devcontainer は
+  // postCreate → postStart の順に走るため、確認の時点では必ず閉じていない。**
+  // 確認自身が「init-firewall.sh が走らなかったことに気づくための最後の網」と
+  // 書いているのに、閉じる前に置かれていた（AUT-169）。
+  //
+  // **`|| true` を外さないこと。** 初回は .env がまだ無いのが正常であり、そこで
+  // 起動を失敗扱いにすると、中に入って直すより先に赤が出る。出口が閉じられな
+  // かった場合は init-firewall.sh 自身が 1 で落ちるので、そちらは隠れない。
+  "postStartCommand": "sudo bash .devcontainer/init-firewall.sh && { bash .devcontainer/check-setup.sh || true; }",
   "remoteUser": "vscode",
 
   "customizations": {
