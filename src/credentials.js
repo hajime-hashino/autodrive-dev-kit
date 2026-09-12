@@ -162,9 +162,14 @@ const FOR_IMPLEMENTATION = {
       name: "AUTODRIVE_OTLP_HEADERS",
       why: "送り先の認証。`key=value,key=value` で書く（OpenTelemetry の慣習に合わせている）",
       lost: "受け側で鍵を再発行し、`Authorization=Basic <base64(公開鍵:秘密鍵)>` を組み直す",
+      // **実際にここで 401 になった**（AUT-174）。値が切れていることは見えず、
+      // 認証だけが落ちるため、キーが違うのかと疑うことになる。
       note:
-        "**値に `=` が入る。** base64 は `=` で終わる。`Authorization=Basic xxx==` のように" +
-        "書いてよい（最初の `=` だけで割る）。",
+        "**`.env` では引用符で囲むこと。** 値に空白が入るため（`Basic` と base64 の間）、" +
+        "囲まないとシェルが読んだ時点で `Authorization=Basic` までで切れる。" +
+        "**切れても静かに通り、認証だけが 401 で落ちる。**\n" +
+        '    AUTODRIVE_OTLP_HEADERS="Authorization=Basic xxx,x-langfuse-ingestion-version=4"\n' +
+        "**値に `=` が入るのは正しい。** base64 は `=` で終わる（最初の `=` だけで割る）。",
     },
   ],
   linear: [
