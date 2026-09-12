@@ -41,7 +41,10 @@ export const PORT_CHOICES = {
   runner: ["github-actions"],
   sandbox: ["devcontainer", NONE],
   preview: ["cloudflare-workers", NONE],
-  telemetry: ["jsonl"],
+  // **`jsonl+otlp` は、2つの行き先を持つ1つの実装である。** §6のイベントは
+  // リポジトリの中の JSONL へ、トークン消費は OTLP で外へ送る。分けているのは、
+  // 書かれる時点が違うためである（トークンは提出の後に書かれる。AUT-162）。
+  telemetry: ["jsonl", "jsonl+otlp"],
   flag: [NONE],
 };
 
