@@ -266,13 +266,6 @@
     "why": "最後の1件が次の作業単位のコミットに紛れるか、次が無ければ残り続ける"
   },
   {
-    "name": "AUT-156 パスを指さずにコミットする",
-    "file": "src/strandedTelemetry.js",
-    "from": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"--\", ...files]);",
-    "to": "    git(repoPath, [\"commit\", \"-m\", commitMessage(workItemId, files), \"-a\"]);",
-    "why": "手元の他の変更まで一緒にコミットされる"
-  },
-  {
     "name": "AUT-163 カタカナを避ける、へ戻す",
     "file": "templates/autodrive.md",
     "from": "**カタカナを避けない。**",
@@ -285,5 +278,11 @@
     "from": "コマンドの名前は、定義§16のポートの語をそのまま使っている。",
     "to": "**動くものは、ポート語彙で書く。** 手順も文書も、定義§16のポート語彙で書く。",
     "why": "利用する側に要らない規約が配られ、広げた読み方が造語を生む"
+  },
+  {
+    "name": "AUT-162 取り残しを拾ってコミットする形へ戻す",
+    "file": "src/strandedTelemetry.js",
+    "from": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n\n  return [",
+    "to": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n  git(repoPath, [\"add\", \"--\", ...files]);\n  git(repoPath, [\"commit\", \"-m\", \"拾う\", \"--\", ...files]);\n\n  return ["
   }
 ]
