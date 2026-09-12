@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { isWorkItemState } from "./ports/tracker.js";
 
-import { STATE_DIR } from "./workItem.js";
+import { STATE_DIR, defaultRoot } from "./workItem.js";
 
 const USAGE = `作業単位を扱う
 
@@ -148,7 +148,7 @@ export async function run(
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
-  const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const root = defaultRoot();
   const token = process.env.LINEAR_API_KEY;
   const argv = process.argv.slice(2);
   if (token === undefined && OPERATIONS[argv[0] ?? ""] !== undefined) {
