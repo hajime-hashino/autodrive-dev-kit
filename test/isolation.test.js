@@ -36,6 +36,21 @@ function edit(root, change) {
 
 const gapsOf = (root) => isolationGaps(root).map((g) => g.gap);
 
+/**
+ * `postStartCommand` の行を落とす。
+ *
+ * **テンプレートの一行を書き写さない。** 書き方が変わった時点で置換が当たらなく
+ * なり、**何も壊していない定義を「壊した」として通す。** 実際に当たらなくなった
+ * （AUT-169 で確認の呼び出しを足したとき）。落とせなければ、その場で落とす。
+ */
+function dropPostStart(root) {
+  edit(root, (s) => {
+    const dropped = s.replace(/^[ \t]*"postStartCommand":.*\n/m, "");
+    assert.notEqual(dropped, s, "postStartCommand の行を落とせていない。壊せていない");
+    return dropped;
+  });
+}
+
 // ------------------------------------------------------------ 素の状態
 
 // **置いたままなら通ること。** ここが落ちると、直し方の分からない警告が初日に出る。
@@ -56,13 +71,12 @@ test("サンドボックスを使っていなければ、何も言わない", ()
 // 指紋では捕まらない。**ここで捕まえられなければ、置いた意味が無い。**
 test("出口を閉じる処理が、作ったときにしか走らない形を捕まえる", () => {
   const root = placed();
+  dropPostStart(root);
   edit(root, (s) =>
-    s
-      .replace('"postStartCommand": "sudo bash .devcontainer/init-firewall.sh",', "")
-      .replace(
-        '"postCreateCommand": "bash .devcontainer/post-create.sh",',
-        '"postCreateCommand": "sudo bash .devcontainer/init-firewall.sh",',
-      ),
+    s.replace(
+      '"postCreateCommand": "bash .devcontainer/post-create.sh",',
+      '"postCreateCommand": "sudo bash .devcontainer/init-firewall.sh",',
+    ),
   );
 
   const gaps = isolationGaps(root);
@@ -75,7 +89,7 @@ test("出口を閉じる処理が、作ったときにしか走らない形を�
 
 test("出口を閉じる処理を呼んでいない形を捕まえる", () => {
   const root = placed();
-  edit(root, (s) => s.replace('"postStartCommand": "sudo bash .devcontainer/init-firewall.sh",', ""));
+  dropPostStart(root);
 
   assert.deepEqual(gapsOf(root), ["postStartCommand が init-firewall.sh を呼んでいない"]);
 });
