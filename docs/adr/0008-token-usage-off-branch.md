@@ -105,7 +105,7 @@ OTLP over HTTP/JSON は素の POST で送れる。OpenTelemetry の SDK を入�
 
 実際に送って、受け側で読み返した。
 
-| | |
+| 見たもの | 値 |
 |---|---|
 | 種別 | `GENERATION` |
 | モデル | `claude-opus-5`（受け側の単価表に載っていた） |
