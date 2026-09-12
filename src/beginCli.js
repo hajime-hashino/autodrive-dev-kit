@@ -26,7 +26,7 @@ import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { LinearTracker } from "./adapters/trackerLinear.js";
 import { discoverRepos } from "./repos.js";
-import { describeOthers, strandedFiles, sweep } from "./strandedTelemetry.js";
+import { describeOthers, detect, strandedFiles } from "./strandedTelemetry.js";
 import { writeMarker } from "./trackerCli.js";
 
 const USAGE = `作業単位に着手する
@@ -237,7 +237,7 @@ export async function run(
   // **提出のあとに書かれた記録を、ここで拾う。** 報告して止まった時点でフックが
   // 走るため、最後の1件は構造的にコミットされない（AUT-156）。持ち越されるだけでは
   // 次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
-  const swept = sweep(repoPath, item.id, git);
+  const stranded = detect(repoPath, git);
 
   // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
   const dirty = git(repoPath, ["status", "--short"]).trim();
@@ -277,7 +277,7 @@ export async function run(
       `対象リポジトリ  ${repo}`,
       `ブランチ              ${branch}（${defaultBranch} から）`,
       `記録の紐づけ先  ${repo} の ${item.id}`,
-      ...swept,
+      ...stranded,
       ...carried,
       ...others,
     ].join("\n"),

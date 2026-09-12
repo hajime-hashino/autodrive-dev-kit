@@ -1,18 +1,14 @@
 /**
- * 取り残された記録を、拾えること。
+ * 取り残された記録に、気づけること。
  *
- * **拾えたことだけを見ない。** 拾わなくても「拾えた」と出る形になっていないか、
- * 記録以外を巻き込んでいないかまで見る。
+ * **拾わないことを判定する。** 以前は拾ってコミットしていたが、それは別の作業単位の
+ * 記録を、いま着手した作業単位の提出に載せる形だった（AUT-162）。**気づけることと、
+ * 勝手に載せることは違う。**
  */
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  commitMessage,
-  describeOthers,
-  strandedFiles,
-  sweep,
-} from "../src/strandedTelemetry.js";
+import { describeOthers, detect, strandedFiles } from "../src/strandedTelemetry.js";
 
 // ------------------------------------------------------------ 何を拾うか
 
@@ -67,16 +63,7 @@ test("何も無ければ、何も拾わない", () => {
   }
 });
 
-// ------------------------------------------------------------ 何を書くか
-
-test("コミットの本文が、どの記録を拾ったのかを言う", () => {
-  const msg = commitMessage("AUT-156", ["telemetry/AUT-155.jsonl"]);
-  assert.match(msg.split("\n")[0], /^AUT-156 /, "件名が、このブランチの作業単位のものでない");
-  assert.match(msg, /telemetry\/AUT-155\.jsonl/, "何を拾ったのかが無い");
-  assert.match(msg, /最後の1件は必ず後から来る/, "なぜ起きるのかが無い");
-});
-
-// ------------------------------------------------------------ 拾う
+// ------------------------------------------------------- 気づく（拾わない）
 
 /** 呼ばれた git の引数を残す。 */
 function fakeGit(responses = {}, fails = []) {
@@ -91,39 +78,27 @@ function fakeGit(responses = {}, fails = []) {
   return git;
 }
 
-test("取り残しがあれば、コミットする", () => {
+// **これが AUT-162 の眼目である。** 気づくことと、勝手にコミットすることは違う。
+test("取り残しがあっても、コミットしない", () => {
   const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-155.jsonl" });
-  const out = sweep("/repo", "AUT-156", git);
+  const out = detect("/repo", git).join("\n");
 
-  const committed = git.calls.find((a) => a[0] === "commit");
-  assert.ok(committed, "コミットしていない");
-  assert.ok(git.calls.some((a) => a[0] === "add"), "add していない");
-  // **パスを指していること。** 指さないと、手元の他の変更を巻き込む。
-  assert.ok(committed.includes("--"), "パスを指さずにコミットしている");
-  assert.ok(committed.includes("telemetry/AUT-155.jsonl"), "対象が渡っていない");
-  assert.match(out.join("\n"), /拾って、このブランチへ載せた/);
-});
-
-test("取り残しが無ければ、コミットしない", () => {
-  const git = fakeGit({ "status --porcelain -uall": " M src/init.js" });
-  const out = sweep("/repo", "AUT-156", git);
-  assert.deepEqual(out, [], "何も無いのに報告している");
-  assert.equal(git.calls.some((a) => a[0] === "commit"), false, "拾うものが無いのにコミットした");
-});
-
-// **失敗しても着手は成立させる。ただし黙らない**（`begin` の他の後片付けと同じ）。
-test("コミットできなくても、止めずに言う", () => {
-  const git = fakeGit({ "status --porcelain -uall": " M telemetry/AUT-155.jsonl" }, ["commit"]);
-  const out = sweep("/repo", "AUT-156", git).join("\n");
-  assert.match(out, /コミットできなかった/, "黙っている");
-  assert.match(out, /一緒に提出すること/, "どうすればよいかが無い");
+  assert.equal(git.calls.some((a) => a[0] === "commit"), false, "拾ってコミットしている");
+  assert.equal(git.calls.some((a) => a[0] === "add"), false, "add している");
+  // **黙らない。** 残っていることと、どうすればよいかを言う。
+  assert.match(out, /取り残された記録がある/, "黙っている");
   assert.match(out, /telemetry\/AUT-155\.jsonl/, "何が残っているのかが無い");
+  assert.match(out, /そちらのブランチへ載せること/, "どうすればよいかが無い");
+});
+
+test("取り残しが無ければ、何も言わない", () => {
+  const git = fakeGit({ "status --porcelain -uall": " M src/init.js" });
+  assert.deepEqual(detect("/repo", git), [], "記録以外に反応している");
 });
 
 test("状態を読めなくても、止めずに言う", () => {
   const git = fakeGit({}, ["status"]);
-  const out = sweep("/repo", "AUT-156", git).join("\n");
-  assert.match(out, /調べられなかった/, "黙っている");
+  assert.match(detect("/repo", git).join("\n"), /調べられなかった/, "黙っている");
 });
 
 // ------------------------------------------------------------ 他のリポジトリ

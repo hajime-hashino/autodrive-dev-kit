@@ -5,31 +5,44 @@
  * （transcript_path）と識別子だけである。したがってフックはきっかけであり、
  * 値の出どころはセッション記録になる。
  *
- * 定義§16の補足により、トークン消費とモデル識別子はアダプタが自動で付与する。
- * ポート語彙には現れないため、スキルからは呼ばれない。
+ * 定義§16の補足により、モデル識別子はアダプタが自動で付与する。ポート語彙には
+ * 現れないため、スキルからは呼ばれない。
+ *
+ * ## リポジトリへ書かない
+ *
+ * **トークン消費は任意の記録対象である**（定義§6、v0.16）。そして書かれるのは
+ * コミットと提出の後なので、**その作業単位の提出には構造的に間に合わない。**
+ *
+ * 以前は次の着手のときに拾ってコミットしていたが、拾えるのは同じ作業ツリーが
+ * 残っている場合に限られ、**作業単位ごとにワークツリーを捨てる並列実行では
+ * 拾う機会が消える**（AUT-162）。拾えた場合も、次の作業単位の提出に無関係な
+ * 変更が混ざる。
+ *
+ * **したがって、行き先は作業ツリーの外にする**（`adapters/tokensOtlp.js`）。
+ *
+ * ## モデル識別子は、ここで止めない
+ *
+ * **送り先が無くても、セッションの状態は必ず書く。** §6の他の5つの記録が持つ
+ * `model` は、ここが書いた値を読んでいる。**モデル識別子は必須属性のままである**
+ * （定義§6・§16補足）。束ねて止めると、必須のものまで落ちる。
  */
 
 import { basename, resolve } from "node:path";
 import { KIT_VERSION } from "./kitVersion.js";
 import { readUsageSince } from "./transcript.js";
 import { writeSessionState } from "./sessionState.js";
-import {
-  appendEvent,
-  resolveWorkItem,
-  cursorPath,
-  readCursor,
-  telemetryPath,
-  writeCursor,
-} from "./workItem.js";
+import { buildPayload, otlpTarget, send } from "./adapters/tokensOtlp.js";
+import { resolveWorkItem, cursorPath, readCursor, writeCursor } from "./workItem.js";
 
 /** @typedef {{ transcript_path?: unknown, session_id?: unknown, cwd?: unknown, hook_event_name?: unknown }} HookInput */
-export function record(input , root , now = new Date()) {
+/** @typedef {{ sent: number, note: string }} RecordResult */
+export async function record(input, root, now = new Date(), env = process.env, deps = {}) {
   const transcriptPath = typeof input.transcript_path === "string" ? input.transcript_path : "";
   const sessionId = typeof input.session_id === "string" ? input.session_id : "";
   if (transcriptPath === "" || sessionId === "") {
-    return { written: 0, path: null, note: "セッション記録の位置か識別子が渡されなかった" };
+    return { sent: 0, note: "セッション記録の位置か識別子が渡されなかった" };
   }
-/** @typedef {{ written: number, path: string | null, note: string }} RecordResult */
+
   const cursor = cursorPath(root, sessionId);
   const from = readCursor(cursor);
   const { byModel, lines, lastUuid } = readUsageSince(transcriptPath, from);
@@ -37,44 +50,48 @@ export function record(input , root , now = new Date()) {
   if (byModel.length === 0) {
     // 使用量が無くてもカーソルは進める。次回に同じ行を読み直さないため。
     writeCursor(cursor, lines, lastUuid);
-    return { written: 0, path: null, note: "新しい使用量は無い" };
+    return { sent: 0, note: "新しい使用量は無い" };
   }
 
-  const { item, unattributedReason } = resolveWorkItem(root);
-  const path = telemetryPath(root, item);
   const ts = now.toISOString();
 
-  // 記録の語彙は model を呼び出し側から受け取らない。ランタイム由来の値であり
-  // アダプタが付けるものなので（定義§16の補足）、ここで見た値を残して渡す。
+  // **送り先の有無に関わらず、必ず先に書く。** §6の他の記録が持つ `model` は
+  // ここが出どころであり、モデル識別子は必須属性のままである（定義§6）。
   const latest = byModel.reduce((a, b) => (b.responses > a.responses ? b : a));
   writeSessionState(root, { session_id: sessionId, last_model: latest.model, updated: ts });
 
-  for (const usage of byModel) {
-    appendEvent(path, {
-      ts,
-      // 作業単位が解決できない場合は null を書く。埋めずに残すことで、帰属しない
-      // 始めた作業を invariants が検出できる。黙って消すと記録から消えてしまう。
-      work_item_id: item?.workItemId ?? null,
-      model: usage.model,
-      kit_version: KIT_VERSION,
-      emitter: "adapter",
-      type: "tokens",
-      session_id: sessionId,
-      transcript: basename(transcriptPath),
-      hook_event: typeof input.hook_event_name === "string" ? input.hook_event_name : null,
-      responses: usage.responses,
-      input_tokens: usage.input_tokens,
-      output_tokens: usage.output_tokens,
-      cache_creation_input_tokens: usage.cache_creation_input_tokens,
-      cache_read_input_tokens: usage.cache_read_input_tokens,
-      ...(item === null ? { unattributed_reason: unattributedReason } : {}),
-    });
+  const target = otlpTarget(env);
+  if (target === null) {
+    // **送り先が無いのは、壊れているのではない。** トークン消費は任意の記録対象
+    // であり（定義§6 v0.16）、設定しない構成が成立する。
+    //
+    // カーソルは進める。**記録しないことを選んでいる以上、貯めて後で送る相手が
+    // 居ない。** 進めないと、後で設定したときに過去の全量がその時点の作業単位へ
+    // 付いてしまう。
+    writeCursor(cursor, lines, lastUuid);
+    return { sent: 0, note: "送り先が設定されていない（AUTODRIVE_OTLP_ENDPOINT）。トークン消費は記録しない" };
+  }
+
+  const { item, unattributedReason } = resolveWorkItem(root);
+  const payload = buildPayload({
+    usages: byModel.map((u) => (item === null ? { ...u, unattributedReason } : u)),
+    workItemId: item?.workItemId ?? null,
+    sessionId,
+    kitVersion: KIT_VERSION,
+    repo: item === null ? null : basename(item.repoPath),
+    now,
+  });
+
+  const result = await send(payload, target, deps);
+  if (!result.ok) {
+    // **カーソルを進めない。** 進めると、送れなかった分がそのまま消える。
+    // 次に走ったときに、まとめて送り直される。
+    return { sent: 0, note: `${result.note}（次回に送り直す）` };
   }
 
   writeCursor(cursor, lines, lastUuid);
   return {
-    written: byModel.length,
-    path,
+    sent: byModel.length,
     note: item === null ? "作業単位が解決できなかった" : `作業単位 ${item.workItemId}`,
   };
 }
@@ -97,8 +114,12 @@ if (invokedDirectly) {
   } catch {
     // フックの入力が壊れていても、エージェントの動作は止めない。
   }
-  const result = record(input, root);
+  // 送信に失敗しても、ここで投げさせない。**フックはエージェントを止めない。**
+  const result = await record(input, root).catch((e) => ({
+    sent: 0,
+    note: `記録の途中で落ちた: ${e instanceof Error ? e.message : String(e)}`,
+  }));
   // 終了コードは常に 0。記録の失敗でエージェントを止めない（フックの非ブロッキング）。
-  console.error(`record-tokens: ${result.written} 件 / ${result.note}`);
+  console.error(`record-tokens: ${result.sent} 件 / ${result.note}`);
   process.exit(0);
 }
