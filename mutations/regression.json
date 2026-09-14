@@ -302,5 +302,29 @@
     "file": "src/workItem.js",
     "from": "  if (top !== base && dirname(top) !== base) return null;",
     "to": "  void base;"
+  },
+  {
+    "name": "AUT-161 出られない宛先を数えない（常に「出られる」と言う）",
+    "file": "src/reachability.js",
+    "from": "  const blocked = results.filter((r) => !r.reachable);",
+    "to": "  const blocked = [];"
+  },
+  {
+    "name": "AUT-161 どの宛先が塞がっているかを言わない",
+    "file": "src/reachability.js",
+    "from": "      ...blocked.map((r) => `  ${r.host}: ${r.reason}`),",
+    "to": ""
+  },
+  {
+    "name": "AUT-161 直し方を言わない",
+    "file": "src/reachability.js",
+    "from": "      \"  sudo bash .devcontainer/init-firewall.sh\",",
+    "to": "      \"\","
+  },
+  {
+    "name": "AUT-161 許可一覧の注釈も宛先として読む",
+    "file": "src/reachability.js",
+    "from": "    if (trimmed === \"\" || trimmed.startsWith(\"#\")) continue;",
+    "to": "    if (trimmed === \"\") continue;"
   }
 ]
