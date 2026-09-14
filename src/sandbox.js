@@ -63,6 +63,11 @@ const FOR_IMPLEMENTATION = {
     { host: "objects.githubusercontent.com", why: "大きなオブジェクト" },
     // **無いと CI の失敗を自分で追えない。** 人に貼ってもらうか手元で再現するか
     // しかなく、そのぶん人の手間になる。
+    //
+    // **読むのは `gh run view --log-failed` である。** REST の
+    // `/actions/jobs/{id}/logs` は Azure の blob へ転送され、そのホスト名は
+    // 実行ごとに変わる（実測で `productionresultssa0/5/6/12/13/18/19`）。
+    // **ワイルドカードは書けないので、一覧では届かない**（AUT-161）。
     { host: "results-receiver.actions.githubusercontent.com", why: "実行結果のログ本文" },
     { host: "ghcr.io", why: "devcontainer feature の取得" },
     { host: "pkg-containers.githubusercontent.com", why: "同上" },
