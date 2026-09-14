@@ -94,3 +94,17 @@ test("判定の対象そのものが読めていること", () => {
   // 別の名前に含まれる GH_TOKEN を、違反と読まない。
   assert.deepEqual(bindsGhToken("          APP_GH_TOKEN: ${{ secrets.X }}"), []);
 });
+
+// **配る判定が、プロジェクトの都合で落ちないこと**（AUT-180）。
+//
+// `actions/setup-node` は既定で直下の lock ファイルを見て、その管理ツールで
+// キャッシュしようとする。**その実行ファイルが無いと、判定そのものが落ちる。**
+// 実際に agent-playground で `Unable to locate executable file: pnpm` が出た。
+//
+// **判定は依存を1つも使わない。** 参照実装は依存ゼロであり、node さえあれば走る。
+test("配る判定のワークフローが、パッケージ管理のキャッシュを試みない", () => {
+  const body = readFileSync(join(KIT, "templates", "invariants.yml"), "utf8");
+  assert.match(body, /package-manager-cache:\s*false/, "止めていない。lock ファイルのある先で落ちる");
+  // **止めた理由まで置く。** 消してよいものに見えると、次に消される。
+  assert.match(body, /依存を1つも使わない/, "なぜ止めているのかが無い");
+});
