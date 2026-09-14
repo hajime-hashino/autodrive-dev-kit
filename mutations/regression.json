@@ -326,5 +326,11 @@
     "file": "src/reachability.js",
     "from": "    if (trimmed === \"\" || trimmed.startsWith(\"#\")) continue;",
     "to": "    if (trimmed === \"\") continue;"
+  },
+  {
+    "name": "AUT-180 配る判定で、パッケージ管理のキャッシュを止めない",
+    "file": "templates/invariants.yml",
+    "from": "          package-manager-cache: false",
+    "to": ""
   }
 ]

@@ -21,6 +21,15 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22.18"
+          # **パッケージ管理のキャッシュを止める。** 既定では直下の lock ファイルを
+          # 見て、その管理ツールでキャッシュしようとする。pnpm / yarn / bun を使う
+          # プロジェクトでは、その実行ファイルが無いと**判定そのものが落ちる**
+          # （AUT-180、実際に `Unable to locate executable file: pnpm` で落ちた）。
+          #
+          # **判定は依存を1つも使わない。** 参照実装は依存ゼロであり、node さえ
+          # あれば走る。要らないキャッシュのために、プロジェクト側の都合を
+          # 持ち込まない。
+          package-manager-cache: false
 
       - name: 判定する
         run: {{KIT}}/invariants --root . --scope self
