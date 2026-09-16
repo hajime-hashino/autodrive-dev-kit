@@ -176,7 +176,7 @@
   },
   {
     "name": "AUT-150 配布物から、直接コミットしない旨を落とす",
-    "file": "templates/autodrive.md",
+    "file": "templates/autodrive-reference.md",
     "from": "**既定ブランチで打って直接コミットしないこと。**",
     "to": "既定ブランチで打ってよい。",
     "why": "入れ替えは追跡ファイルを書き換える。直接コミットは規約違反になる"
@@ -344,5 +344,17 @@
     "file": "templates/autodrive.md",
     "from": "**この文書は autodrive-dev-kit が置いたものである。**",
     "to": "**この文書は参照実装が置いたものである。**"
+  },
+  {
+    "name": "AUT-196 毎回読むほうから、引く先の案内を消す",
+    "file": "templates/autodrive.md",
+    "from": "[autodrive-reference.md](autodrive-reference.md) にある。** 触るときに引くこと。",
+    "to": "ここには書かない。"
+  },
+  {
+    "name": "AUT-196 配布物から、検証環境を経る流れを落とす",
+    "file": "templates/autodrive.md",
+    "from": "**確かめずに統合しないこと。** 検証環境へ出ていることと、誰かが見たことは違う。",
+    "to": "統合すると本番へ出る。"
   }
 ]

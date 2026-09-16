@@ -386,6 +386,10 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   managed(".env.example", envExample(config ?? defaults()), plan);
   managed(".github/workflows/invariants.yml", template(kitRoot, "invariants.yml"), plan);
   managed("docs/autodrive.md", template(kitRoot, "autodrive.md"), plan);
+  // **毎回読むものと、引くものを分けている。** 毎回読ませる量が、そのまま作業に
+  // 使える余地を削る。守ることは autodrive.md に短く書き、なぜ・どう測るか・
+  // 過去に何が起きたかはこちらに置く（AUT-196）。
+  managed("docs/autodrive-reference.md", template(kitRoot, "autodrive-reference.md"), plan);
 
   // サンドボックス。**置くものを決めるだけ。書くのはこの後。**
   const sandboxPlaced = config !== null && placeSandbox(root, kitRoot, config, plan);
