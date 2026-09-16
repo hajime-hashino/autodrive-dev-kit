@@ -168,7 +168,8 @@ my-app/
 | `.devcontainer/` | init | autodrive-dev-kit | 隔離のロジック（firewall・準備・許可ドメイン一覧）。**外向き通信は許可制** |
 | `.devcontainer/devcontainer.json` | init | プロジェクト | サンドボックスの定義。**直接編集してよい。** 隔離の設定は `invariants` が見る |
 | `.devcontainer/devcontainer-lock.json` | init | プロジェクト | バージョンの固定。**最初の一度だけ置く。** 以後は作り直しのたびに Dev Containers CLI が書き換える |
-| `docs/autodrive.md` | init | autodrive-dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む** |
+| `docs/autodrive.md` | init | autodrive-dev-kit | AI向けの作業規約。**振る舞いとスタンスを含む。** 毎回読む |
+| `docs/autodrive-reference.md` | init | autodrive-dev-kit | なぜ・どう測るか・過去に何が起きたか。**引くもので、毎回は読まない** |
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |

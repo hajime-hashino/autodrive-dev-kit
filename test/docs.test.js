@@ -163,10 +163,17 @@ test("autodrive-dev-kit の入れ替えは、人が打つものではないと�
     assert.match(readFileSync(join(KIT, file), "utf8"), phrase, `${file}: 断っていない`);
   }
   // **手順は配布物にも要る。** AIが読むのはそちらである。
-  const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
-  const at = rules.indexOf("## autodrive-dev-kit を更新する");
-  assert.notEqual(at, -1, "配布物に手順が無い");
-  const section = rules.slice(at, rules.indexOf("\n## ", at + 1));
+  // **分けたので、両方を見る。** 片方しか見ないと、移した先が空でも通る。
+  const rules = ["autodrive.md", "autodrive-reference.md"]
+    .map((f) => readFileSync(join(KIT, "templates", f), "utf8"))
+    .join("\n");
+  // **置き場所に依らず見る。** 毎回読むほうに短い案内、引くほうに手順、という
+  // 分け方をしている。**どちらに書いてあっても、配られていればよい**（AUT-196）。
+  const sections = rules
+    .split("\n## ")
+    .filter((s) => s.startsWith("autodrive-dev-kit を更新する"));
+  assert.notEqual(sections.length, 0, "配布物に手順が無い");
+  const section = sections.join("\n");
   for (const [pattern, what] of [
     [/作業単位にして/, "作業単位にすること"],
     [/既定ブランチで打って直接コミットしないこと/, "直接コミットしないこと"],
@@ -460,7 +467,13 @@ const READMES = [
   },
 ];
 
-const rules = () => readFileSync(join(KIT, "templates", "autodrive.md"), "utf8").replace(/\n/g, "");
+// **配られるものを全部見る。** どのファイルに書いてあるかではなく、**配られて
+// いるか**を判定する。分けたときに、判定まで片方しか見なくなるのを避ける（AUT-196）。
+const rules = () =>
+  ["autodrive.md", "autodrive-reference.md"]
+    .map((f) => readFileSync(join(KIT, "templates", f), "utf8"))
+    .join("\n")
+    .replace(/\n/g, "");
 
 // **配布物に書かれていなければ、次のプロジェクトで同じ既定に戻る。**
 // 実際に、検証環境が誰でも到達できる状態で作られた。
@@ -576,9 +589,11 @@ test("外してはいけない行が、同じ場所に書いてある", () => {
   }
   // **判定が見ていることまで言う。** 外したら落ちると分かる。
   assert.ok(text.includes("invariants"), "判定が見ていることを言っていない");
-  // **AUT-121 の形を名指しする。** ここが唯一、指紋では捕まらなかった壊れ方である。
+  // **移してはいけない先を名指しする。** ここが唯一、指紋では捕まらなかった壊れ方である。
   assert.ok(text.includes("postCreateCommand"), "移してはいけない先を言っていない");
-  assert.ok(text.includes("AUT-121"), "実際に起きたことを指していない");
+  // **実際に起きたことだと言う。** 番号では言わない。配られた先から見ると、開けない
+  // 別のワークスペースの番号であり、意味が取れない（人の指摘）。
+  assert.ok(text.includes("実際にそうなっていた"), "実際に起きたことだと言っていない");
 });
 
 // **足すと穴が開くことを、足し方と同じ場所に書く。** 別の場所だと読まれない。
@@ -951,4 +966,55 @@ test("配布物が、作る側の呼び名を持ち込まない", () => {
   assert.equal(text.includes("参照実装"), false, "作る側の呼び名が配られている");
   // **名前は残す。** どこへ起票すればよいかが消えると、直す先が分からなくなる。
   assert.ok(text.includes("autodrive-dev-kit"), "道具の名前が無い");
+});
+
+// ------------------- 毎回読ませる量を、伸びるに任せない（AUT-196）
+//
+// **長さそのものが欠陥である。** 毎回読ませる量が、そのまま作業に使える余地を削る。
+// 分ける前は 634 行あり、**定義（611行）より長かった。** そして 41 の見出しのどこに
+// 何があるかを、書いた側も把握できていなかった（AUT-194 で2つの違反が出た）。
+//
+// **この数字は聖域ではない。** 超えたら落とすためではなく、**超えたときに「引く
+// ほうへ移せないか」を考える機会を作るため**に置いている。移せないなら上げてよい。
+test("毎回読ませるほうが、際限なく伸びていない", () => {
+  const core = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8").split("\n").length;
+  const limit = 450;
+  assert.ok(
+    core <= limit,
+    `毎回読むほうが ${core} 行ある（目安 ${limit}）。` +
+      "引くほうへ移せないかを考えること。移せないなら、この目安を上げてよい",
+  );
+});
+
+// **分けたことが、分かる形で配られていること。**
+test("毎回読むものと、引くものの関係が配ってある", () => {
+  const core = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
+  const ref = readFileSync(join(KIT, "templates", "autodrive-reference.md"), "utf8");
+  // **冒頭で案内していること。** 本文のどこかに出てくるだけでは足りない。
+  // 引っかかる前に「引く先がある」と知らせるのが、この案内の役目である。
+  const head = core.split("\n").slice(0, 20).join("\n");
+  assert.match(head, /autodrive-reference\.md/, "冒頭で引く先を案内していない");
+  assert.match(ref, /毎回読まなくてよい/, "毎回読むものでないことが書かれていない");
+  assert.match(ref, /autodrive\.md/, "戻る先が案内されていない");
+});
+
+// **開発の流れが配ってあること**（AUT-196）。
+//
+// **634 行あって、これが1行も無かった。** 「検証環境」で引くと出てくるのは露出の
+// 話だけで、**検証環境で確かめてから本番へ出すという基本が規約に無かった。**
+//
+// 仕掛けのほうは動いていた（提出のたびに検証環境へ出ていた）。**しかし誰も見て
+// いなくても本番へ進む。** 「仕掛けはあるが誰も見ない」は「無い」に近い。
+test("検証環境を経てから本番へ出す、と配ってある", () => {
+  const text = rules();
+  for (const [pattern, what] of [
+    [/統合が本番への引き金である/, "統合が引き金であること"],
+    [/確かめずに統合しないこと/, "確かめてから統合すること"],
+    [/検証環境へ出ていることと、誰かが見たことは違う/, "出ただけでは足りないこと"],
+    [/本番への配布は不可逆/, "不可逆であること"],
+  ]) {
+    assert.match(text, pattern, `配っていない: ${what}`);
+  }
+  // **どこへ出るかは構成で決まる。** 検証環境を持たない構成もある。
+  assert.match(text, /検証環境を持たない構成もある/, "持たない場合のことが無い");
 });

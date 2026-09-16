@@ -39,7 +39,7 @@ const MESSAGES = {
     "section.todo": "**ここから先は人にしかできない。**",
 
     // --- 置いたものの扱い ---
-    "placement.managed": "置いた（参照実装が管理する。次に入れ替えると上書きされる）",
+    "placement.managed": "置いた（autodrive-dev-kit が管理する。次に入れ替えると上書きされる）",
     "placement.seeded": "置いた（このプロジェクトのものになる）",
     "placement.merged": "足した",
     "placement.skipped": "そのままにした（既にある）",

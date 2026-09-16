@@ -176,7 +176,7 @@
   },
   {
     "name": "AUT-150 配布物から、直接コミットしない旨を落とす",
-    "file": "templates/autodrive.md",
+    "file": "templates/autodrive-reference.md",
     "from": "**既定ブランチで打って直接コミットしないこと。**",
     "to": "既定ブランチで打ってよい。",
     "why": "入れ替えは追跡ファイルを書き換える。直接コミットは規約違反になる"
@@ -190,7 +190,7 @@
   },
   {
     "name": "AUT-152 配布物が、プロジェクトの中のコピーで update を打たせる",
-    "file": "templates/autodrive.md",
+    "file": "templates/autodrive-reference.md",
     "from": "npx github:hajimegane/autodrive-dev-kit update\n",
     "to": "{{KIT}}/bin/autodrive-dev-kit update\n",
     "why": "コピーにはテンプレートが無い。案内どおりに打つと必ず落ちる"
@@ -268,8 +268,8 @@
   {
     "name": "AUT-163 カタカナを避ける、へ戻す",
     "file": "templates/autodrive.md",
-    "from": "**カタカナを避けない。**",
-    "to": "**カタカナを避ける。**",
+    "from": "**カタカナを避けないこと。**「キー」「ラベル」「ブランチ」のほうが通じる。",
+    "to": "**カタカナを避けること。**",
     "why": "通じる語から造語が作られる。鍵・印・枝・引き金はすべてこれで出た"
   },
   {
@@ -344,5 +344,17 @@
     "file": "templates/autodrive.md",
     "from": "**この文書は autodrive-dev-kit が置いたものである。**",
     "to": "**この文書は参照実装が置いたものである。**"
+  },
+  {
+    "name": "AUT-196 毎回読むほうから、引く先の案内を消す",
+    "file": "templates/autodrive.md",
+    "from": "**困ったら [autodrive-reference.md](autodrive-reference.md) を引く。**",
+    "to": "困ったら自分で考える。"
+  },
+  {
+    "name": "AUT-196 配布物から、検証環境を経る流れを落とす",
+    "file": "templates/autodrive.md",
+    "from": "**確かめずに統合しないこと。** 統合は本番への引き金であり、押したあとに「まだ\n確かめていなかった」は戻せない。",
+    "to": "統合すると本番へ出る。"
   }
 ]

@@ -166,7 +166,8 @@ These appear as the project needs them.
 | `.devcontainer/` | init | autodrive-dev-kit | Isolation logic (firewall, setup, allowlist). **Outbound traffic is allowlisted** |
 | `.devcontainer/devcontainer.json` | init | project | The workspace definition. **Edit it directly.** `invariants` checks the isolation wiring |
 | `.devcontainer/devcontainer-lock.json` | init | project | Version pins. **Placed once.** After that, the Dev Containers CLI rewrites it on every rebuild |
-| `docs/autodrive.md` | init | autodrive-dev-kit | The rules the AI follows. **Includes how it should behave** |
+| `docs/autodrive.md` | init | autodrive-dev-kit | The rules the AI follows. **Includes how it should behave.** Read every session |
+| `docs/autodrive-reference.md` | init | autodrive-dev-kit | Why, how to measure, what went wrong before. **Looked up, not read every time** |
 | `autodrive.json` | init | project | Your setup. Never changed by `update` |
 | `boundaries.yaml` | init | project | The delegation table. What you have handed to the AI |
 | `docs/what-why.md` | init | project | What you are building, and why |
