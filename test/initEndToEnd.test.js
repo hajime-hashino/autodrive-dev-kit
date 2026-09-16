@@ -102,9 +102,22 @@ test("置かれた設定が、置かれた autodrive-dev-kit を指している"
 
 // **更新だけは、置かれた autodrive-dev-kit を指していてはいけない。** 複製にはテンプレートが
 // 入っていないため、案内どおりに打つと必ず落ちる（AUT-152）。
+/**
+ * 置かれた規約。**2つある。**
+ *
+ * 毎回読む `docs/autodrive.md` と、引く `docs/autodrive-reference.md`。
+ * **どちらに書いてあっても、配られていればよい**（AUT-196）。片方しか見ないと、
+ * 移した先が空でも通る。
+ */
+function placedRules(root) {
+  return ["autodrive.md", "autodrive-reference.md"]
+    .map((f) => readFileSync(join(root, "docs", f), "utf8"))
+    .join("\n");
+}
+
 test("置かれた文書が、更新を外から取る形で案内している", () => {
   const root = initialized();
-  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+  const rules = placedRules(root);
 
   assert.ok(rules.includes(`${FROM_SOURCE} update`), rules.slice(0, 400));
   assert.equal(
@@ -215,7 +228,7 @@ test("始まりの合図が、指した先に実在する", () => {
 // 段階0〜3が再現できる」ことであり、判断の仕方が無いと再現しない（AUT-93）。
 test("配る規約に、振る舞いとスタンスが入っている", () => {
   const root = initialized();
-  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+  const rules = placedRules(root);
 
   // 節が揃っていること。**1つでも欠けると、その判断だけが配られない。**
   for (const section of [
@@ -235,8 +248,8 @@ test("配る規約に、振る舞いとスタンスが入っている", () => {
 // **停止の作法は、4点そろって意味を持つ。** 1つ欠けると、止められた人が
 // 動けなくなる（定義§4「人の関与あたりの成果」）。
 test("停止の作法が、4点そろっている", () => {
-  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
-  const section = rules.slice(rules.indexOf("### 停止するときの作法"), rules.indexOf("### 意思決定"));
+  // **節の切り方に依らない。** 毎回読むほうに4点、引くほうに細かい作法がある。
+  const section = placedRules(initialized());
 
   for (const point of ["なぜ必要か", "何をすればよいか", "判断の材料", "詰まったとき"]) {
     assert.ok(section.includes(point), `停止の作法に「${point}」が無い`);
@@ -248,10 +261,10 @@ test("停止の作法が、4点そろっている", () => {
 // **出所の表が、配られた先の出所を指すこと。** 参照実装のものをそのまま配ると、
 // 「この作業ルール」がどれを指すのか、受け取った側から読めない。
 test("制約の出所が、配られた先から見て正しい", () => {
-  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
+  const rules = placedRules(initialized());
   const section = rules.slice(
-    rules.indexOf("### 制約かどうかを、出所で確かめる"),
-    rules.indexOf("### 設計上の欠陥"),
+    rules.indexOf("制約かどうかを、出所で確かめる"),
+    rules.indexOf("設計上の欠陥"),
   );
 
   assert.ok(section.includes("この文書"), "配られたこの文書が、出所として挙がっていない");
@@ -273,17 +286,11 @@ test("このワークディレクトリに固有のものは配らない", () =>
   }
 });
 
-// **人の言語で話すこと。** この文書は日本語で書かれているが、それはAIが読むため
-// である。人に向けて出すものは相手の言語で書く（AUT-102）。
-test("配る規約が、人の言語で話すことを求めている", () => {
-  const rules = readFileSync(join(initialized(), "docs", "autodrive.md"), "utf8");
-
-  assert.ok(rules.includes("人の言語で話す"), "人の言語で話すことが書かれていない");
-  // **規約を訳して置き直さないこと。** 訳が古くなると、AIが従う規約と人が読む
-  // 規約が食い違う。
-  assert.ok(rules.includes("訳して置き直さない"), rules.slice(rules.indexOf("人の言語"), 600));
-  assert.ok(rules.includes("その場で言い直す"), "どうするかが書かれていない");
-});
+// **「人の言語で話す」は配らない**（人の判断、AUT-196）。フロンティアのモデルを
+// 使う前提では当然のことであり、**書くほど毎回読ませる量が増える。**
+//
+// 落としたのは指示だけで、**振る舞いを変えたのではない。** 相手の言語で書くことは
+// 変わらない。
 
 // ------------------------------------------------------------ 人の置き場所
 

@@ -262,7 +262,9 @@ test("AIにできることを、人の一覧に書かない", () => {
 // どこにも書かれていなければ、誰もやらない。
 test("置き場所とシークレットは、AIの手順として配られている", () => {
   const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
-  const section = rules.slice(rules.indexOf("### 4. "), rules.indexOf("### 5. "));
+  // **節の切り方に依らない。** 立ち上げの段取りを表にまとめたので、番号付きの
+  // 小見出しは無い。確かめる行が在ることだけを見る。
+  const section = rules;
 
   // **表の行として在ること。** 本文で触れているだけでは、確かめる手順にならない。
   const rows = section.split("\n").filter((l) => l.startsWith("|"));
