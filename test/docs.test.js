@@ -907,3 +907,48 @@ test("フォークの節が、動かないものを挙げている", () => {
     }
   }
 });
+
+// ------------------- 規約が在ることと、守られていることは違う（AUT-194）
+//
+// **上の判定は「カタカナを避けない、と書いてあるか」しか見ていない。** 文書が
+// 実際にその語を使っているかは、誰も見ていなかった。だから **ADR 0008 の題名が
+// 「トークン消費は枝に載せず」のまま通った。**
+//
+// **見るのは「枝」だけにする。** 「鍵」には正当な用例がある（SSH の公開鍵・
+// 秘密鍵は日本語でそう呼ぶ）。一律に禁じると**誤って出る警告**になり、本物の
+// 警告を隠す。同じ型を何度も踏んでいる（AUT-168 / AUT-169）。
+test("参照実装の文書が、言い換えた語を使っていない", () => {
+  // **悪い例として引いている箇所は除く。** 直すと規約が読めなくなる。
+  const quoting = ["templates/autodrive.md", "test/docs.test.js"];
+  const found = [];
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(join(KIT, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+      if (entry.isDirectory()) { walk(rel); continue; }
+      if (!/\.(md|js)$/.test(entry.name)) continue;
+      if (quoting.some((q) => rel.endsWith(q))) continue;
+      for (const [n, line] of readFileSync(join(KIT, rel), "utf8").split("\n").entries()) {
+        if (line.includes("枝")) found.push(`${rel}:${n + 1}  ${line.trim().slice(0, 60)}`);
+      }
+    }
+  };
+  for (const dir of ["docs", "src", "templates", "hooks"]) walk(dir);
+
+  assert.deepEqual(found, [], `「枝」を使っている。「ブランチ」と書くこと:\n${found.join("\n")}`);
+});
+
+// **配られた先に、こちら側の語を持ち込まない**（AUT-194）。
+//
+// 「参照実装」は、**これを作っている側から見た呼び名**である。配られた先にあるのは
+// `autodrive-dev-kit` という名前の道具だけで、**そこから見ると意味が取れない。**
+//
+// しかも配布物は6行目で「autodrive-dev-kit は {{KIT}}/ にある」と名乗ったうえで、
+// **同じものを7箇所で「参照実装」と呼んでいた。** 名前のあるものを言い換えている。
+test("配布物が、作る側の呼び名を持ち込まない", () => {
+  const text = rules();
+  assert.equal(text.includes("参照実装"), false, "作る側の呼び名が配られている");
+  // **名前は残す。** どこへ起票すればよいかが消えると、直す先が分からなくなる。
+  assert.ok(text.includes("autodrive-dev-kit"), "道具の名前が無い");
+});
