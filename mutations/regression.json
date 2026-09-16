@@ -332,5 +332,17 @@
     "file": "templates/invariants.yml",
     "from": "          package-manager-cache: false",
     "to": ""
+  },
+  {
+    "name": "AUT-194 配布物の文書で、言い換えた語を使う",
+    "file": "docs/adr/README.md",
+    "from": "| トークン消費はブランチに載せず",
+    "to": "| トークン消費は枝に載せず"
+  },
+  {
+    "name": "AUT-194 配布物へ、作る側の呼び名を持ち込む",
+    "file": "templates/autodrive.md",
+    "from": "**この文書は autodrive-dev-kit が置いたものである。**",
+    "to": "**この文書は参照実装が置いたものである。**"
   }
 ]
