@@ -589,9 +589,11 @@ test("外してはいけない行が、同じ場所に書いてある", () => {
   }
   // **判定が見ていることまで言う。** 外したら落ちると分かる。
   assert.ok(text.includes("invariants"), "判定が見ていることを言っていない");
-  // **AUT-121 の形を名指しする。** ここが唯一、指紋では捕まらなかった壊れ方である。
+  // **移してはいけない先を名指しする。** ここが唯一、指紋では捕まらなかった壊れ方である。
   assert.ok(text.includes("postCreateCommand"), "移してはいけない先を言っていない");
-  assert.ok(text.includes("AUT-121"), "実際に起きたことを指していない");
+  // **実際に起きたことだと言う。** 番号では言わない。配られた先から見ると、開けない
+  // 別のワークスペースの番号であり、意味が取れない（人の指摘）。
+  assert.ok(text.includes("実際にそうなっていた"), "実際に起きたことだと言っていない");
 });
 
 // **足すと穴が開くことを、足し方と同じ場所に書く。** 別の場所だと読まれない。
@@ -988,7 +990,10 @@ test("毎回読ませるほうが、際限なく伸びていない", () => {
 test("毎回読むものと、引くものの関係が配ってある", () => {
   const core = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
   const ref = readFileSync(join(KIT, "templates", "autodrive-reference.md"), "utf8");
-  assert.match(core, /autodrive-reference\.md/, "引く先が案内されていない");
+  // **冒頭で案内していること。** 本文のどこかに出てくるだけでは足りない。
+  // 引っかかる前に「引く先がある」と知らせるのが、この案内の役目である。
+  const head = core.split("\n").slice(0, 20).join("\n");
+  assert.match(head, /autodrive-reference\.md/, "冒頭で引く先を案内していない");
   assert.match(ref, /毎回読まなくてよい/, "毎回読むものでないことが書かれていない");
   assert.match(ref, /autodrive\.md/, "戻る先が案内されていない");
 });
