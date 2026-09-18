@@ -14,9 +14,9 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { LANGUAGES, keysOf, say } from "../src/messages.js";
-import { LANGUAGE_QUESTION, questionsFor, setup } from "../src/setup.js";
-import { readConfig } from "../src/config.js";
+import { LANGUAGES, keysOf, say } from "../src/vendored/internal/messages.js";
+import { LANGUAGE_QUESTION, questionsFor, setup } from "../src/vendored/internal/setup.js";
+import { readConfig } from "../src/vendored/internal/config.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -151,7 +151,7 @@ test("入れ替えは、記録された言語で出す", () => {
 
 // **規約と定義は訳さない。** ここに入れると、訳が古くなって食い違う。
 test("規約や定義の文を、表に持ち込まない", () => {
-  const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
+  const rules = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8");
   for (const language of LANGUAGES) {
     for (const key of keysOf(language)) {
       const said = say(language, key);
@@ -163,5 +163,5 @@ test("規約や定義の文を、表に持ち込まない", () => {
       );
     }
   }
-  assert.ok(existsSync(join(KIT, "templates", "autodrive.md")));
+  assert.ok(existsSync(join(KIT, "src", "templates", "autodrive.md")));
 });

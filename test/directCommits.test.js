@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { directCommitCandidates, localDefaultBranch } from "../src/directCommits.js";
+import { directCommitCandidates, localDefaultBranch } from "../src/vendored/internal/directCommits.js";
 
 
 /**

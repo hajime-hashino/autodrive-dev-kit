@@ -50,24 +50,41 @@ import { defaults, retired } from "./config.js";
 export const VENDOR_DIR = "autodrive";
 
 /**
- * 複製するもの。テストや文書は要らない（プロジェクトは `init` を打たない）。
+ * 複製の中身。**この中だけが、まるごと `autodrive/` になる。**
+ *
+ * 以前は複製するものを1件ずつ並べていた（`src` / `hooks` / `bin` / `invariants` …）。
+ * **その一覧は、参照実装のトップ階層と同じ高さに並んでいた。** 配るものと配らない
+ * ものが見た目で区別できず、一覧を足し忘れても気づく機会が無かった（AUT-202）。
+ *
+ * いまは階層が境界である。**ここに入れれば配られ、外に出せば配られない。**
+ */
+export const VENDORED_ROOT = "src/vendored";
+
+/**
+ * 複製に添えるもの。名前のまま `autodrive/` の直下へ置く。
  *
  * **ライセンスは要る。** ここに置くのはこの autodrive-dev-kit のコードの複製であり、Apache-2.0 は
  * 「複製を受け取る人にライセンスの写しを渡す」ことを求めている（§4(a)）。入れないと、
  * **採用先にライセンス文の無いコードの複製が残る。** NOTICE も同じ理由で入れる
  * （§4(d)）。誰のものか分からない複製にしない。
+ *
+ * **`src/vendored/` の中へ入れていない。** npm も Apache-2.0 も、これらがリポジトリの
+ * 直下にあることを前提にしている。`package.json` に至っては動かせない。
  */
-export const VENDORED = [
-  "src",
-  "hooks",
-  "bin",
-  "invariants",
-  "verify",
-  "VERSION",
-  "package.json",
-  "LICENSE",
-  "NOTICE",
-];
+export const VENDORED_META = ["VERSION", "package.json", "LICENSE", "NOTICE"];
+
+/**
+ * テンプレートの置き場所。
+ *
+ * **配られるが、複製はされない。** `init` と `update` がここからプロジェクトの
+ * ファイルを作る。プロジェクトは `init` を打たないので、複製には要らない
+ * （[ADR 0004](../../../docs/adr/0004-vendored-kit.md)）。
+ *
+ * **npm の境界と複製の境界は違う。** `src/vendored/` の外に置いているのは、その
+ * 違いを階層に出すためである。中へ入れると「複製から templates を除く」という
+ * 除外の一覧が要り、AUT-202 で消した一覧が形を変えて戻る。
+ */
+export const TEMPLATES_DIR = "src/templates";
 /** @typedef {"managed" | "seeded" | "skipped" | "merged"} Placement */
 /** @typedef {{ path: string, placement: Placement }} Placed */
 function write(full , body) {
@@ -104,7 +121,7 @@ function seeded(root , path , body , out) {
  * エージェントの種別ごとに差し替えるとき、置き場所を変えるだけで済む。
  */
 export function template(kitRoot , name , vars = {}) {
-  let body = readFileSync(join(kitRoot, "templates", name), "utf8");
+  let body = readFileSync(join(kitRoot, TEMPLATES_DIR, name), "utf8");
   body = body.replaceAll("{{KIT}}", VENDOR_DIR);
   for (const [key, value] of Object.entries(vars)) body = body.replaceAll(`{{${key}}}`, value);
   return body;
@@ -185,9 +202,18 @@ export function vendor(root , kitRoot) {
 
   try {
     mkdirSync(staging, { recursive: true });
-    for (const name of VENDORED) {
+
+    // **複製の中身は、名前を持たずに直下へ展開する。** そのため殻から実装への
+    // 相対パスが、参照実装の中と複製先とで同じになる。
+    const inside = join(kitRoot, VENDORED_ROOT);
+    for (const name of readdirSync(inside)) copyInto(join(inside, name), join(staging, name));
+
+    // **無いものを飛ばさない。** 以前は黙って飛ばしていたため、配る一覧に足して
+    // npm の一覧に足し忘れると、**中身の欠けた複製ができて何も落ちなかった**
+    // （AUT-202）。欠けたまま動くより、ここで止まるほうがよい。
+    for (const name of VENDORED_META) {
       const from = join(kitRoot, name);
-      if (!existsSync(from)) continue;
+      if (!existsSync(from)) throw new Error(`複製に要るものが無い: ${name}`);
       copyInto(from, join(staging, name));
     }
   } catch (error) {

@@ -1,8 +1,0 @@
-#!/bin/sh
-# 旧名。**invariants と同じものを指す。**
-#
-# 既に配線されている CI がこの名前を呼んでいるため残している。新しく書くものは
-# invariants を使うこと。
-set -e
-dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$dir/invariants" "$@"

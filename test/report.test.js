@@ -10,8 +10,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { renderText } from "../src/report.js";
-import { ACTIVE, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { renderText } from "../src/vendored/internal/report.js";
+import { ACTIVE, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src/vendored/internal/state.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -119,8 +119,8 @@ test("autodrive.json の language が、`invariants` の出力まで届く", asy
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const { execFileSync } = await import("node:child_process");
-  const { run } = await import("../src/main.js");
-  const { defaults } = await import("../src/config.js");
+  const { run } = await import("../src/vendored/internal/main.js");
+  const { defaults } = await import("../src/vendored/internal/config.js");
 
   const root = tempDir("autodrive-lang-");
   execFileSync("git", ["-C", root, "init", "-q"]);

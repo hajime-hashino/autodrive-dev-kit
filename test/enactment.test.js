@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { boundaryFor, eventsAfter, parseTs } from "../src/enactment.js";
+import { boundaryFor, eventsAfter, parseTs } from "../src/vendored/internal/enactment.js";
 
 
 function ev(ts , over = {}) {

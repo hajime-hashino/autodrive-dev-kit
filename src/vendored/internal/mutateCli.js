@@ -2,7 +2,7 @@
  * 変異を当てる入口。
  *
  * ```sh
- * node src/mutateCli.js mutations/aut-138.json
+ * node src/vendored/internal/mutateCli.js mutations/aut-138.json
  * ```
  *
  * **判定そのものを判定するための仕組みである。** 通ることの確認だけでは、何も見て
@@ -15,7 +15,13 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { allCaught, describe, mutate } from "./mutate.js";
 
-const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+/**
+ * 参照実装の根。**変異の一覧もテストも、複製されない場所にある。**
+ *
+ * したがってここは複製の根ではなく、リポジトリの根を指す。複製先から打つものでは
+ * ない（配られはするが、プロジェクトはテストを持たない）。
+ */
+const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 /**
  * 判定が残した作業用の置き場を掃く。

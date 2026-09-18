@@ -41,7 +41,7 @@ function workflowFiles() {
       if (name.endsWith(".yml") || name.endsWith(".yaml")) files.push(join(dir, name));
     }
   }
-  const template = join(KIT, "templates", "invariants.yml");
+  const template = join(KIT, "src", "templates", "invariants.yml");
   if (existsSync(template)) files.push(template);
   return files;
 }
@@ -103,7 +103,7 @@ test("判定の対象そのものが読めていること", () => {
 //
 // **判定は依存を1つも使わない。** 参照実装は依存ゼロであり、node さえあれば走る。
 test("配る判定のワークフローが、パッケージ管理のキャッシュを試みない", () => {
-  const body = readFileSync(join(KIT, "templates", "invariants.yml"), "utf8");
+  const body = readFileSync(join(KIT, "src", "templates", "invariants.yml"), "utf8");
   assert.match(body, /package-manager-cache:\s*false/, "止めていない。lock ファイルのある先で落ちる");
   // **止めた理由まで置く。** 消してよいものに見えると、次に消される。
   assert.match(body, /依存を1つも使わない/, "なぜ止めているのかが無い");
