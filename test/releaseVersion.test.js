@@ -11,7 +11,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { VENDORED } from "../src/init.js";
+import { TEMPLATES_DIR, VENDORED_META, VENDORED_ROOT } from "../src/vendored/internal/init.js";
 import {
   DISTRIBUTED,
   changedBetween,
@@ -22,7 +22,7 @@ import {
   isNewer,
   parseVersion,
   versionAt,
-} from "../src/releaseVersion.js";
+} from "../src/vendored/internal/releaseVersion.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -31,14 +31,15 @@ const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // **一覧が痩せていないこと。** 対象が減れば判定は静かに通るようになる。何も
 // 落とさなくなったことに、件数を見ていないと気づけない。
 test("配られるものの一覧が、実際に配るものから導かれている", () => {
-  for (const name of VENDORED) {
+  assert.ok(DISTRIBUTED.includes(VENDORED_ROOT), "複製の中身が、判定の対象に入っていない");
+  for (const name of VENDORED_META) {
     if (name === "VERSION") continue;
     assert.ok(DISTRIBUTED.includes(name), `複製されるのに、判定の対象に入っていない: ${name}`);
   }
   // **VERSION 自身は引き金にしない。** それが動いたかを見る側である。
   assert.equal(DISTRIBUTED.includes("VERSION"), false, "VERSION を引き金にしている");
   // **テンプレートも配る。** 複製はされないが、init と update がここから作る。
-  assert.ok(DISTRIBUTED.includes("templates"), "テンプレートを見ていない");
+  assert.ok(DISTRIBUTED.includes(TEMPLATES_DIR), "テンプレートを見ていない");
 });
 
 test("配られるものの一覧が、実在するものを指している", () => {
@@ -48,18 +49,29 @@ test("配られるものの一覧が、実在するものを指している", ()
 });
 
 test("配られる場所と、配られない場所を見分ける", () => {
-  for (const yes of ["src/init.js", "bin/autodrive-dev-kit", "templates/autodrive.md", "package.json", "hooks/record-tokens"]) {
+  for (const yes of [
+    "src/vendored/internal/init.js",
+    "src/vendored/bin/autodrive-dev-kit",
+    "src/vendored/hooks/record-tokens",
+    "src/templates/autodrive.md",
+    "package.json",
+  ]) {
     assert.ok(isDistributed(yes), `配られるのに、対象から外している: ${yes}`);
   }
   for (const no of ["test/init.test.js", "docs/adr/README.md", "telemetry/AUT-155.jsonl", "mutations/regression.json", "README.md", ".github/workflows/invariants.yml"]) {
     assert.equal(isDistributed(no), false, `配られないのに、対象にしている: ${no}`);
   }
-  // **名前の前方一致で拾わない。** `srcery/x` は `src` の中ではない。
-  assert.equal(isDistributed("srcery/x.js"), false, "似た名前を拾っている");
+  // **名前の前方一致で拾わない。** `vendoredish/x` は `vendored` の中ではない。
+  assert.equal(isDistributed("src/vendoredish/x.js"), false, "似た名前を拾っている");
+  // **`src` の直下は、それだけでは配られない。** 配る境界は1つ下にある。
+  assert.equal(isDistributed("src/おいただけのもの.js"), false, "src の直下を配っている");
 });
 
 test("変わったもののうち、配られるものだけを取り出す", () => {
-  assert.deepEqual(distributedChanges(["docs/a.md", "src/b.js", "test/c.test.js"]), ["src/b.js"]);
+  assert.deepEqual(
+    distributedChanges(["docs/a.md", "src/vendored/internal/b.js", "test/c.test.js"]),
+    ["src/vendored/internal/b.js"],
+  );
   assert.deepEqual(distributedChanges(["docs/a.md"]), []);
 });
 
@@ -87,13 +99,13 @@ test("後の版かどうかを見る", () => {
 // ------------------------------------------------------------ 判定
 
 test("配られる中身が変わったのに上げていなければ、落とす", () => {
-  const r = checkBump({ changed: ["src/init.js"], base: "0.1.0", head: "0.1.0" });
+  const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: "0.1.0", head: "0.1.0" });
   assert.equal(r.ok, false);
   // **なぜ・何をすればよいかが出ていること**（配布物「停止するときの作法」）。
   assert.match(r.message, /kit_version/, "なぜ困るのかが無い");
   assert.match(r.message, /VERSION の末尾の数字を1つ上げる/, "何をすればよいかが無い");
   assert.match(r.message, /package\.json/, "揃える先が無い");
-  assert.match(r.message, /src\/init\.js/, "どれが引っかかったのかが無い");
+  assert.match(r.message, /src\/vendored\/internal\/init\.js/, "どれが引っかかったのかが無い");
 });
 
 test("配られない場所だけの変更では、上げることを求めない", () => {
@@ -113,19 +125,19 @@ test("上げるだけの提出は、通る", () => {
 });
 
 test("上げていれば、通る", () => {
-  const r = checkBump({ changed: ["src/init.js", "VERSION"], base: "0.1.0", head: "0.1.1" });
+  const r = checkBump({ changed: ["src/vendored/internal/init.js", "VERSION"], base: "0.1.0", head: "0.1.1" });
   assert.equal(r.ok, true, r.message);
   assert.match(r.message, /0\.1\.0 → 0\.1\.1/);
 });
 
 test("下げていたら、落とす", () => {
-  const r = checkBump({ changed: ["src/init.js"], base: "0.2.0", head: "0.1.0" });
+  const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: "0.2.0", head: "0.1.0" });
   assert.equal(r.ok, false);
   assert.match(r.message, /下がっている/);
 });
 
 test("読めない形にしていたら、落とす", () => {
-  const r = checkBump({ changed: ["src/init.js"], base: "0.1.0", head: "v0.1.1" });
+  const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: "0.1.0", head: "v0.1.1" });
   assert.equal(r.ok, false);
   assert.match(r.message, /`1\.2\.3` の形/, "どう書けばよいかが無い");
 });
@@ -143,7 +155,7 @@ test("VERSION を読めなかったときは、通さない", () => {
 
 // **新しく置いたときを、上げ忘れとして落とさない。** 比べる相手がまだ無い。
 test("既定ブランチにまだ VERSION が無ければ、置いたものとして通す", () => {
-  const r = checkBump({ changed: ["src/init.js"], base: null, head: "0.1.0" });
+  const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: null, head: "0.1.0" });
   assert.equal(r.ok, true, r.message);
 });
 
@@ -158,8 +170,8 @@ function fakeGit(table) {
 }
 
 test("2点の間で変わったファイルを読む", () => {
-  const git = fakeGit({ "diff --name-only A...B": "src/init.js\n\ntemplates/autodrive.md\n" });
-  assert.deepEqual(changedBetween("A", "B", git), ["src/init.js", "templates/autodrive.md"]);
+  const git = fakeGit({ "diff --name-only A...B": "src/vendored/internal/init.js\n\nsrc/templates/autodrive.md\n" });
+  assert.deepEqual(changedBetween("A", "B", git), ["src/vendored/internal/init.js", "src/templates/autodrive.md"]);
   assert.equal(changedBetween("A", "C", git), null, "読めなかったのを空として返している");
 });
 
@@ -174,7 +186,7 @@ test("git から集めて判定する", () => {
     "A",
     "B",
     fakeGit({
-      "diff --name-only A...B": "src/init.js\n",
+      "diff --name-only A...B": "src/vendored/internal/init.js\n",
       "show A:VERSION": "0.1.0\n",
       "show B:VERSION": "0.1.0\n",
     }),
@@ -185,7 +197,7 @@ test("git から集めて判定する", () => {
     "A",
     "B",
     fakeGit({
-      "diff --name-only A...B": "src/init.js\nVERSION\n",
+      "diff --name-only A...B": "src/vendored/internal/init.js\nVERSION\n",
       "show A:VERSION": "0.1.0\n",
       "show B:VERSION": "0.1.1\n",
     }),

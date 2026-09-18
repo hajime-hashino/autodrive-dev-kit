@@ -4,9 +4,9 @@
 
 `update` もAIが打つ。**プロジェクトの追跡ファイルを書き換える変更であり、提出を経る**（AUT-150）。
 
-入口は `bin/autodrive-dev-kit` の1つにまとめてある。**PATH に入れて増えるものを1つにするため。**
+入口は `src/vendored/bin/autodrive-dev-kit` の1つにまとめてある。**PATH に入れて増えるものを1つにするため。**
 
-`invariants` はルートにも残している。**既存の CI が呼んでいるため**、壊さない。
+`src/vendored/` の中身は、そのままプロジェクトの `autodrive/` になる。**したがって殻から実装への道のりは、参照実装の中でも複製先でも同じである**（`invariants` → `internal/main.js`）。
 
 ## 土台を置く
 
@@ -20,7 +20,7 @@ autodrive-dev-kit update    # 新しいバージョンへ入れ替える。構�
 
 ### 置くには、テンプレートが要る
 
-この3つはテンプレート（`templates/`）を読んでファイルを作る。**プロジェクトの中のコピー（`autodrive/`）にテンプレートは入っていない**（[ADR 0004](adr/0004-vendored-kit.md)）。
+この3つはテンプレート（`src/templates/`）を読んでファイルを作る。**プロジェクトの中のコピー（`autodrive/`）にテンプレートは入っていない**（[ADR 0004](adr/0004-vendored-kit.md)）。
 
 したがって `update` は**外から取ってきて打つ**。
 
@@ -234,7 +234,7 @@ autodrive-dev-kit invariants --root /path/to/work
 実行基盤のフックから呼ばれ、セッション記録から使用量を読んで `<対象リポジトリ>/telemetry/<作業単位ID>.jsonl` へ追記する。
 
 ```sh
-./hooks/record-tokens   # フックの入力を標準入力から受け取る
+./src/vendored/hooks/record-tokens   # フックの入力を標準入力から受け取る
 ```
 
 フックの登録は、この参照実装ではなく利用側のリポジトリの `.claude/settings.json` に置く。`invariants` が読める場所に置くことで、外されたときに検出できる。

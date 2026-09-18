@@ -1,92 +1,92 @@
 [
   {
     "name": "AUT-165 状態の解決を、型が一致した最初の1件へ戻す",
-    "file": "src/adapters/trackerLinear.js",
+    "file": "src/vendored/internal/adapters/trackerLinear.js",
     "from": "    const found = data.team.states.nodes\n      .filter((s) => s.type === STATE_TYPE[to])\n      .sort((a, b) => a.position - b.position)[0];",
     "to": "    const found = data.team.states.nodes.find((s) => s.type === STATE_TYPE[to]);"
   },
   {
     "name": "AUT-165 統合の有無を無視して取り残しと言う",
-    "file": "src/checks.js",
+    "file": "src/vendored/internal/checks.js",
     "from": "      if (!s.merged) continue;",
     "to": "      "
   },
   {
     "name": "AUT-165 提出を読めなかったことを黙る",
-    "file": "src/checks.js",
+    "file": "src/vendored/internal/checks.js",
     "from": "      r.observe(`${repo.name}: 提出を読めず、取り残しを確かめられない`);",
     "to": "      "
   },
   {
     "name": "AUT-165 着手中の作業単位を指すマーカーまで咎める",
-    "file": "src/checks.js",
+    "file": "src/vendored/internal/checks.js",
     "from": "  const closed = new Set(items.filter((i) => i.state === \"done\" || i.state === \"canceled\").map((i) => i.id));",
     "to": "  const closed = new Set(items.map((i) => i.id));"
   },
   {
     "name": "AUT-116 手で変えられていても上書きする",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "  if (edited.length > 0) {",
     "to": "  if (false) {"
   },
   {
     "name": "AUT-116 指紋を残さない",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes);",
     "to": "  void 0;"
   },
   {
     "name": "AUT-131 消してから置く形に戻す",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "  rmSync(previous, { recursive: true, force: true });\n\n  try {",
     "to": "  rmSync(previous, { recursive: true, force: true });\n  rmSync(dest, { recursive: true, force: true });\n\n  try {"
   },
   {
     "name": "AUT-131 実行権を写さない",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "  copyFileSync(from, to);\n  chmodSync(to, info.mode);",
     "to": "  writeFileSync(to, readFileSync(from));",
     "why": "行を消すだけでは、copyFileSync が権限を写すため差が出ない。複製の仕方ごと変える"
   },
   {
     "name": "AUT-112 資格情報の why が空でも通す",
-    "file": "src/config.js",
+    "file": "src/vendored/internal/config.js",
     "from": "    for (const [key, value] of [[\"why\", why], [\"lost\", lost]]) {",
     "to": "    for (const [key, value] of []) {"
   },
   {
     "name": "AUT-115 ワイルドカードの宛先を通す",
-    "file": "src/config.js",
+    "file": "src/vendored/internal/config.js",
     "from": "if (typeof host !== \"string\" || !HOST_NAME.test(host)) {",
     "to": "if (typeof host !== \"string\") {"
   },
   {
     "name": "AUT-135 英語の設定を読まない",
-    "file": "src/main.js",
+    "file": "src/vendored/internal/main.js",
     "from": "readConfig(values.root).config?.language ?? \"ja\"",
     "to": "\"ja\""
   },
   {
     "name": "AUT-135 観測が日本語だと断らない",
-    "file": "src/report.js",
+    "file": "src/vendored/internal/report.js",
     "from": "  if (language !== \"ja\" && hasDetail) lines.push(t(\"report.evidence.ja\"));",
     "to": "  void hasDetail;"
   },
   {
     "name": "AUT-135 見出しの無い表を見逃す",
-    "file": "src/emphasis.js",
+    "file": "src/vendored/internal/emphasis.js",
     "from": "    if (cells.length > 0 && cells.every((c) => c === \"\")) {",
     "to": "    if (false) {"
   },
   {
     "name": "AUT-118 案内から fetch を落とす",
-    "file": "src/beginCli.js",
+    "file": "src/vendored/internal/beginCli.js",
     "from": "fetch origin ${defaultBranch}:${defaultBranch} && git -C ${repo} checkout ${defaultBranch}",
     "to": "checkout ${defaultBranch}"
   },
   {
     "name": "AUT-137 コアダンプを見逃す",
-    "file": "src/tracked.js",
+    "file": "src/vendored/internal/tracked.js",
     "from": "{ test: (n) => /^core(\\.\\d+)?$/.test(n), why: \"コアダンプ。実行時のメモリがそのまま入る\" },",
     "to": ""
   },
@@ -99,30 +99,30 @@
   },
   {
     "name": "AUT-139 鍵を分けている理由を書かない",
-    "file": "src/credentials.js",
+    "file": "src/vendored/internal/credentials.js",
     "from": "      note:\n        \"**GH_TOKEN で兼ねないこと。**",
     "to": "      unusedNote:\n        \"**GH_TOKEN で兼ねないこと。**",
     "why": "理由が雛形に出ないと、同じ GitHub の鍵を片方で兼ねたくなる"
   },
   {
     "name": "AUT-143 起点を絶対パスへ直さずに比べる",
-    "file": "src/workItem.js",
+    "file": "src/vendored/internal/workItem.js",
     "from": "  const base = resolve(root);\n  return repo === basename(base) ? base : join(base, repo);",
     "to": "  return repo === basename(root) ? root : join(root, repo);",
     "why": "相対パスの起点だと「起点そのものが対象リポジトリ」の判定が外れ、入れ子へ書く"
   },
   {
     "name": "AUT-143 指す先が無くても書けることにする",
-    "file": "src/workItem.js",
+    "file": "src/vendored/internal/workItem.js",
     "from": "  if (!existsSync(repoPath)) {",
     "to": "  if (false) {",
     "why": "追記は途中のディレクトリごと作るため、無い場所でも成功に見える"
   },
   {
     "name": "AUT-144 ライセンスを複製の対象から外す",
-    "file": "src/init.js",
-    "from": "  \"package.json\",\n  \"LICENSE\",\n  \"NOTICE\",\n];",
-    "to": "  \"package.json\",\n];",
+    "file": "src/vendored/internal/init.js",
+    "from": "export const VENDORED_META = [\"VERSION\", \"package.json\", \"LICENSE\", \"NOTICE\"];",
+    "to": "export const VENDORED_META = [\"VERSION\", \"package.json\"];",
     "why": "外すと、採用先にライセンス文の無いコードの複製が残る（Apache-2.0 §4(a)）"
   },
   {
@@ -176,56 +176,56 @@
   },
   {
     "name": "AUT-150 配布物から、直接コミットしない旨を落とす",
-    "file": "templates/autodrive-reference.md",
+    "file": "src/templates/autodrive-reference.md",
     "from": "**既定ブランチで打って直接コミットしないこと。**",
     "to": "既定ブランチで打ってよい。",
     "why": "入れ替えは追跡ファイルを書き換える。直接コミットは規約違反になる"
   },
   {
     "name": "AUT-152 打てない場所で打たれても、理由を言わない",
-    "file": "src/setup.js",
+    "file": "src/vendored/internal/setup.js",
     "from": "  const cannot = cannotGenerate(kitRoot);\n  if (cannot !== null) return cannot;",
     "to": "  void 0;",
     "why": "テンプレートを開くところまで進み、ENOENT の生ログで落ちる。打った側には理由が分からない"
   },
   {
     "name": "AUT-152 配布物が、プロジェクトの中のコピーで update を打たせる",
-    "file": "templates/autodrive-reference.md",
+    "file": "src/templates/autodrive-reference.md",
     "from": "npx github:hajimegane/autodrive-dev-kit update\n",
     "to": "{{KIT}}/bin/autodrive-dev-kit update\n",
     "why": "コピーにはテンプレートが無い。案内どおりに打つと必ず落ちる"
   },
   {
     "name": "AUT-153 lock も他の管理下ファイルと同じ扱いに戻す",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "\"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\"",
     "to": "\"init-firewall.sh\", \"post-create.sh\", \"check-setup.sh\", \"README.md\", \"devcontainer-lock.json\"",
     "why": "CLI が書き換える lock を管理下に戻すと、作り直すたびに update が止まる"
   },
   {
     "name": "AUT-157 隔離の配線を見ない",
-    "file": "src/main.js",
+    "file": "src/vendored/internal/main.js",
     "from": "  return results.some((r) => r.failing) || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;",
     "to": "  return results.some((r) => r.failing) || forbiddenCount > 0 ? 1 : 0;",
     "why": "見つけても終了コードに出ない。CI で誰も気づかない。**呼び出し側で 0 を渡す形は、この判定では捕まえられない**（一時リポジトリでは記録が無く、どのみち落ちるため差が出ない）。追跡してはいけないものの判定も同じ位置にある"
   },
   {
     "name": "AUT-157 起動のたびに閉じているかを見ない",
-    "file": "src/isolation.js",
+    "file": "src/vendored/internal/isolation.js",
     "from": "  if (!invokes(json.postStartCommand, FIREWALL)) {",
     "to": "  if (false) {",
     "why": "AUT-121 で実際に起きた形（postCreateCommand に置く）を素通りさせる"
   },
   {
     "name": "AUT-157 root で動かしても通す",
-    "file": "src/isolation.js",
+    "file": "src/vendored/internal/isolation.js",
     "from": "  if (json.remoteUser === undefined || json.remoteUser === \"root\") {",
     "to": "  if (false) {",
     "why": "エージェントが root なら、置いた規則を自分で外せる"
   },
   {
     "name": "AUT-157 devcontainer.json を管理下に戻す",
-    "file": "src/init.js",
+    "file": "src/vendored/internal/init.js",
     "from": "const PROJECT_OWNED_SANDBOX = [\"devcontainer.json\", \"devcontainer-lock.json\"];",
     "to": "const PROJECT_OWNED_SANDBOX = [\"devcontainer-lock.json\"];",
     "why": "触りたい項目が多いのに、触ると update が止まる状態へ戻る"
@@ -239,97 +239,97 @@
   },
   {
     "name": "AUT-155 配られるものから、テンプレートを外す",
-    "file": "src/releaseVersion.js",
-    "from": "export const DISTRIBUTED = [...VENDORED.filter((name) => name !== \"VERSION\"), \"templates\"];",
-    "to": "export const DISTRIBUTED = [...VENDORED.filter((name) => name !== \"VERSION\")];",
+    "file": "src/vendored/internal/releaseVersion.js",
+    "from": "  VENDORED_ROOT,\n  TEMPLATES_DIR,\n",
+    "to": "  VENDORED_ROOT,\n",
     "why": "テンプレートを変えてもバージョンが上がらず、受け取る側のものが黙って変わる"
   },
   {
     "name": "AUT-155 上げ忘れを、通す",
-    "file": "src/releaseVersion.js",
+    "file": "src/vendored/internal/releaseVersion.js",
     "from": "  if (base === head) {",
     "to": "  if (false) {",
     "why": "VERSION が動かないまま統合され、記録の kit_version が同じ値のままになる"
   },
   {
     "name": "AUT-156 記録以外も巻き込む",
-    "file": "src/strandedTelemetry.js",
+    "file": "src/vendored/internal/strandedTelemetry.js",
     "from": "const TELEMETRY = /^telemetry\\/[^/]+\\.jsonl$/;",
     "to": "const TELEMETRY = /./;",
     "why": "作業中の変更を、着手の時点で勝手に履歴へ載せる"
   },
   {
     "name": "AUT-156 拾わず、持ち越すだけに戻す",
-    "file": "src/strandedTelemetry.js",
+    "file": "src/vendored/internal/strandedTelemetry.js",
     "from": "  if (files.length === 0) return [];",
     "to": "  if (files.length >= 0) return [];",
     "why": "最後の1件が次の作業単位のコミットに紛れるか、次が無ければ残り続ける"
   },
   {
     "name": "AUT-163 カタカナを避ける、へ戻す",
-    "file": "templates/autodrive.md",
+    "file": "src/templates/autodrive.md",
     "from": "**カタカナを避けないこと。**「キー」「ラベル」「ブランチ」のほうが通じる。",
     "to": "**カタカナを避けること。**",
     "why": "通じる語から造語が作られる。鍵・印・枝・引き金はすべてこれで出た"
   },
   {
     "name": "AUT-163 作る側の規約を、配布物へ混ぜ戻す",
-    "file": "templates/autodrive.md",
+    "file": "src/templates/autodrive.md",
     "from": "コマンドの名前は、定義§16のポートの語をそのまま使っている。",
     "to": "**動くものは、ポート語彙で書く。** 手順も文書も、定義§16のポート語彙で書く。",
     "why": "利用する側に要らない規約が配られ、広げた読み方が造語を生む"
   },
   {
     "name": "AUT-162 取り残しを拾ってコミットする形へ戻す",
-    "file": "src/strandedTelemetry.js",
+    "file": "src/vendored/internal/strandedTelemetry.js",
     "from": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n\n  return [",
     "to": "  const files = strandedFiles(status);\n  if (files.length === 0) return [];\n  git(repoPath, [\"add\", \"--\", ...files]);\n  git(repoPath, [\"commit\", \"-m\", \"拾う\", \"--\", ...files]);\n\n  return ["
   },
   {
     "name": "AUT-172 ブランチで引くのをやめ、マーカーだけに戻す",
-    "file": "src/workItem.js",
+    "file": "src/vendored/internal/workItem.js",
     "from": "  const here = currentBranch(root, cwd, git);\n  if (here !== null) {",
     "to": "  const here = null;\n  if (here !== null) {"
   },
   {
     "name": "AUT-172 対応表を毎回作り直す（前の作業単位の対応が消える）",
-    "file": "src/workItem.js",
+    "file": "src/vendored/internal/workItem.js",
     "from": "  const map = readBranchMap(root);\n  map[branchKey(repo, branch)]",
     "to": "  const map = {};\n  map[branchKey(repo, branch)]"
   },
   {
     "name": "AUT-172 起点の外のリポジトリも認める",
-    "file": "src/workItem.js",
+    "file": "src/vendored/internal/workItem.js",
     "from": "  if (top !== base && dirname(top) !== base) return null;",
     "to": "  void base;"
   },
   {
     "name": "AUT-161 出られない宛先を数えない（常に「出られる」と言う）",
-    "file": "src/reachability.js",
+    "file": "src/vendored/internal/reachability.js",
     "from": "  const blocked = results.filter((r) => !r.reachable);",
     "to": "  const blocked = [];"
   },
   {
     "name": "AUT-161 どの宛先が塞がっているかを言わない",
-    "file": "src/reachability.js",
+    "file": "src/vendored/internal/reachability.js",
     "from": "      ...blocked.map((r) => `  ${r.host}: ${r.reason}`),",
     "to": ""
   },
   {
     "name": "AUT-161 直し方を言わない",
-    "file": "src/reachability.js",
+    "file": "src/vendored/internal/reachability.js",
     "from": "      \"  sudo bash .devcontainer/init-firewall.sh\",",
     "to": "      \"\","
   },
   {
     "name": "AUT-161 許可一覧の注釈も宛先として読む",
-    "file": "src/reachability.js",
+    "file": "src/vendored/internal/reachability.js",
     "from": "    if (trimmed === \"\" || trimmed.startsWith(\"#\")) continue;",
     "to": "    if (trimmed === \"\") continue;"
   },
   {
     "name": "AUT-180 配る判定で、パッケージ管理のキャッシュを止めない",
-    "file": "templates/invariants.yml",
+    "file": "src/templates/invariants.yml",
     "from": "          package-manager-cache: false",
     "to": ""
   },
@@ -341,19 +341,19 @@
   },
   {
     "name": "AUT-194 配布物へ、作る側の呼び名を持ち込む",
-    "file": "templates/autodrive.md",
+    "file": "src/templates/autodrive.md",
     "from": "**この文書は autodrive-dev-kit が置いたものである。**",
     "to": "**この文書は参照実装が置いたものである。**"
   },
   {
     "name": "AUT-196 毎回読むほうから、引く先の案内を消す",
-    "file": "templates/autodrive.md",
+    "file": "src/templates/autodrive.md",
     "from": "**困ったら [autodrive-reference.md](autodrive-reference.md) を引く。**",
     "to": "困ったら自分で考える。"
   },
   {
     "name": "AUT-196 配布物から、検証環境を経る流れを落とす",
-    "file": "templates/autodrive.md",
+    "file": "src/templates/autodrive.md",
     "from": "**確かめずに統合しないこと。** 統合は本番への引き金であり、押したあとに「まだ\n確かめていなかった」は戻せない。",
     "to": "統合すると本番へ出る。"
   }

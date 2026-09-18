@@ -198,10 +198,11 @@ The setup, and the path a single change takes. **Every element is a port and can
   <reference implementation>        <your project>
 
   autodrive-dev-kit/                my-app/
-    src/          ───── init ─────▶   autodrive/       copy of the toolkit
-    invariants                        autodrive.json   your setup
-    VERSION                           docs/            rules / what-why
-    templates/                        .github/         CI
+    src/
+      vendored/   ───── init ─────▶   autodrive/       copy of the toolkit
+      templates/  ──── renders ───▶   docs/            rules / what-why
+    VERSION                           .github/         CI
+    LICENSE                           autodrive.json   your setup
 ```
 
 Updating autodrive-dev-kit changes nothing in your project until you run `update`. Each project runs its own pinned version ([ADR 0004](docs/adr/0004-vendored-kit.md)).

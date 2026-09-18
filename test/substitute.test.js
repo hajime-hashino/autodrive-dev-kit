@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { run } from "../src/main.js";
+import { run } from "../src/vendored/internal/main.js";
 import { tempDir } from "./helpers/tmp.js";
 
 /** 作業単位に紐づき、記録の仕掛けが登録されたリポジトリを1つ作る。 */

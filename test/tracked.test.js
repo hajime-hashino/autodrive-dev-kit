@@ -15,8 +15,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { describe, forbidden, looksExecutable } from "../src/tracked.js";
-import { Repo } from "../src/repos.js";
+import { describe, forbidden, looksExecutable } from "../src/vendored/internal/tracked.js";
+import { Repo } from "../src/vendored/internal/repos.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -117,7 +117,7 @@ test("ELF でなくても、core という名前なら捕まえる", () => {
 
 /** `invariants` を、その場のリポジトリに対して走らせる。 */
 async function invariantsOn(root) {
-  const { run } = await import("../src/main.js");
+  const { run } = await import("../src/vendored/internal/main.js");
   return run(["--root", root, "--scope", "self"]);
 }
 
@@ -134,7 +134,7 @@ test("`invariants` が、追跡してはいけないものを出す", async () =
 // `invariants` を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
 // **判断そのものを直接見る。**
 test("不変条件が全部通っていても、見つかれば落ちる", async () => {
-  const { exitCode } = await import("../src/main.js");
+  const { exitCode } = await import("../src/vendored/internal/main.js");
   const allPassing = [{ failing: false }, { failing: false }];
   assert.equal(exitCode(allPassing, 0), 0, "何も無いのに落ちている");
   assert.equal(exitCode(allPassing, 1), 1, "**見つかったのに落ちていない**");
@@ -152,7 +152,7 @@ test("何も無ければ、`invariants` は何も言わない", async () => {
 
 // **見つける仕掛けだけでは、また入る。** 入らないようにするほうが先。
 test("配る .gitignore が、コアダンプを外している", () => {
-  const text = readFileSync(join(KIT, "templates", "gitignore"), "utf8");
+  const text = readFileSync(join(KIT, "src", "templates", "gitignore"), "utf8");
   assert.ok(/^core$/m.test(text), "core が無い");
   assert.ok(/^core\.\*$/m.test(text), "core.* が無い");
 });

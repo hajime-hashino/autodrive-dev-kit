@@ -1,0 +1,11 @@
+#!/bin/sh
+# 不変条件の状態を判定する。
+#
+# 呼び出し側に実装言語を漏らさないため、この殻を入口とする。言語を差し替えても、
+# CI の呼び出しと各リポジトリの配線は書き換えずに済む。
+#
+# **実装への相対パスは、この複製がどこに置かれても同じである。** 参照実装では
+# `src/vendored/internal/`、プロジェクトでは `autodrive/internal/` になる。
+set -e
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec node "$dir/internal/main.js" "$@"

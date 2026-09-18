@@ -14,7 +14,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { init } from "./init.js";
+import { TEMPLATES_DIR, init } from "./init.js";
 import { LANGUAGES, say } from "./messages.js";
 
 import {
@@ -188,7 +188,7 @@ export const FROM_SOURCE = "npx github:hajimegane/autodrive-dev-kit";
  * （AUT-152）。題材アプリ2はここで詰まり、手で迂回している。
  */
 function cannotGenerate(kitRoot) {
-  if (existsSync(join(kitRoot, "templates"))) return null;
+  if (existsSync(join(kitRoot, TEMPLATES_DIR))) return null;
   return refuse(
     "ここからは置けない。**プロジェクトの中のコピーには、テンプレートが入っていない。**\n\n" +
       "コピーが持っているのは実行するものだけで、ファイルを作る元は持っていない。\n" +

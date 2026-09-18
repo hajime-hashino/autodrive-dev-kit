@@ -12,17 +12,17 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { QUESTIONS, setup } from "../src/setup.js";
+import { QUESTIONS, setup } from "../src/vendored/internal/setup.js";
 
-import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig } from "../src/config.js";
+import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig } from "../src/vendored/internal/config.js";
 import {
   chosen,
   howToHandle,
   openTerminal,
   render,
   terminalInterview,
-} from "../src/adapters/interviewTerminal.js";
-import { useRecommended } from "../src/ports/interview.js";
+} from "../src/vendored/internal/adapters/interviewTerminal.js";
+import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -348,7 +348,7 @@ test("問いは、理由と推奨を添えて出す", () => {
 // ---------------------------------------------------------------- 入口
 
 test("3つとも入口から打てる", () => {
-  const out = execFileSync(join(KIT, "bin", "autodrive-dev-kit"), ["--help"], { encoding: "utf8" });
+  const out = execFileSync(join(KIT, "src", "vendored", "bin", "autodrive-dev-kit"), ["--help"], { encoding: "utf8" });
   for (const m of ["init", "apply", "update"]) {
     assert.ok(out.includes(`autodrive-dev-kit ${m}`), `${m} が案内に無い`);
   }

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { record } from "../src/recordTokens.js";
-import { readSessionState } from "../src/sessionState.js";
+import { record } from "../src/vendored/internal/recordTokens.js";
+import { readSessionState } from "../src/vendored/internal/sessionState.js";
 import { tempDir } from "./helpers/tmp.js";
 
 function assistant(model, requestId, usage) {

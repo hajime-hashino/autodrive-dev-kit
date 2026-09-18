@@ -14,10 +14,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { delegateFor, MODES } from "../src/cli.js";
-import { brokenEmphasis, headerlessTables } from "../src/emphasis.js";
-import { OPERATIONS as TELEMETRY_OPS } from "../src/telemetryCli.js";
-import { OPERATIONS as TRACKER_OPS } from "../src/trackerCli.js";
+import { delegateFor, MODES } from "../src/vendored/internal/cli.js";
+import { brokenEmphasis, headerlessTables } from "../src/vendored/internal/emphasis.js";
+import { OPERATIONS as TELEMETRY_OPS } from "../src/vendored/internal/telemetryCli.js";
+import { OPERATIONS as TRACKER_OPS } from "../src/vendored/internal/trackerCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,7 +34,7 @@ function documents() {
     }
   };
   walk(join(KIT, "docs"));
-  walk(join(KIT, "templates"));
+  walk(join(KIT, "src", "templates"));
   found.push(join(KIT, "README.md"));
   return found;
 }
@@ -82,7 +82,7 @@ function mentions() {
 // 一箇所を見なくなっても他が埋め合わせてしまい、判定が黙って弱くなる。
 test("文書を集める範囲が、狭まっていない", () => {
   const collected = documents().map((d) => d.slice(KIT.length + 1));
-  for (const must of ["README.md", "docs/commands.md", "docs/design.md", "templates/autodrive.md"]) {
+  for (const must of ["README.md", "docs/commands.md", "docs/design.md", "src/templates/autodrive.md"]) {
     assert.ok(collected.includes(must), `${must} を見ていない`);
   }
 });
@@ -165,7 +165,7 @@ test("autodrive-dev-kit の入れ替えは、人が打つものではないと�
   // **手順は配布物にも要る。** AIが読むのはそちらである。
   // **分けたので、両方を見る。** 片方しか見ないと、移した先が空でも通る。
   const rules = ["autodrive.md", "autodrive-reference.md"]
-    .map((f) => readFileSync(join(KIT, "templates", f), "utf8"))
+    .map((f) => readFileSync(join(KIT, "src", "templates", f), "utf8"))
     .join("\n");
   // **置き場所に依らず見る。** 毎回読むほうに短い案内、引くほうに手順、という
   // 分け方をしている。**どちらに書いてあっても、配られていればよい**（AUT-196）。
@@ -233,8 +233,8 @@ test("ADR の索引が、リンク先の見出しと合っている", () => {
 test("README の一覧が、実際に置かれるものと一致する", async () => {
   // **人が打つ経路をそのまま使う。** 下位の関数を直に呼ぶと、そこでは置かれない
   // ものが表から漏れる（実際に autodrive.json で漏れた）。
-  const { setup } = await import("../src/setup.js");
-  const { useRecommended } = await import("../src/ports/interview.js");
+  const { setup } = await import("../src/vendored/internal/setup.js");
+  const { useRecommended } = await import("../src/vendored/internal/ports/interview.js");
   const { mkdirSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
 
@@ -258,8 +258,8 @@ test("README の一覧が、実際に置かれるものと一致する", async (
 
 // **生成しないものが、生成しないままであること。** テンプレートを置くと中身が無いまま残る。
 test("後から作られると書いたものは、init では作られない", async () => {
-  const { setup } = await import("../src/setup.js");
-  const { useRecommended } = await import("../src/ports/interview.js");
+  const { setup } = await import("../src/vendored/internal/setup.js");
+  const { useRecommended } = await import("../src/vendored/internal/ports/interview.js");
   const { existsSync, mkdirSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
 
@@ -362,9 +362,9 @@ test("配るものに、使う側が要らないものを含めない", () => {
   const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
   assert.ok(pkg.files, "files が宣言されていない");
 
-  for (const needed of ["bin", "src", "templates"]) {
-    assert.ok(pkg.files.includes(needed), `${needed} を配っていない`);
-  }
+  // **`src` の下に、配るものが全部入っている。** 殻も実装もテンプレートも
+  // ここにあり、外に出ているのは配らないものだけである（AUT-202）。
+  assert.ok(pkg.files.includes("src"), "src を配っていない");
   for (const unneeded of ["test", "telemetry", "docs"]) {
     assert.equal(pkg.files.includes(unneeded), false, `${unneeded} を配っている`);
   }
@@ -380,7 +380,7 @@ test("下ごしらえだけで、公開はしない", () => {
 // **判定できる形にしておく。** ここが緩むと、要るバージョンに届いていないことに気づけず
 // 黙って落ちる。**確認そのものが型注釈を必要としてはいけない。**
 test("要るバージョンに届いていなければ、断る", async () => {
-  const { NEEDS, tooOld, tooOldMessage } = await import("../bin/node-version.js");
+  const { NEEDS, tooOld, tooOldMessage } = await import("../src/vendored/bin/node-version.js");
 
   for (const old of ["18.20.0", "20.11.0", "22.0.0", "22.17.9", "22.17"]) {
     assert.equal(tooOld(old), true, `${old} を通している`);
@@ -405,7 +405,7 @@ test("入口だけは、型注釈を使わない", () => {
   const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"))
 
    ;
-  for (const file of [pkg.bin["autodrive-dev-kit"], "bin/node-version.js"]) {
+  for (const file of [pkg.bin["autodrive-dev-kit"], "src/vendored/bin/node-version.js"]) {
     const body = readFileSync(join(KIT, file), "utf8");
     for (const typed of [": string", ": number", "as const", "interface ", "import type"]) {
       assert.equal(body.includes(typed), false, `${file} に型注釈がある: ${typed}`);
@@ -471,7 +471,7 @@ const READMES = [
 // いるか**を判定する。分けたときに、判定まで片方しか見なくなるのを避ける（AUT-196）。
 const rules = () =>
   ["autodrive.md", "autodrive-reference.md"]
-    .map((f) => readFileSync(join(KIT, "templates", f), "utf8"))
+    .map((f) => readFileSync(join(KIT, "src", "templates", f), "utf8"))
     .join("\n")
     .replace(/\n/g, "");
 
@@ -702,7 +702,7 @@ test("互いを指している", () => {
 test("英語版が載せている判定の出力が、実物と同じ形をしている", async () => {
   // **判定が使う目印を、そのまま引く。** 手で写すと、変わったときに気づけない。
   // 言語ごとに綴りが違うため、全部の言語から集める。
-  const { LANGUAGES, say } = await import("../src/messages.js");
+  const { LANGUAGES, say } = await import("../src/vendored/internal/messages.js");
   const real = LANGUAGES.flatMap((l) =>
     ["state.active", "state.substituted", "state.unsubstituted", "state.notInScope"].map((k) =>
       say(l, k),
@@ -949,7 +949,7 @@ test("参照実装の文書が、言い換えた語を使っていない", () =>
       }
     }
   };
-  for (const dir of ["docs", "src", "templates", "hooks"]) walk(dir);
+  for (const dir of ["docs", "src"]) walk(dir);
 
   assert.deepEqual(found, [], `「枝」を使っている。「ブランチ」と書くこと:\n${found.join("\n")}`);
 });
@@ -977,7 +977,7 @@ test("配布物が、作る側の呼び名を持ち込まない", () => {
 // **この数字は聖域ではない。** 超えたら落とすためではなく、**超えたときに「引く
 // ほうへ移せないか」を考える機会を作るため**に置いている。移せないなら上げてよい。
 test("毎回読ませるほうが、際限なく伸びていない", () => {
-  const core = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8").split("\n").length;
+  const core = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8").split("\n").length;
   const limit = 450;
   assert.ok(
     core <= limit,
@@ -988,8 +988,8 @@ test("毎回読ませるほうが、際限なく伸びていない", () => {
 
 // **分けたことが、分かる形で配られていること。**
 test("毎回読むものと、引くものの関係が配ってある", () => {
-  const core = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
-  const ref = readFileSync(join(KIT, "templates", "autodrive-reference.md"), "utf8");
+  const core = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8");
+  const ref = readFileSync(join(KIT, "src", "templates", "autodrive-reference.md"), "utf8");
   // **冒頭で案内していること。** 本文のどこかに出てくるだけでは足りない。
   // 引っかかる前に「引く先がある」と知らせるのが、この案内の役目である。
   const head = core.split("\n").slice(0, 20).join("\n");

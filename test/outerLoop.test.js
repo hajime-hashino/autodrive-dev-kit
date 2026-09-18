@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CHECKS } from "../src/checks.js";
+import { CHECKS } from "../src/vendored/internal/checks.js";
 
-import { movedAreas, parseAreas } from "../src/boundaries.js";
+import { movedAreas, parseAreas } from "../src/vendored/internal/boundaries.js";
 
 
-import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { ACTIVE, SUBSTITUTED, UNSUBSTITUTED } from "../src/vendored/internal/state.js";
 
 
 const outerLoop = CHECKS.find((c) => c.key === "outer_loop_running");

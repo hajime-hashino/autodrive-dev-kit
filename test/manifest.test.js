@@ -12,8 +12,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { init } from "../src/init.js";
-import { defaults } from "../src/config.js";
+import { init } from "../src/vendored/internal/init.js";
+import { defaults } from "../src/vendored/internal/config.js";
 import {
   describeEdits,
   describeUnchecked,
@@ -22,7 +22,7 @@ import {
   linesLost,
   readManifest,
   writeManifest,
-} from "../src/manifest.js";
+} from "../src/vendored/internal/manifest.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
