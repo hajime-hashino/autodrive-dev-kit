@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { init, mergeHook, vendor } from "../src/init.js";
-import { delegateFor } from "../src/cli.js";
+import { init, mergeHook, vendor } from "../src/vendored/internal/init.js";
+import { delegateFor } from "../src/vendored/internal/cli.js";
 import { tempDir } from "./helpers/tmp.js";
 
 // **本物の参照実装を指す。** テンプレートをファイルから読むようになったため、偽の場所では
@@ -119,7 +119,7 @@ test("入れ替えると、前のバージョンの残骸が消える", () => {
   const root = project();
   init(root, KIT);
 
-  const stale = join(root, "autodrive", "src", "前のバージョンにだけあったもの.ts");
+  const stale = join(root, "autodrive", "internal", "前のバージョンにだけあったもの.ts");
   writeFileSync(stale, "export const x = 1;\n", "utf8");
   assert.ok(existsSync(stale));
 
@@ -161,15 +161,6 @@ test("こちらが置いたものでなければ、削除を促さない", () =>
     false,
     r.todo.join(" / "),
   );
-});
-
-// **既に設定されている CI が旧名を呼んでいる。** 入れ替えても動き続けること。
-test("旧名の入口も複製され、動き続ける", () => {
-  const root = project();
-  init(root, KIT);
-  for (const name of ["invariants", "verify"]) {
-    assert.ok(existsSync(join(root, "autodrive", name)), `${name} を複製していない`);
-  }
 });
 
 // ------------------------------------------------------------ 記録の仕掛け
@@ -214,9 +205,6 @@ test("AIが使うコマンドは、入口の下にまとめる", () => {
   for (const c of ["begin", "tracker", "telemetry", "invariants"]) {
     assert.notEqual(delegateFor(c), null, `${c} を渡せていない`);
   }
-  // **旧名も通ること。** 既に設定されている CI が呼んでいる（AUT-83）。
-  assert.equal(delegateFor("verify"), delegateFor("invariants"));
-
   assert.equal(delegateFor("知らない操作"), null);
   assert.equal(delegateFor(undefined), null);
 });
@@ -227,10 +215,13 @@ test("AIが使うコマンドは、入口の下にまとめる", () => {
 function brokenKit() {
   const kit = tempDir("autodrive-brokenkit-");
   writeFileSync(join(kit, "VERSION"), "9.9.9\n", "utf8");
-  mkdirSync(join(kit, "src"), { recursive: true });
-  writeFileSync(join(kit, "src", "ok.js"), "//\n", "utf8");
+  // **複製の中身と同じ形にする。** 形が違うと、複製そのものではなく
+  // 「複製元が無い」で落ち、試験になっていないことに気づけない。
+  const inside = join(kit, "src", "vendored");
+  mkdirSync(inside, { recursive: true });
+  writeFileSync(join(inside, "ok.js"), "//\n", "utf8");
   // 行き先の無いリンク。statSync が落ちる。
-  symlinkSync(join(kit, "src", "無い"), join(kit, "src", "壊れたリンク"));
+  symlinkSync(join(inside, "無い"), join(inside, "壊れたリンク"));
   return kit;
 }
 
@@ -268,7 +259,7 @@ test("実行権を写す", () => {
 
 // **再帰の複製に頼らない。** virtiofs のサンドボックスで EACCES になる。
 test("ディレクトリごとの再帰複製を使わない", () => {
-  const src = readFileSync(join(KIT, "src", "init.js"), "utf8")
+  const src = readFileSync(join(KIT, "src", "vendored", "internal", "init.js"), "utf8")
     .split("\n").filter((l) => !l.trim().startsWith("*") && !l.trim().startsWith("//")).join("\n");
   assert.equal(src.includes("cpSync"), false, "再帰複製に頼っている");
   assert.ok(src.includes("copyFileSync"), "1ファイルずつ写していない");

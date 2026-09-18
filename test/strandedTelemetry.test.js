@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeOthers, detect, strandedFiles } from "../src/strandedTelemetry.js";
+import { describeOthers, detect, strandedFiles } from "../src/vendored/internal/strandedTelemetry.js";
 
 // ------------------------------------------------------------ 何を拾うか
 

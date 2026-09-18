@@ -3,8 +3,8 @@ import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { branchNameFor, defaultBranchOf, run } from "../src/beginCli.js";
-import { rememberBranch } from "../src/workItem.js";
+import { branchNameFor, defaultBranchOf, run } from "../src/vendored/internal/beginCli.js";
+import { rememberBranch } from "../src/vendored/internal/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 
 

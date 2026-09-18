@@ -11,9 +11,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { describe, isolationGaps, readDefinition } from "../src/isolation.js";
-import { setup } from "../src/setup.js";
-import { useRecommended } from "../src/ports/interview.js";
+import { describe, isolationGaps, readDefinition } from "../src/vendored/internal/isolation.js";
+import { setup } from "../src/vendored/internal/setup.js";
+import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -173,7 +173,7 @@ test("穴が無ければ、何も言わない", () => {
 // `invariants` を通して見ると差が出ない（一時リポジトリでは記録が無く、どのみち落ちる）。
 // **判断そのものを直接見る**（`tracked.test.js` と同じ理由）。
 test("不変条件が全部通っていても、設定が欠けていれば落ちる", async () => {
-  const { exitCode } = await import("../src/main.js");
+  const { exitCode } = await import("../src/vendored/internal/main.js");
   const allPassing = [{ failing: false }, { failing: false }];
 
   assert.equal(exitCode(allPassing, 0, 0), 0, "何も無いのに落ちている");
@@ -187,7 +187,7 @@ test("`invariants` を通しても、設定の欠けが出力に出る", async (
   const root = placed();
   edit(root, (s) => s.replace('"remoteUser": "vscode",', '"remoteUser": "root",'));
 
-  const { run } = await import("../src/main.js");
+  const { run } = await import("../src/vendored/internal/main.js");
   const { output } = await run(["--root", root, "--scope", "self"]);
 
   assert.ok(output.includes("隔離の設定が欠けている"), output.slice(-500));

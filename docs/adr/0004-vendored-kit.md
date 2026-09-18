@@ -20,7 +20,7 @@
 
 **autodrive-dev-kit をプロジェクトの中へ複製する。** 置き場所は `autodrive/`、追跡する。
 
-- 複製するのは `src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json`
+- 複製するのは `src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json`（**置き場所は [ADR 0010](0010-distribution-boundary-in-the-tree.md) が `src/vendored/` へ移した**）
 - **テスト・文書・テンプレートは複製しない。** プロジェクトは `init` を打たない
 - バージョンは `VERSION` に置き、**実行時に読む**。定数で持つと複製のたびに書き換えが要る
 - 入れ替えは**まるごと捨ててから置く**。前のバージョンの残骸が混ざると、どのバージョンで動いているのかが読めなくなる

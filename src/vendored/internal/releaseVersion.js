@@ -19,15 +19,15 @@
  *
  * ## 一覧を二重に持たない
  *
- * 配られるものは `init.js` が持っている。ここへ写すと、置くものを変えたときに
+ * 配られるものの範囲は `init.js` が持っている。ここへ写すと、置くものを変えたときに
  * 片方だけが古くなる。**実際に、索引を手で保っていて古くなった**（AUT-160）。
- * したがって `VENDORED` から導く。
+ * したがって `VENDORED_ROOT` / `VENDORED_META` / `TEMPLATES_DIR` から導く。
  */
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { VENDORED } from "./init.js";
+import { TEMPLATES_DIR, VENDORED_META, VENDORED_ROOT } from "./init.js";
 
 /**
  * 配られるもの。
@@ -35,10 +35,14 @@ import { VENDORED } from "./init.js";
  * **`VERSION` 自身は外す。** それが動いたかどうかを見る側であり、引き金にすると
  * 「上げたから上げなければならない」になる。
  *
- * **`templates` を足す。** 複製されはしないが、`init` と `update` がここから
+ * **テンプレートを足す。** 複製されはしないが、`init` と `update` がここから
  * プロジェクトのファイルを作る。中身が変われば、受け取る側のものが変わる。
  */
-export const DISTRIBUTED = [...VENDORED.filter((name) => name !== "VERSION"), "templates"];
+export const DISTRIBUTED = [
+  VENDORED_ROOT,
+  TEMPLATES_DIR,
+  ...VENDORED_META.filter((name) => name !== "VERSION"),
+];
 
 /** そのパスが、配られるものの中にあるか。 */
 export function isDistributed(path) {
@@ -203,7 +207,7 @@ export function inspect(base, head, git = runGit) {
 
 const USAGE = `バージョンを上げ忘れていないかを見る
 
-  node src/releaseVersion.js --base <地点> --head <地点>
+  node src/vendored/internal/releaseVersion.js --base <地点> --head <地点>
 
 配られる中身が変わっているのに VERSION が動いていなければ、落とす。
 提出のたびに CI から打たれる。**人が打つものではない。**`;

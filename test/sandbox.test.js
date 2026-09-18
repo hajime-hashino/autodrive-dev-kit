@@ -13,11 +13,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { allowedDomains, destinationsFor } from "../src/sandbox.js";
-import { NONE, defaults } from "../src/config.js";
-import { setup } from "../src/setup.js";
-import { template } from "../src/init.js";
-import { useRecommended } from "../src/ports/interview.js";
+import { allowedDomains, destinationsFor } from "../src/vendored/internal/sandbox.js";
+import { NONE, defaults } from "../src/vendored/internal/config.js";
+import { setup } from "../src/vendored/internal/setup.js";
+import { template } from "../src/vendored/internal/init.js";
+import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -261,7 +261,7 @@ test("AIにできることを、人の一覧に書かない", () => {
 // **代わりに、配る規約がAIに指示していること。** 人の一覧から外しただけで
 // どこにも書かれていなければ、誰もやらない。
 test("置き場所とシークレットは、AIの手順として配られている", () => {
-  const rules = readFileSync(join(KIT, "templates", "autodrive.md"), "utf8");
+  const rules = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8");
   // **節の切り方に依らない。** 立ち上げの段取りを表にまとめたので、番号付きの
   // 小見出しは無い。確かめる行が在ることだけを見る。
   const section = rules;
@@ -336,7 +336,7 @@ test("autodrive-dev-kit の宛先と同じものは、二重に出さない", ()
 
 // **説明の側も直っていること。** 仕掛けを入れても、古い指示が残れば人はそれに従う。
 test("配る説明が、消える場所へ足せと言っていない", () => {
-  const readme = readFileSync(join(KIT, "templates", "devcontainer", "README.md"), "utf8");
+  const readme = readFileSync(join(KIT, "src", "templates", "devcontainer", "README.md"), "utf8");
   assert.equal(readme.includes("決まった時点で人が足す"), false, "消える場所へ足せと言っている");
   assert.ok(readme.includes("app.destinations"), "どこに書けばよいかが出ていない");
   assert.ok(readme.includes("直接編集しないこと"), "直接編集するなと言っていない");
@@ -385,7 +385,7 @@ test("支度は作成時のフックに残っている", () => {
 
 // **効いていないことに気づける最後の網。** 起動時の手順が走らなかった場合に効く。
 test("支度の確認が、出口の状態を見る", () => {
-  const sh = readFileSync(join(KIT, "templates", "devcontainer", "check-setup.sh"), "utf8");
+  const sh = readFileSync(join(KIT, "src", "templates", "devcontainer", "check-setup.sh"), "utf8");
   assert.ok(sh.includes("出口制限が効いていない"), "効いていないことを言わない");
   assert.ok(sh.includes("init-firewall.sh"), "どう直すかを出していない");
 });
@@ -416,7 +416,7 @@ test("支度の確認を、作成時だけのフックから呼ばない", () =>
     "作成時のフックが確認を直接呼んでいる。**出口を閉じる前に走る**",
   );
 
-  const sh = readFileSync(join(KIT, "templates", "devcontainer", "post-create.sh"), "utf8");
+  const sh = readFileSync(join(KIT, "src", "templates", "devcontainer", "post-create.sh"), "utf8");
   const body = sh
     .split("\n")
     .filter((l) => !/^\s*#/.test(l))
@@ -433,7 +433,7 @@ test("支度の確認を、作成時だけのフックから呼ばない", () =>
 // そのすべてを「効いている」と読んでいた。**確かめられないことを、正しいことに
 // していた。**
 test("確かめられないことを、効いていることにしない", () => {
-  const sh = readFileSync(join(KIT, "templates", "devcontainer", "check-setup.sh"), "utf8");
+  const sh = readFileSync(join(KIT, "src", "templates", "devcontainer", "check-setup.sh"), "utf8");
   assert.ok(sh.includes("command -v curl"), "確かめる道具があるかを見ていない");
   assert.ok(sh.includes("確かめられない"), "確かめられない場合を言い分けていない");
   // **許可した宛先へ届くことまで見て、初めて「閉じている」と言える。**
@@ -465,7 +465,7 @@ test("データが外へ出ない保証ではない、と書く", () => {
 });
 
 test("配布物と devcontainer の説明も、同じことを言っている", () => {
-  const readme = readFileSync(join(KIT, "templates", "devcontainer", "README.md"), "utf8");
+  const readme = readFileSync(join(KIT, "src", "templates", "devcontainer", "README.md"), "utf8");
   assert.equal(readme.includes("無い宛先へは\n出られない"), false, "説明に嘘が残っている");
   assert.ok(
     readme.includes("通信を遮断する仕組みではなく、出られる先を減らす仕組み"),
@@ -476,7 +476,7 @@ test("配布物と devcontainer の説明も、同じことを言っている", 
 // ------------------------- IP が入れ替わる宛先（AUT-63）
 
 const firewall = () =>
-  readFileSync(join(KIT, "templates", "devcontainer", "init-firewall.sh"), "utf8");
+  readFileSync(join(KIT, "src", "templates", "devcontainer", "init-firewall.sh"), "utf8");
 
 // **置いたままだと静かに出られなくなる。** 19宛先のうち2つが数時間でズレた。
 test("引き直す口がある", () => {
