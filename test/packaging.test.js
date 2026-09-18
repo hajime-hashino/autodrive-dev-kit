@@ -153,3 +153,25 @@ test("npm が配る範囲に、配らないものが入っていない", () => {
     assert.equal(pkg.files.includes(unneeded), false, `${unneeded} を配っている`);
   }
 });
+
+// -------------------------------------------- 自分の CI が、実在するものを呼ぶこと
+
+/**
+ * **落ちたのはここだった。** 配布の境界を動かしたとき（AUT-202）、参照実装自身の
+ * CI が消えたパス（`autodrive-dev-kit/invariants`）を呼んだまま残っていた。テストも
+ * 変異の一覧も通り、**提出して CI を回すまで分からなかった。**
+ *
+ * 横断の判定は他のリポジトリをクローンしてから打つため、手元では再現できない。
+ * **再現できないなら、せめて呼んでいる先が実在するかは見る。**
+ */
+test("自分の CI が呼ぶ autodrive-dev-kit のパスが、実在する", () => {
+  const workflow = readFileSync(join(KIT, ".github", "workflows", "invariants.yml"), "utf8");
+
+  // クローン先の名前を剥がして、リポジトリの中での位置にする。
+  const called = [...workflow.matchAll(/autodrive-dev-kit\/([\w./-]+)/g)].map((m) => m[1]);
+  assert.notEqual(called.length, 0, "呼び出しを1つも拾えていない。拾い方が壊れている");
+
+  for (const path of new Set(called)) {
+    assert.ok(statSync(join(KIT, path), { throwIfNoEntry: false }), `CI が呼ぶのに実在しない: ${path}`);
+  }
+});
