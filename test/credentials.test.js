@@ -11,10 +11,10 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { credentialsFor, envExample } from "../src/credentials.js";
-import { NONE, defaults } from "../src/config.js";
-import { setup } from "../src/setup.js";
-import { useRecommended } from "../src/ports/interview.js";
+import { credentialsFor, envExample } from "../src/vendored/internal/credentials.js";
+import { NONE, defaults } from "../src/vendored/internal/config.js";
+import { setup } from "../src/vendored/internal/setup.js";
+import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -201,7 +201,7 @@ test("求める権限には、それを要求している口が書いてある",
 // **判定が実際に呼ぶものと、求める権限が食い違わないこと。**
 test("判定が呼ぶ API に要る権限を、求めている", async () => {
   const { readFileSync } = await import("node:fs");
-  const api = readFileSync(join(KIT, "src", "repoApi.js"), "utf8");
+  const api = readFileSync(join(KIT, "src", "vendored", "internal", "repoApi.js"), "utf8");
 
   const token = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
   const has = (p) => token.needs.some((n) => n.permission === p);

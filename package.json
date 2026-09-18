@@ -1,21 +1,16 @@
 {
   "name": "autodrive-dev-kit",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "Apache-2.0",
   "author": "Hajime Hashino",
   "private": true,
   "type": "module",
   "description": "AIオートドライビング開発の参照実装",
   "bin": {
-    "autodrive-dev-kit": "bin/autodrive-dev-kit"
+    "autodrive-dev-kit": "src/vendored/bin/autodrive-dev-kit"
   },
   "files": [
-    "bin",
     "src",
-    "hooks",
-    "templates",
-    "invariants",
-    "verify",
     "VERSION",
     "LICENSE",
     "NOTICE"
@@ -24,8 +19,8 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "verify": "node src/main.js",
+    "invariants": "node src/vendored/internal/main.js",
     "test": "node --test \"test/**/*.test.js\"",
-    "mutate": "node src/mutateCli.js mutations/regression.json"
+    "mutate": "node src/vendored/internal/mutateCli.js mutations/regression.json"
   }
 }

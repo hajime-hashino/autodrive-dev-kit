@@ -27,7 +27,7 @@ import {
   resolveRepo,
   resolveWorkItem,
   telemetryPath,
-} from "../src/workItem.js";
+} from "../src/vendored/internal/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 
 function withMarker(repo) {

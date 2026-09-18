@@ -63,7 +63,7 @@ wrangler versions upload --env staging --preview-alias "$ALIAS"
 
 ### プレビューも検証環境も、閉じたまま見せる
 
-**見え方の確認のために公開しない。** `templates/autodrive.md` の「露出は、戻せるが取り消せない」に従う。確認のために公開が要るなら、それ自体が人へ差し出す論点である。
+**見え方の確認のために公開しない。** `src/templates/autodrive.md` の「露出は、戻せるが取り消せない」に従う。確認のために公開が要るなら、それ自体が人へ差し出す論点である。
 
 Cloudflare Workers なら、**独自ドメインを用意しなくても閉じられる。** Access を worker 単位で有効にすると、その worker に紐づくすべての宛先（route・独自ドメイン・`workers.dev`・**プレビュー**）が一度に守られる。
 

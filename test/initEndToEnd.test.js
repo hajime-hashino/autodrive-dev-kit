@@ -20,8 +20,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { VENDOR_DIR } from "../src/init.js";
-import { FROM_SOURCE } from "../src/setup.js";
+import { VENDOR_DIR } from "../src/vendored/internal/init.js";
+import { FROM_SOURCE } from "../src/vendored/internal/setup.js";
 import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -36,7 +36,7 @@ function initialized() {
   git("config", "user.name", "テスト");
   git("config", "user.email", "test@example.invalid");
 
-  execFileSync(join(KIT, "bin", "autodrive-dev-kit"), ["init"], {
+  execFileSync(join(KIT, "src", "vendored", "bin", "autodrive-dev-kit"), ["init"], {
     cwd: root,
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -66,7 +66,7 @@ function run(root , args) {
 test("autodrive-dev-kit がプロジェクトの中に置かれ、そこから動く", () => {
   const root = initialized();
 
-  for (const p of ["invariants", "verify", "VERSION", "src", "hooks", "bin"]) {
+  for (const p of ["invariants", "VERSION", "internal", "hooks", "bin"]) {
     assert.ok(existsSync(join(root, VENDOR_DIR, p)), `${VENDOR_DIR}/${p} が無い`);
   }
 
@@ -152,7 +152,7 @@ test("固有のものは生成しない", () => {
 // autodrive-dev-kit の中に、そのプロジェクトに要らないものを持ち込まない。
 test("参照実装のテストや文書は複製しない", () => {
   const root = initialized();
-  for (const p of ["test", "docs", "templates", "telemetry"]) {
+  for (const p of ["test", "docs", "templates", "telemetry", "src"]) {
     assert.equal(existsSync(join(root, VENDOR_DIR, p)), false, `${VENDOR_DIR}/${p} を複製している`);
   }
 });

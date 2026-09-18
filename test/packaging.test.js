@@ -19,6 +19,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { tempDir } from "./helpers/tmp.js";
+import { TEMPLATES_DIR, VENDORED_META, VENDORED_ROOT } from "../src/vendored/internal/init.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -121,4 +122,56 @@ test("参照されている型が、すべて定義されている", async () =>
   const missing = [...used].filter((t) => !defined.has(t) && !builtin.has(t));
   assert.deepEqual(missing, [], `定義の無い型が参照されている: ${missing.join(", ")}`);
   assert.ok(defined.size > 20, `型の説明が少なすぎる: ${defined.size} 個`);
+});
+
+// ------------------------------------------------ 配る一覧が、食い違っていないこと
+
+/**
+ * **一覧が2つある。** npm が配る範囲（`package.json` の `files`）と、プロジェクトへ
+ * 複製する範囲（`init.js`）である。片方だけを足しても、どの判定も落ちなかった。
+ *
+ * `vendor` は複製元が無いものを黙って飛ばしていたため、**npx 経由でだけ中身の欠けた
+ * 複製ができる**状態だった（AUT-202）。飛ばすのはやめたが、そちらは打ってみるまで
+ * 分からない。**打つ前に、一覧どうしで突き合わせる。**
+ */
+test("複製するものが、npm が配る範囲から外れていない", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
+  // `package.json` 自身は宣言せずとも npm が必ず入れる。
+  const shipped = [...pkg.files, "package.json"];
+  const covered = (path) => shipped.some((e) => path === e || path.startsWith(`${e}/`));
+
+  for (const path of [VENDORED_ROOT, TEMPLATES_DIR, ...VENDORED_META]) {
+    assert.ok(covered(path), `配るのに、npm の一覧に入っていない: ${path}`);
+  }
+});
+
+// **配らないものが紛れ込んでいないこと。** 逆向きも見ないと、`files` に増やした
+// ものが黙って配られる。
+test("npm が配る範囲に、配らないものが入っていない", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
+  for (const unneeded of ["test", "docs", "telemetry", "mutations"]) {
+    assert.equal(pkg.files.includes(unneeded), false, `${unneeded} を配っている`);
+  }
+});
+
+// -------------------------------------------- 自分の CI が、実在するものを呼ぶこと
+
+/**
+ * **落ちたのはここだった。** 配布の境界を動かしたとき（AUT-202）、参照実装自身の
+ * CI が消えたパス（`autodrive-dev-kit/invariants`）を呼んだまま残っていた。テストも
+ * 変異の一覧も通り、**提出して CI を回すまで分からなかった。**
+ *
+ * 横断の判定は他のリポジトリをクローンしてから打つため、手元では再現できない。
+ * **再現できないなら、せめて呼んでいる先が実在するかは見る。**
+ */
+test("自分の CI が呼ぶ autodrive-dev-kit のパスが、実在する", () => {
+  const workflow = readFileSync(join(KIT, ".github", "workflows", "invariants.yml"), "utf8");
+
+  // クローン先の名前を剥がして、リポジトリの中での位置にする。
+  const called = [...workflow.matchAll(/autodrive-dev-kit\/([\w./-]+)/g)].map((m) => m[1]);
+  assert.notEqual(called.length, 0, "呼び出しを1つも拾えていない。拾い方が壊れている");
+
+  for (const path of new Set(called)) {
+    assert.ok(statSync(join(KIT, path), { throwIfNoEntry: false }), `CI が呼ぶのに実在しない: ${path}`);
+  }
 });

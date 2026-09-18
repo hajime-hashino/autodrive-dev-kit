@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { allCaught, applyOne, describe, mutate, runTests } from "../src/mutate.js";
+import { allCaught, applyOne, describe, mutate, runTests } from "../src/vendored/internal/mutate.js";
 import { tempDir } from "./helpers/tmp.js";
 
 function project(body = "元の中身\n") {
@@ -145,7 +145,7 @@ test("全部落ちたら、そう言う", () => {
 // 一緒に壊れる。片付けを外す変異を足したところ、1回まわすごとに 378 個残った
 // （AUT-147）。判定を直しても、ここが残ると溜まり続ける。
 test("この実行で残ったものだけを掃く", async () => {
-  const { sweepLeftovers } = await import("../src/mutateCli.js");
+  const { sweepLeftovers } = await import("../src/vendored/internal/mutateCli.js");
   const { mkdirSync, existsSync, utimesSync } = await import("node:fs");
   const { join } = await import("node:path");
   const { tempDir } = await import("./helpers/tmp.js");

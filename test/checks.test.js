@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CHECKS, observeStops } from "../src/checks.js";
+import { CHECKS, observeStops } from "../src/vendored/internal/checks.js";
 
 
-import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "../src/vendored/internal/state.js";
 import { tempDir } from "./helpers/tmp.js";
 
 

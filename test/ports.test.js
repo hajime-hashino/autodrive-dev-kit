@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { KIT_VERSION } from "../src/kitVersion.js";
+import { KIT_VERSION } from "../src/vendored/internal/kitVersion.js";
 import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { run as telemetryRun } from "../src/telemetryCli.js";
-import { run as trackerRun } from "../src/trackerCli.js";
+import { run as telemetryRun } from "../src/vendored/internal/telemetryCli.js";
+import { run as trackerRun } from "../src/vendored/internal/trackerCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
 

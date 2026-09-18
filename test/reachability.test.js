@@ -8,8 +8,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkAll, hostsIn, report } from "../src/reachability.js";
-import { run } from "../src/sandboxCli.js";
+import { checkAll, hostsIn, report } from "../src/vendored/internal/reachability.js";
+import { run } from "../src/vendored/internal/sandboxCli.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tempDir } from "./helpers/tmp.js";

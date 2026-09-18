@@ -14,7 +14,22 @@ import { terminalInterview } from "./adapters/interviewTerminal.js";
 import { say } from "./messages.js";
 
 
-const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+/**
+ * 実行するものの根。**複製先ではここが `autodrive/` になる。**
+ *
+ * 複製は `src/vendored/` の中身を直下へ展開したものなので、ここから見た殻・実装の
+ * 位置は、参照実装の中でも複製先でも同じである。
+ */
+const RUN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * 参照実装の根。テンプレートはここから探す。
+ *
+ * **複製先では、ここは参照実装を指さない。** 複製は階層を1つ潰して展開されるため、
+ * 同じ辿り方では別の場所に出る。それでよい——**複製先からは生成できない**のが
+ * 決めたことであり（ADR 0004）、`setup` がテンプレートの不在を見て止める。
+ */
+const KIT_ROOT = resolve(RUN_ROOT, "..", "..");
 
 const USAGE = `AIに開発を任せて回すための autodrive-dev-kit
 
@@ -39,8 +54,6 @@ const DELEGATES = {
   telemetry: "telemetryCli.js",
   sandbox: "sandboxCli.js",
   invariants: "main.js",
-  // **旧名。invariants と同じものを指す。** 既に設定されている CI が呼んでいる。
-  verify: "main.js",
 };
 
 export function delegateFor(command) {
@@ -117,7 +130,7 @@ if (invokedDirectly) {
   const { spawnSync } = await import("node:child_process");
   const result = spawnSync(
     process.execPath,
-    [resolve(KIT_ROOT, "src", delegate), ...argv.slice(1)],
+    [resolve(RUN_ROOT, "internal", delegate), ...argv.slice(1)],
     { stdio: "inherit", env: process.env },
   );
   process.exit(result.status ?? 1);

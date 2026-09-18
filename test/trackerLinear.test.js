@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LinearTracker, repoFrom } from "../src/adapters/trackerLinear.js";
+import { LinearTracker, repoFrom } from "../src/vendored/internal/adapters/trackerLinear.js";
 
 /** 実装側の応答を差し込む。**要求ごとに何を返すかを、呼び出し側が決める。** */
 function stubFetch(handler) {

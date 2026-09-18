@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: "22.18"
       - run: >
-          node src/releaseVersion.js
+          node src/vendored/internal/releaseVersion.js
           --base ${{ github.event.pull_request.base.sha }}
           --head ${{ github.event.pull_request.head.sha }}
 
@@ -97,7 +97,7 @@ jobs:
           # 横断の判定では、記録が指す作業単位が実在するかを Tracker と突き合わせる。
           # self では突き合わせないため、各リポジトリの CI には渡していない。
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        run: work/autodrive-dev-work/autodrive-dev-kit/invariants --root work/autodrive-dev-work
+        run: work/autodrive-dev-work/autodrive-dev-kit/src/vendored/invariants --root work/autodrive-dev-work
 
       - name: 判定結果を残す
         if: always()
@@ -105,7 +105,7 @@ jobs:
           AUTODRIVE_CI_TOKEN: ${{ secrets.AUTODRIVE_CI_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
-          work/autodrive-dev-work/autodrive-dev-kit/invariants \
+          work/autodrive-dev-work/autodrive-dev-kit/src/vendored/invariants \
             --root work/autodrive-dev-work --format json > invariants.json || true
           {
             echo '```json'

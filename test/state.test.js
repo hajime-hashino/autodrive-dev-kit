@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ACTIVE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src/state.js";
+import { ACTIVE, Result, SUBSTITUTED, UNSUBSTITUTED } from "../src/vendored/internal/state.js";
 
 test("判定していない項目が残っていれば有効にしない", () => {
   const r = new Result("k", "l");

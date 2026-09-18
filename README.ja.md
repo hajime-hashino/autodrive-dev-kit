@@ -198,10 +198,11 @@ autodrive-dev-kit が所有するファイルは `update` で上書きされる�
   <参照実装>                        <あなたのプロジェクト>
 
   autodrive-dev-kit/                my-app/
-    src/          ───── init ─────▶   autodrive/       autodrive-dev-kit の複製
-    invariants                        autodrive.json   構成
-    VERSION                           docs/            規約 / What・Why
-    templates/                        .github/         CI
+    src/
+      vendored/   ───── init ─────▶   autodrive/       autodrive-dev-kit の複製
+      templates/  ──── 生成 ───────▶   docs/            規約 / What・Why
+    VERSION                           .github/         CI
+    LICENSE                           autodrive.json   構成
 ```
 
 autodrive-dev-kit を更新しても、`update` を実行するまでプロジェクトは変化しない。プロジェクトごとに異なるバージョンで動作する（[ADR 0004](docs/adr/0004-vendored-kit.md)）。
