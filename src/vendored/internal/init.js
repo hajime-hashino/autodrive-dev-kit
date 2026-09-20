@@ -461,6 +461,9 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
 
   seeded(root, "boundaries.yaml", template(kitRoot, "boundaries.yaml"), placed);
   seeded(root, "docs/what-why.md", template(kitRoot, "what-why.md"), placed);
+  // **品質で守ることは、会話ではなくファイルに残す。** 立ち上げで決めても、
+  // 置き場が無ければ次の作業単位では読めない（AUT-210）。
+  seeded(root, "docs/quality.md", template(kitRoot, "quality.md"), placed);
   seeded(root, ".gitignore", template(kitRoot, "gitignore"), placed);
   // **README だけ置く。** 中身は追跡しないが、置き場所と、置いてはいけないものは
   // クローンした先にも残る必要がある。
