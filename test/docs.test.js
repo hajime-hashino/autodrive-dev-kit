@@ -10,6 +10,7 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,7 @@ import { test } from "node:test";
 import { delegateFor, MODES } from "../src/vendored/internal/cli.js";
 import { brokenEmphasis, headerlessTables } from "../src/vendored/internal/emphasis.js";
 import { OPERATIONS as TELEMETRY_OPS } from "../src/vendored/internal/telemetryCli.js";
+import { init, template } from "../src/vendored/internal/init.js";
 import { OPERATIONS as TRACKER_OPS } from "../src/vendored/internal/trackerCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
@@ -1025,4 +1027,138 @@ test("検証環境を経てから本番へ出す、と配ってある", () => {
   ]) {
     assert.match(text, pattern, `配っていない: ${what}`);
   }
+});
+
+// ------------------------------------------------- 品質管理の指示（AUT-210）
+//
+// **autodrive.md はAIの動きを縛るファイルである。** 捉え方を書いても動きは変わらない。
+// 最初の版は「こう捉えよ」としか書いておらず、**読んでも何も変わらなかった**（人の指摘）。
+//
+// **ゴールは、歴戦のエンジニアでなくてもちゃんとした品質のアプリが作れること。**
+
+// **観点と箇所が、先に並んでいること。** 何を見るかが決まらないと、手法は選べない。
+test("品質の観点と、確認する箇所が配ってある", () => {
+  const text = rules();
+  for (const view of ["ビジネス目的の達成", "機能", "性能", "セキュリティ", "信頼性", "保守性"]) {
+    assert.ok(text.includes(view), `観点が無い: ${view}`);
+  }
+  for (const where of ["静的", "単体", "結合", "システム", "受入", "本番監視"]) {
+    assert.ok(text.includes(where), `確認する箇所が無い: ${where}`);
+  }
+});
+
+// **プロセスの品質を、この軸に混ぜない。** ISO 25010 は製品品質だけを扱う規格であり、
+// プロセス品質は別系統である。この手法では委譲範囲の表・テレメトリ・不変条件が担う。
+// **混ぜると、どちらも中途半端になる。**
+test("プロセスの品質は、この軸に含めないと書いてある", () => {
+  const text = rules();
+  assert.ok(text.includes("プロセスの品質は、ここに含めない"), "切り分けが書かれていない");
+  assert.ok(text.includes("作ったものそのものである"), "何を見る軸なのかが書かれていない");
+});
+
+// **ベースラインが実物であること。** 「考えよ」では立ち上げで1から考えることになる。
+test("ベースラインが、手法と範囲まで示されている", () => {
+  const text = rules();
+  assert.ok(text.includes("主要なビジネスケース"), "ビジネス目的の既定が無い");
+  assert.ok(text.includes("依存の脆弱性検査"), "セキュリティの既定が無い");
+  // **空けたものも示す。** 何を見ないかが書いていないと、全部見ていると読まれる。
+  assert.ok(text.includes("既定では見ない"), "空けた観点が示されていない");
+});
+
+// **人に品質の知識を求めない。** 白紙で聞くと、非エンジニアは答えられない。
+test("白紙で聞かず、案を出せと指示している", () => {
+  const text = rules();
+  assert.ok(text.includes("人に品質の知識を求めない"), "知識を求めるなと言っていない");
+  assert.ok(text.includes("こちらが案を出し、人が選ぶ"), "案を出せと言っていない");
+  assert.ok(
+    text.includes("入れない場合に何が見られなくなるかを添える"),
+    "欠ける範囲を添えることが書かれていない",
+  );
+});
+
+// **実装の前に検出を作る。** 順番が逆だと、テストが実装に合わせて書かれる。
+test("守ることが、動きの指示になっている", () => {
+  const text = rules();
+  assert.ok(text.includes("実装より先に検出を作る"), "順番の指示が無い");
+  assert.ok(text.includes("戻せないものは、検出が無いまま通さない"), "通さないと言っていない");
+  // **通ったのは書いたものだけである。**
+  assert.ok(
+    text.includes("確かめた手段と、誰も見ていない範囲を添える"),
+    "提出に添えるものが書かれていない",
+  );
+});
+
+// **手法は静的解析とテストだけではない**（人の指摘）。ただし毎回読む側に並べない。
+// **長さはハルシネーションの元になる。** 一覧は引く側に置く。
+test("手法の一覧が、引く側に配ってある", () => {
+  const ref = readFileSync(join(KIT, "src", "templates", "autodrive-reference.md"), "utf8");
+  for (const how of ["AIレビュー", "脅威モデリング", "契約テスト", "合成監視", "変異テスト"]) {
+    assert.ok(ref.includes(how), `手法が無い: ${how}`);
+  }
+  // **人のレビューは委譲範囲を動かす。** 安いから入れる、とはならない。
+  assert.ok(ref.includes("委譲範囲の表を動かす"), "人のレビューの扱いが書かれていない");
+  // **毎回読む側には並べない。**
+  const core = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8");
+  assert.equal(core.includes("ファジング"), false, "毎回読む側に手法を並べている");
+});
+
+// **会話で決めて終わりにしない。** 置き場が無ければ、次の作業単位では読めない。
+test("決めたことの置き場が、実体として配られる", () => {
+  const body = template(KIT, "quality.md");
+  // **手法と範囲まで書かせる。**「見ている」だけでは何も分からない（人の指摘）。
+  assert.ok(body.includes("どこまで見ているか"), "範囲の欄が無い");
+  assert.ok(body.includes("「どこまで」を省略しないこと"), "省略を禁じていない");
+  assert.ok(body.includes("確認しないと決めたこと"), "意図して空けた記録の欄が無い");
+  assert.ok(body.includes("戻せないもの"), "戻せないものの欄が無い");
+  assert.ok(body.includes("空欄は「問題なし」と読まれる"), "空欄の読まれ方への注意が無い");
+
+  const root = project();
+  init(root, KIT);
+  assert.ok(existsSync(join(root, "docs", "quality.md")), "docs/quality.md が置かれていない");
+});
+
+// **決める段が無いと、決めないまま進む。**
+test("品質を決める段が、立ち上げにある", () => {
+  const steps = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8")
+    .split("\n")
+    .filter((l) => l.startsWith("| ") && l.includes("**"));
+  const step = steps.find((l) => l.includes("品質で確認することを決めてもらう"));
+  assert.ok(step !== undefined, `立ち上げの段取りに品質が無い:\n${steps.slice(0, 12).join("\n")}`);
+  // **成果物はファイルである。** 会話で消えるものを成果物にしない。
+  assert.ok(step.includes("docs/quality.md"), `成果物がファイルになっていない: ${step}`);
+});
+
+/** 素のリポジトリ。`init` が置けるだけの状態にする。 */
+function project() {
+  const root = tempDir("autodrive-docs-");
+  execFileSync("git", ["-C", root, "init", "-q"], { stdio: "ignore" });
+  return root;
+}
+
+// **「受入」を、人がやることと読ませない**（人の確認）。この表はすべて自動で回す。
+// **ビジネスケースを通すのは E2E であって、人ではない。** 人が見るのは抜き取り確認
+// （定義§8）と、出口に残す場合の受け入れ確認（定義§10）であり、どちらも別物である。
+test("品質の表が、すべて自動で回るものだと書いてある", () => {
+  const text = rules();
+  assert.ok(text.includes("この表は、すべて自動で回すものである"), "自動だと言っていない");
+  assert.ok(
+    text.includes("ビジネスケースを通すのは E2E であり、人ではない"),
+    "誰が通すのかが書かれていない",
+  );
+  // **人が見るものは、別だと言う。** 言わないと、この表に混ぜて読まれる。
+  assert.ok(text.includes("どちらもこの表には入らない"), "人が見るものとの切り分けが無い");
+});
+
+// **箇所と環境が繋がっていること**（人の確認）。テストレベルだけを並べても、
+// どこで動かすかが決まらない。**「環境の考え方」と別々に置いていた。**
+test("確認する箇所と、動かす環境が対応づけてある", () => {
+  const text = rules();
+  assert.ok(text.includes("どの環境で動かすかは、箇所で決まる"), "対応が書かれていない");
+  // **システムと受入は検証環境。** 手元で通しても、本番に近い構成を確かめたことにならない。
+  assert.match(text, /システム・受入 \| \*\*検証環境\*\*/, "システム・受入の環境が無い");
+  // **手元で外部の実物を叩かない。**
+  assert.ok(
+    text.includes("外部サービスの実物が要る結合は、検証環境で行う"),
+    "外部依存の扱いが書かれていない",
+  );
 });
