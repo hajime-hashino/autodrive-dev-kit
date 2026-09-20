@@ -149,6 +149,7 @@ my-app/
 ├── docs/
 │   ├── autodrive.md                 the rules the AI follows
 │   ├── what-why.md                  what you are building, and why
+│   ├── quality.md                   what quality you protect, and what you do not
 │   ├── adr/                         design decisions
 │   └── boundary-changes.md          history of delegation changes
 ├── telemetry/
@@ -171,6 +172,7 @@ These appear as the project needs them.
 | `autodrive.json` | init | project | Your setup. Never changed by `update` |
 | `boundaries.yaml` | init | project | The delegation table. What you have handed to the AI |
 | `docs/what-why.md` | init | project | What you are building, and why |
+| `docs/quality.md` | init | project | What quality you protect, and what you deliberately leave unwatched |
 | `CLAUDE.md` | init | project | Project-specific rules |
 | `.gitignore` | init | project | Keeps credentials and working state out |
 | `notes/README.md` | init | project | **Yours to use.** Contents are not tracked |
