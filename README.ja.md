@@ -151,6 +151,7 @@ my-app/
 ├── docs/
 │   ├── autodrive.md                 AI向けの作業規約
 │   ├── what-why.md                  何を作るか、なぜ作るか
+│   ├── quality.md                   品質で守ること、守らないと決めたこと
 │   ├── adr/                         設計判断の記録
 │   └── boundary-changes.md          委譲範囲の変更の履歴
 ├── telemetry/
@@ -173,6 +174,7 @@ my-app/
 | `autodrive.json` | init | プロジェクト | 構成。`update` でも変更されない |
 | `boundaries.yaml` | init | プロジェクト | 委譲範囲の表。どの領域をAIに任せているか |
 | `docs/what-why.md` | init | プロジェクト | 何を作るか、なぜ作るか |
+| `docs/quality.md` | init | プロジェクト | 品質で守ること、意図して守らないと決めたこと |
 | `CLAUDE.md` | init | プロジェクト | プロジェクト固有の規約 |
 | `.gitignore` | init | プロジェクト | 資格情報と作業状態を除外する |
 | `notes/README.md` | init | プロジェクト | **人が使う置き場所。** 考えをまとめる。中身は追跡しない |

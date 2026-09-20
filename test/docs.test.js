@@ -10,6 +10,7 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,7 @@ import { test } from "node:test";
 import { delegateFor, MODES } from "../src/vendored/internal/cli.js";
 import { brokenEmphasis, headerlessTables } from "../src/vendored/internal/emphasis.js";
 import { OPERATIONS as TELEMETRY_OPS } from "../src/vendored/internal/telemetryCli.js";
+import { init, template } from "../src/vendored/internal/init.js";
 import { OPERATIONS as TRACKER_OPS } from "../src/vendored/internal/trackerCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
@@ -1027,66 +1029,89 @@ test("検証環境を経てから本番へ出す、と配ってある", () => {
   }
 });
 
-// ------------------------------------------- 品質の捉え方が配ってある（AUT-210）
+// ------------------------------------------- 品質をどう守るかの指示（AUT-210）
 //
-// **委譲範囲の表には、品質が現れない。** 領域は操作×対象（`implement/product-code`、
-// `deploy/production`）であり、軸は気づけるか×戻せるかである。`implement/product-code`
-// が委譲済みとは「**人がコードを読まなくなった**」であって、そのプロダクトが安全か・
-// 速いか・ビジネス目的を果たすかは言っていない。
+// **autodrive.md はAIの動きを縛るファイルである。** 捉え方を書いても動きは変わらない。
+// 最初の版は「こう捉えよ」としか書いておらず、**読んでも何も変わらなかった**（人の指摘）。
 //
-// **クライアントが問うのはそちらである。** 立ち上げ時に手がかりが無いと、1から
-// 考えることになる（人の指摘）。
-test("品質を、カバー範囲と欠落で捉えると配ってある", () => {
-  const text = rules();
+// **ゴールは、歴戦のエンジニアでなくてもちゃんとした品質のアプリが作れること。**
+// したがってここに要るのは、そこへ進むための道標である。
 
-  // **全体として何が見られていないか、が要点である。** 個々の検査ではない。
+// **戻せないものを、検出が無いまま通さない。** 定義§8の軸（戻せるか）を品質に繋ぐ。
+test("戻せないものから埋めよ、と指示している", () => {
+  const text = rules();
+  assert.ok(text.includes("戻せないところから埋める"), "順番の指示が無い");
   assert.ok(
-    text.includes("全体として何が見られていて、何が見られていないか"),
-    "捉え方が書かれていない",
-  );
-  // **委譲範囲の表では足りないことを言う。** 言わないと、表があるので足りていると読まれる。
-  assert.ok(text.includes("委譲範囲の表には、品質が現れない"), "表との違いが書かれていない");
-  // 2つの軸。
-  for (const axis of ["何について", "どこで"]) {
-    assert.ok(text.includes(axis), `軸が無い: ${axis}`);
-  }
-});
-
-// **埋める表にしない。** 定義§10「規約や手順を満たしたことは、その水準を満たしたことの
-// 説明にならない」。軸を並べると埋めたくなり、**埋まったことが品質の説明にされる。**
-test("品質の表が、埋める表ではないと配ってある", () => {
-  const text = rules();
-  assert.ok(text.includes("穴を見せることである"), "何のための表かが無い");
-  assert.ok(text.includes("埋める表にしないこと"), "埋める表にしない、と言っていない");
-});
-
-// **水準は意思決定である**（定義§10）。AIが決めると、人が選ぶ機会が消える。
-test("狙う水準を人が決める、と配ってある", () => {
-  const text = rules();
-  assert.ok(text.includes("どのセルを、どこまで守るかは意思決定である"), "意思決定だと言っていない");
-  // **欠ける範囲まで示す。** 選択肢だけでは、何を捨てるのかが分からない。
-  assert.ok(
-    text.includes("何が見られないままになるかを示して"),
-    "捨てる範囲を示すことが書かれていない",
+    text.includes("戻せないものに検出が無い状態を、そのまま通さないこと"),
+    "通さないと言っていない",
   );
 });
 
-// **いつ決めるかが無いと、決めないまま進む**（人の指摘）。立ち上げの段取りに置く。
-test("品質の狙いを決める段が、立ち上げにある", () => {
+// **人に品質の知識を求めない。** 白紙で聞くと、非エンジニアは答えられない。
+test("白紙で聞かず、案を出せと指示している", () => {
+  const text = rules();
+  assert.ok(text.includes("こちらが案を出し、人は選ぶ"), "案を出せと言っていない");
+  assert.ok(text.includes("安いものは聞かずに入れる"), "聞かずに入れるものが無い");
+  // **捨てる範囲を添える。** 選択肢だけでは何を失うか分からない。
+  assert.ok(
+    text.includes("入れない場合に何が見られないままになるかを必ず添える"),
+    "欠ける範囲を添えることが書かれていない",
+  );
+});
+
+// **実装の前に検出を作る。** 順番が逆だと、テストが実装に合わせて書かれる。
+test("実装より先に検出を作れ、と指示している", () => {
+  const text = rules();
+  assert.ok(text.includes("先に検出を作る"), "順番の指示が無い");
+  assert.ok(text.includes("実装してから検出を考えないこと"), "逆順を禁じていない");
+});
+
+// **通ったのは書いたものだけである。** 見ていない範囲を言わないと、空欄が
+// 「問題なし」と読まれる。
+test("見ていない範囲を提出で言え、と指示している", () => {
+  const text = rules();
+  assert.ok(text.includes("誰も見ていない範囲はどこか"), "見ていない範囲を言えと書いていない");
+  assert.ok(
+    text.includes("「テストが通った」で報告を終えないこと"),
+    "報告の終わらせ方を言っていない",
+  );
+});
+
+// **会話で決めて終わりにしない。** 置き場が無ければ、次の作業単位では読めない。
+test("決めたことの置き場が、実体として配られる", () => {
+  const body = template(KIT, "quality.md");
+  assert.ok(body.includes("戻せないもの"), "戻せないものの欄が無い");
+  assert.ok(body.includes("空けたままにすると決めたもの"), "意図して空けた記録の欄が無い");
+  // **空欄を「問題なし」と読ませない。**
+  assert.ok(body.includes("空欄は「問題なし」と読まれる"), "空欄の読まれ方への注意が無い");
+
+  // **置かれること。** テンプレートが在っても、置かれなければ届かない。
+  const root = project();
+  init(root, KIT);
+  assert.ok(existsSync(join(root, "docs", "quality.md")), "docs/quality.md が置かれていない");
+});
+
+// **決める段が無いと、決めないまま進む。**
+test("品質を決める段が、立ち上げにある", () => {
   const steps = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8")
     .split("\n")
     .filter((l) => l.startsWith("| ") && l.includes("**"));
-  assert.ok(
-    steps.some((l) => l.includes("品質の狙いを決めてもらう")),
-    `立ち上げの段取りに品質が無い:\n${steps.slice(0, 12).join("\n")}`,
-  );
+  const step = steps.find((l) => l.includes("品質で守ることを決めてもらう"));
+  assert.ok(step !== undefined, `立ち上げの段取りに品質が無い:\n${steps.slice(0, 12).join("\n")}`);
+  // **成果物はファイルである。** 会話で消えるものを成果物にしない。
+  assert.ok(step.includes("docs/quality.md"), `成果物がファイルになっていない: ${step}`);
 });
 
-// **凡例の無い記号を配らない。** 図で示すなら、読み方まで書く。書かないと、
-// 濃淡があるのか、無いのかが読む側で分かれる（AUT-210、こちらの見落とし）。
+// **記号は1種類に保つ。** 濃淡を作ると、濃いほうを埋める話になる。
 test("品質の格子に、記号の読み方がある", () => {
-  const text = rules();
-  assert.ok(text.includes("空欄＝誰も見ていない"), "空欄の意味が書かれていない");
-  // **記号は1種類に保つ。** 濃淡を作ると、濃いほうを埋める話になる。
-  assert.equal(text.includes("○"), false, "記号が2種類ある。穴の有無だけを見せること");
+  const body = template(KIT, "quality.md");
+  assert.ok(body.includes("空欄＝誰も見ていない"), "空欄の意味が書かれていない");
+  assert.equal(body.includes("○"), false, "記号が2種類ある。穴の有無だけを見せること");
 });
+
+/** 素のリポジトリ。`init` が置けるだけの状態にする。 */
+function project() {
+  const root = tempDir("autodrive-docs-");
+  execFileSync("git", ["-C", root, "init", "-q"], { stdio: "ignore" });
+  return root;
+}
