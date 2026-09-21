@@ -74,6 +74,13 @@ export function summarize({ events, quality }) {
       events: events.length,
       workItems: new Set(events.map((e) => e.work_item_id).filter(Boolean)).size,
       repos: quality.map((q) => q.repo),
+      // **リポジトリごとに何を読んだかを出す。** 名前だけ並べても、読み手は
+      // どこからの話かを追えない。
+      perRepo: quality.map((q) => ({
+        repo: q.repo,
+        events: events.filter((e) => String(e.source ?? "").startsWith(`${q.repo}/`)).length,
+        decided: q.body !== null && unfilled(q.body).length === 0,
+      })),
     },
     // 決めたことの置き場。**無ければ、その事実を出す。**
     decided: quality.map((q) => ({
@@ -105,6 +112,92 @@ export function summarize({ events, quality }) {
   };
 }
 
+/**
+ * 読みどころ。**観察と、次にすることまで出す。**
+ *
+ * **並べるだけにしない。** 数を出して「あとは読んだ人が判断してください」で終えると、
+ * 分析を人へ押し付けたことになる。**判断のコストを下げるのが役割であり、判断を消す
+ * ことではない**（配布物「意思決定は代行しない」）。
+ *
+ * **ただし良し悪しは言わない**（定義§1）。言うのは「何が起きているか」と
+ * 「次に何をするか」であって、「良い／悪い」ではない。決めるのは人である。
+ *
+ * **割合で言わない。** `N 件のうち M 件` の形で出す。分母が消えると、数の大小が
+ * そのまま評価に読まれる。
+ */
+export function findings(data) {
+  const out = [];
+  const add = (observation, why, next) => out.push({ observation, why, next });
+
+  const undecided = data.decided.filter((d) => !d.placed || d.unfilled.length > 0);
+  if (undecided.length > 0) {
+    add(
+      `${undecided.length} 件のリポジトリで、何を確かめるかが決まっていない（${QUALITY_FILE}）。`,
+      "**この報告のいちばん上が空のままになる。** 確かめていないのか、書いていないだけなのかを、読む人は区別できない。",
+      `各リポジトリの ${QUALITY_FILE} を埋めること。観点はリポジトリの性質で変わる。`,
+    );
+  }
+
+  const prod = data.escaped.byStage.find((s) => s.name === "本番");
+  if (prod !== undefined && data.escaped.total > 0) {
+    add(
+      `検出漏れ ${data.escaped.total} 件のうち ${prod.n} 件が本番で見つかっている。`,
+      "**本番で見つかったということは、その手前のどこも捕まえていない。** 利用者が先に気づいている。",
+      "本番で見つかった分の原因の内訳を見て、どの段に検出を足すかを決めること。",
+    );
+  }
+
+  // **自由記述の集計は、種類が増えると読めなくなる。**
+  if (data.escaped.byStage.length >= 10) {
+    add(
+      `見つかった工程が ${data.escaped.byStage.length} 種に散っている。`,
+      "**同じ工程が違う言葉で書かれていると、件数が分かれて傾向が見えない。** 集計に耐えない。",
+      "決まった語にするか、報告の側でまとめること。どちらにするかは人が決める。",
+    );
+  }
+
+  for (const [label, rows] of [
+    ["検出漏れの原因", data.escaped.byCause],
+    ["停止の種別", data.stops.byType],
+  ]) {
+    const missing = rows.find((r) => r.name === "（記録に無い）");
+    if (missing !== undefined) {
+      add(
+        `${label}が記録に無いものが ${missing.n} 件ある。`,
+        "**その分は、どの内訳にも入っていない。** 内訳の合計が全体と合わない。",
+        "記録の時点で付ける項目である。後から分類すると、分類した側の解釈が入る。",
+      );
+    }
+  }
+
+  if (data.sampled.length === 0 && data.scale.events > 0) {
+    add(
+      "抜き取り確認の記録が1件も無い。",
+      "**気づけない領域を、誰も見ていないことになる**（定義§8）。自動で落ちない誤りは、人が見なければ残る。",
+      "気づけない領域を決めて、見た範囲と見なかった範囲を記録すること。",
+    );
+  }
+
+  if (data.boundaryChanges.length === 0 && data.scale.events > 0) {
+    add(
+      "任せる範囲を動かした記録が1件も無い。",
+      "**外側ループが回った証拠が無い。** 記録を読んで仕組みを直す側が、動いていない可能性がある。",
+      "記録を読み、委譲範囲を動かせる領域があるかを見ること。",
+    );
+  }
+
+  const topRework = data.rework.byCause[0];
+  if (topRework !== undefined && data.rework.total > 0) {
+    add(
+      `手戻り ${data.rework.total} 件のうち、最も多い原因は「${topRework.name}」で ${topRework.n} 件。`,
+      "**原因の偏りは、どの工程の精度が低いかを指す**（定義§6）。",
+      "その工程に検出を足せるかを見ること。足せないなら、人が見る範囲として残す。",
+    );
+  }
+
+  return out;
+}
+
 /** 「無い」の言い方。**なぜ空なのかまで言う。** 空欄は「問題なし」と読まれる。 */
 function none(hasAnyRecord, what) {
   return hasAnyRecord
@@ -128,11 +221,35 @@ export function render(data) {
 
   out.push(
     "**これは品質の点数ではない。**「何を、どこまで確かめたか」と「誰も見ていないのはどこか」",
-    "を、記録から出したものである。良いか悪いかは、読んだ人が判断する。",
+    "を、記録から出したものである。**点は付けない。**",
     "",
     "## 対象",
-    `  リポジトリ: ${data.scale.repos.join(", ") || "（無い）"}`,
-    `  記録: ${data.scale.events} 件 / 作業単位 ${data.scale.workItems} 件`,
+    "",
+    "**何を確かめる観点かは、リポジトリごとに違う。** 性質が違えば見るものも違う。",
+    `各リポジトリの ${QUALITY_FILE} がそれを持つ。**この報告は、そこに書かれたものを読む。**`,
+    "",
+    "| リポジトリ | 記録 | 何を確かめるかが決まっているか |",
+    "|---|---|---|",
+    ...data.scale.perRepo.map(
+      (r) => `| ${r.repo} | ${r.events} 件 | ${r.decided ? "決まっている" : "**決まっていない**"} |`,
+    ),
+    "",
+    `  合計: 記録 ${data.scale.events} 件 / 作業単位 ${data.scale.workItems} 件`,
+    "",
+  );
+
+  // **並べるだけにしない。** 分析を人へ押し付けたことになる。
+  const notes = findings(data);
+  out.push("## 読みどころ");
+  if (notes.length === 0) {
+    out.push("  **記録から言えることが無い。** 記録そのものが足りていない可能性がある。");
+  } else {
+    for (const [i, n] of notes.entries()) {
+      out.push(`  ${i + 1}. ${n.observation}`, `     ${n.why}`, `     **次にすること:** ${n.next}`, "");
+    }
+  }
+  out.push(
+    "**ここに書いたのは、記録から導ける観察である。** どれを直すか、直さないかは人が決める。",
     "",
   );
 
