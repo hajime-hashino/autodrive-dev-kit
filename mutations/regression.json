@@ -462,5 +462,33 @@
     "from": "  if (broken.length > 0) {",
     "to": "  if (false) {",
     "why": "読めた分が全部だと受け取られる"
+  },
+  {
+    "name": "AUT-211 読みどころを出さず、並べるだけにする",
+    "file": "src/vendored/internal/quality.js",
+    "from": "  const notes = findings(data);\n",
+    "to": "  const notes = [];\n",
+    "why": "数を出して終えると、分析を人へ押し付けたことになる"
+  },
+  {
+    "name": "AUT-211 読みどころから、次にすることを落とす",
+    "file": "src/vendored/internal/quality.js",
+    "from": "`     **次にすること:** ${n.next}`, \"\"",
+    "to": "\"\"",
+    "why": "観察だけでは、読んだ人が何をすればよいか分からない"
+  },
+  {
+    "name": "AUT-211 本番で見つかった分を、割合で言う",
+    "file": "src/vendored/internal/quality.js",
+    "from": "`検出漏れ ${data.escaped.total} 件のうち ${prod.n} 件が本番で見つかっている。`",
+    "to": "`検出漏れの ${Math.round((prod.n / data.escaped.total) * 100)}% が本番で見つかっている。`",
+    "why": "分母が消えると、数の大小がそのまま評価に読まれる"
+  },
+  {
+    "name": "AUT-211 対象から、リポジトリごとの内訳を落とす",
+    "file": "src/vendored/internal/quality.js",
+    "from": "    ...data.scale.perRepo.map(\n",
+    "to": "    ...[].map(\n",
+    "why": "名前だけ並べても、読み手はどこからの話かを追えない"
   }
 ]

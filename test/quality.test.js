@@ -9,7 +9,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { QUALITY_FILE, render, summarize, unfilled } from "../src/vendored/internal/quality.js";
+import { QUALITY_FILE, findings, render, summarize, unfilled } from "../src/vendored/internal/quality.js";
 import { run } from "../src/vendored/internal/qualityCli.js";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -32,7 +32,7 @@ test("分母を出す", () => {
   assert.equal(data.scale.workItems, 2, "作業単位の数を数えていない");
 
   const text = render(data);
-  assert.match(text, /記録: 3 件 \/ 作業単位 2 件/, "分母が出ていない");
+  assert.match(text, /合計: 記録 3 件 \/ 作業単位 2 件/, "分母が出ていない");
 });
 
 // ------------------------------------------------------- 空欄を作らない
@@ -140,4 +140,101 @@ test("読めなかった記録を、隠さない", () => {
   assert.equal(code, 0);
   assert.match(output, /読めなかった記録（1 件）/, `読めなかった行を隠している:\n${output}`);
   assert.match(output, /上のどの数にも入っていない/, "数に入っていないことを言っていない");
+});
+
+// ------------------------------------------------------------- 読みどころ
+//
+// **並べるだけにしない**（人の指摘）。数を出して「あとは読んだ人が判断してください」
+// で終えると、**分析を人へ押し付けたことになる。** 判断のコストを下げるのが役割で
+// あり、判断を消すことではない。
+//
+// **ただし良し悪しは言わない**（定義§1）。言うのは「何が起きているか」と
+// 「次に何をするか」であって、「良い／悪い」ではない。
+
+test("読みどころが、観察・理由・次にすることの3つを持つ", () => {
+  const notes = findings(
+    summary([
+      ev("miss", { found_in: "本番", cause: "実装バグ" }),
+      ev("rework", { cause: "設計のズレ" }),
+    ]),
+  );
+  assert.notEqual(notes.length, 0, "読みどころを1つも出していない");
+  for (const n of notes) {
+    assert.ok(n.observation, "観察が無い");
+    assert.ok(n.why, "なぜ気になるかが無い");
+    assert.ok(n.next, "次にすることが無い");
+  }
+});
+
+// **本番で見つかったことを見逃さない。** その手前のどこも捕まえていない。
+test("本番で見つかった検出漏れを、読みどころに出す", () => {
+  const notes = findings(summary([ev("miss", { found_in: "本番" })]));
+  const n = notes.find((x) => x.observation.includes("本番で見つかっている"));
+  assert.ok(n !== undefined, "本番の検出漏れを出していない");
+  // **分母を添える。** 割合にすると、数の大小がそのまま評価に読まれる。
+  assert.match(n.observation, /1 件のうち 1 件/, `分母が無い: ${n.observation}`);
+});
+
+// **決まっていないことを、読みどころの側でも言う。** 表の空欄は読み飛ばされる。
+test("何を確かめるか決まっていないことを、読みどころに出す", () => {
+  const notes = findings(summary([ev("miss")], [{ repo: "app", body: null }]));
+  assert.ok(
+    notes.some((n) => n.observation.includes("何を確かめるかが決まっていない")),
+    "決まっていないことを読みどころに出していない",
+  );
+});
+
+// **記録に無い分を、内訳から黙って落とさない。** 合計が全体と合わなくなる。
+test("記録に無い内訳を、読みどころに出す", () => {
+  const notes = findings(summary([ev("stop")]));
+  const n = notes.find((x) => x.observation.includes("停止の種別が記録に無い"));
+  assert.ok(n !== undefined, "記録に無い分を出していない");
+  assert.match(n.why, /どの内訳にも入っていない/, "何が起きるかを言っていない");
+});
+
+// **読みどころでも、良し悪しを言わない。**
+test("読みどころが、良し悪しを言わない", () => {
+  const text = render(summary([ev("miss", { found_in: "本番", cause: "実装バグ" })]));
+  assert.match(text, /## 読みどころ/, "読みどころが出ていない");
+  assert.match(text, /どれを直すか、直さないかは人が決める/, "決めるのが人だと言っていない");
+  for (const shape of [/\d+\s*[%％]/, /合格|不合格/, /良好|不良/, /スコア/, /評価: /]) {
+    assert.equal(shape.test(text), false, `点の形が出ている: ${shape}`);
+  }
+});
+
+// -------------------------------------------------------------- 対象の説明
+//
+// **リポジトリごとに観点が違う**（人の指摘）。名前だけ並べても、読み手は
+// どこからの話かを追えない。
+test("対象が、リポジトリごとの内訳と観点の出どころを示す", () => {
+  const text = render(
+    summarize({
+      events: [{ type: "miss", work_item_id: "A", source: "app/telemetry/A.jsonl" }],
+      quality: [
+        { repo: "app", body: "# 品質管理\n" },
+        { repo: "docs-only", body: null },
+      ],
+    }),
+  );
+  // **観点はリポジトリごとに違うこと。**
+  assert.match(text, /観点は、?リポジトリごとに違う|観点かは、リポジトリごとに違う/, "観点の違いを言っていない");
+  // **記録の件数を、リポジトリごとに出す。**
+  assert.match(text, /\| app \| 1 件 \|/, "リポジトリごとの件数が出ていない");
+  assert.match(text, /\| docs-only \| 0 件 \|/, "記録が無いリポジトリが出ていない");
+});
+
+// **出力に載ることまで見る。** 関数が正しくても、載らなければ読む人には届かない。
+// **ここが抜けていた。** `findings()` だけを試験し、出口を見ていなかったため、
+// 読みどころを落とす変異が2件とも生き残った。
+test("読みどころが、出力に載る", () => {
+  const text = render(
+    summary([ev("miss", { found_in: "本番", cause: "実装バグ" }), ev("rework", { cause: "設計のズレ" })]),
+  );
+
+  // 観察がそのまま出ていること。
+  assert.match(text, /検出漏れ 1 件のうち 1 件が本番で見つかっている/, `観察が載っていない:\n${text}`);
+  // **次にすることが出ていること。** 観察だけでは何をすればよいか分からない。
+  assert.match(text, /\*\*次にすること:\*\*/, "次にすることが載っていない");
+  // **番号が振られ、複数出ること。**
+  assert.match(text, /^ {2}2\. /m, `読みどころが1件しか載っていない:\n${text}`);
 });
