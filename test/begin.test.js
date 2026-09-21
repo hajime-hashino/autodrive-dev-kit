@@ -7,6 +7,11 @@ import { test } from "node:test";
 import { branchNameFor, defaultBranchOf, placeState, run } from "../src/vendored/internal/beginCli.js";
 import { STATE_DIR, defaultRoot, rememberBranch, resolveWorkItem } from "../src/vendored/internal/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** 参照実装の根。**自分自身が追跡外にしているかを見るため。** */
+const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 
 /** ワークディレクトリと、その直下の対象リポジトリ。 */
@@ -422,4 +427,31 @@ test("子が状態を持たなければ、作業場の状態で解決する", ()
   placeState(root, repoPath, "child", "aut-998", "AUT-998");
   const { item } = resolveWorkItem(defaultRoot({}, repoPath), repoPath);
   assert.equal(item?.workItemId, "AUT-998");
+});
+
+// ----------------------------------- 作業状態が追跡されないこと（AUT-222）
+//
+// **AUT-221 で置き場所を増やしたとき、増えた先が追跡されるかを見ていなかった。**
+// 以前は対象リポジトリ側に `.autodrive/` ができなかったため、追跡外の指定が
+// 無くても表に出なかった。
+//
+// **追跡すると、クローンした先が他人のマーカーを持つ。** 記録の宛先が他人の
+// 作業単位へ向かう。AUT-221 で直したものが、別の経路で戻る。
+test("作業状態の置き場が、このリポジトリで追跡されない", () => {
+  // **実在に依存しない形で聞く。** `.autodrive/` というパターンはディレクトリに
+  // しか一致しないため、`git check-ignore .autodrive` は**そのディレクトリが
+  // 無い場所で一致しない。** 手元には在り CI には無いので、手元だけ通る
+  // （実際に CI で落ちた）。中のファイルを聞けば、実在に関わらず一致する。
+  const asked = `${STATE_DIR}/current-work-item.json`;
+  const ignored = execFileSync("git", ["-C", KIT_ROOT, "check-ignore", asked], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  assert.equal(ignored, asked, `${STATE_DIR} が追跡外になっていない`);
+});
+
+// **配る `.gitignore` にも入っていること。** `init` を打った先で同じことが起きる。
+test("配る .gitignore にも、作業状態の置き場が入っている", () => {
+  const body = readFileSync(join(KIT_ROOT, "src", "templates", "gitignore"), "utf8");
+  assert.match(body, /^\.autodrive\/$/m, "配る側に入っていない");
 });

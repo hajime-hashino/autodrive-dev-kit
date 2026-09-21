@@ -497,5 +497,12 @@
     "from": "  for (const at of new Set([root, repoPath])) {",
     "to": "  for (const at of [root]) {",
     "why": "対象リポジトリが自分の .autodrive を持つと、そこの古いマーカーへ記録が落ちる"
+  },
+  {
+    "name": "AUT-222 配る .gitignore から、作業状態の置き場を落とす",
+    "file": "src/templates/gitignore",
+    "from": ".autodrive/\n",
+    "to": "",
+    "why": "追跡すると、クローンした先が他人のマーカーを持ち、記録の宛先が他人の作業単位へ向かう"
   }
 ]
