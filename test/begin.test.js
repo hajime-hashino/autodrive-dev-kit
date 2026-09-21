@@ -306,7 +306,10 @@ test("ブランチを作れなければ、状態もマーカーも動かさな�
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("--branch"), `別名の渡し方を案内していない: ${output}`);
+  assert.ok(output.includes("作れない"), `作れなかったことを言っていない: ${output}`);
+  // **「--branch で別名を渡せ」は、もう出さない。** 同じ名前のブランチが既にあれば
+  // 再開するため、この案内に従うと1つの作業単位に2本のブランチができる（AUT-206）。
+  assert.equal(output.includes("--branch で別の名前"), false, `再開ではなく別名を勧めている: ${output}`);
   assert.deepEqual(tracker.advanced, []);
   assert.equal(existsSync(join(root, ".autodrive", "current-work-item.json")), false);
 });
@@ -454,4 +457,86 @@ test("作業状態の置き場が、このリポジトリで追跡されない",
 test("配る .gitignore にも、作業状態の置き場が入っている", () => {
   const body = readFileSync(join(KIT_ROOT, "src", "templates", "gitignore"), "utf8");
   assert.match(body, /^\.autodrive\/$/m, "配る側に入っていない");
+});
+
+// ------------------------------------------------- 中断して戻る（AUT-206）
+//
+// **以前は「`--branch` で別の名前を渡すこと」と案内していた。** 再開したいのに
+// 別の名前を勧めており、**従うと1つの作業単位に2本のブランチができる。**
+//
+// **既にあるブランチへ戻るのは、積む行為ではない。** AUT-38 が守っているのは
+// ブランチを**作る**ことであり、切り替えることではない。
+
+test("同じ名前のブランチが既にあれば、作らずに戻る", async () => {
+  const root = workspace();
+  const tracker = fakeTracker();
+  const git = fakeGit({
+    "branch --show-current": "aut-50",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /再開した/, `再開だと言っていない: ${output}`);
+  assert.match(output, /aut-50 から戻った/, "どこから戻ったかを言っていない");
+
+  // **作らない。** 既にあるものを作ろうとすれば落ちる。
+  assert.equal(
+    git.calls.some((a) => a[0] === "checkout" && a[1] === "-b"),
+    false,
+    "既にあるブランチを作ろうとしている",
+  );
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout aut-99"), "戻っていない");
+
+  // **Tracker は動かさない。** 既に着手済みである。
+  assert.deepEqual(tracker.advanced, [], "着手済みのものを進めている");
+
+  // **記録の紐づけ先は置き直す**（AUT-221）。戻る前の作業単位へ向かわないため。
+  assert.equal(marker(root).work_item_id, "AUT-99");
+});
+
+// **別のブランチの上から始めない、が再開を塞がないこと。** あの制約は作る側の話である。
+test("別のブランチに居ても、再開は通る", async () => {
+  const root = workspace();
+  const git = fakeGit({
+    "branch --show-current": "aut-50",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+  assert.equal(code, 0, output);
+  assert.equal(output.includes("前の作業のブランチの上から"), false, "作る側の制約で止めている");
+});
+
+// **未コミットのまま戻さない。** 戻る先には既に別の変更がある。混ざると読めなくなる。
+test("未コミットの変更があれば、戻さずに止める", async () => {
+  const root = workspace();
+  const tracker = fakeTracker();
+  const git = fakeGit({
+    "branch --show-current": "aut-50",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+    "status --short": " M src/app.ts",
+  });
+
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
+
+  assert.equal(code, 1);
+  assert.match(output, /持ち越される/, "何が起きるかを言っていない");
+  assert.match(output, /src\/app\.ts/, "どれが残っているかを出していない");
+  // **どうすればよいかまで出す**（停止の作法）。
+  assert.match(output, /stash|commit/, "次にすることを出していない");
+  assert.equal(git.calls.some((a) => a.join(" ") === "checkout aut-99"), false, "戻してしまっている");
+});
+
+// **いま既にそのブランチに居る場合も、黙って通さない。** 紐づけ先は置き直す。
+test("既にそのブランチに居るなら、紐づけ先だけ置き直す", async () => {
+  const root = workspace();
+  const git = fakeGit({
+    "branch --show-current": "aut-99",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+  assert.equal(code, 0, output);
+  assert.match(output, /既にこのブランチで進行中/, output);
+  assert.equal(marker(root).work_item_id, "AUT-99");
 });
