@@ -57,6 +57,91 @@ export const runGit = (repoPath, args) =>
 
 /** ブランチ名。作業単位のIDを小文字にしたものを既定とする。 */
 /**
+ * そのブランチが既にあるか。
+ *
+ * **出力で見る。終了コードに頼らない。** `--quiet` を付けると、無いときは何も
+ * 出さずに非ゼロで終わる。**例外の有無だけで見ると、例外を握りつぶす層が
+ * 挟まったときに「ある」と答えてしまう。** 在れば必ず名前が返る。
+ *
+ * **読めなければ「無い」とする。** 作る側で落ちるので、そちらの案内が出る。
+ */
+export function hasBranch(repoPath, branch, git) {
+  try {
+    const out = git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]);
+    return typeof out === "string" && out.trim() !== "";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 中断した作業単位へ戻る。
+ *
+ * **作らない。切り替えるだけ。** Tracker は既に着手済みなので動かさない。
+ *
+ * **記録の紐づけ先は置き直す。** 戻ったあとに書いた記録が、前に居た作業単位へ
+ * 向かわないため（AUT-221）。
+ *
+ * ## 未コミットの変更があれば止める
+ *
+ * **切り替えると、前の作業の変更が別の作業単位のブランチへ持ち越される。**
+ * 新しく作るときは持ち越してよい（まだ何も無いブランチへ移るだけ）が、
+ * **戻る先には既に別の変更がある。** 混ざると、どちらの作業のものか読めなくなる。
+ */
+export function resume({ root, repoPath, repo, branch, item, current, git }) {
+  if (current === branch) {
+    placeState(root, repoPath, repo, branch, item.id);
+    return {
+      output: [
+        `${item.id} は既にこのブランチで進行中（${branch}）。`,
+        item.url,
+        "",
+        "記録の紐づけ先を置き直した。",
+      ].join("\n"),
+      code: 0,
+    };
+  }
+
+  const dirty = (() => {
+    try {
+      return git(repoPath, ["status", "--short"]).trim();
+    } catch {
+      return "";
+    }
+  })();
+  if (dirty !== "") {
+    return fail([
+      `${repo} に未コミットの変更がある。**このまま戻すと、${branch} へ持ち越される。**`,
+      "",
+      ...dirty.split("\n").map((l) => `  ${l.trim()}`),
+      "",
+      "いまの作業のものなら、次のどちらかを行うこと。",
+      `  - コミットする: git -C ${repo} add -A && git -C ${repo} commit`,
+      `  - 退避する: git -C ${repo} stash`,
+    ]);
+  }
+
+  try {
+    git(repoPath, ["checkout", branch]);
+  } catch (error) {
+    return fail([`${branch} へ戻れない: ${message(error)}`]);
+  }
+
+  placeState(root, repoPath, repo, branch, item.id);
+  return {
+    output: [
+      `${item.id} を再開した: ${item.title}`,
+      item.url,
+      "",
+      `対象リポジトリ  ${repo}`,
+      `ブランチ              ${branch}（${current} から戻った）`,
+      `記録の紐づけ先  ${repo} の ${item.id}`,
+    ].join("\n"),
+    code: 0,
+  };
+}
+
+/**
  * 作業状態を置く。**記録を読む側と同じ場所へ置く。**
  *
  * ## なぜ2か所へ置くか
@@ -218,6 +303,22 @@ export async function run(
     ]);
   }
 
+  const branch = branchNameFor(item.id, values.branch);
+
+  // 再開 ---------------------------------------------------------------------
+  //
+  // **同じ名前のブランチが既にあれば、作らずにそこへ戻る。**
+  //
+  // 以前は「`--branch` で別の名前を渡すこと」と案内していた。**再開したいのに
+  // 別の名前を勧めており、従うと1つの作業単位に2本のブランチができる**（AUT-206）。
+  //
+  // **下の「別のブランチの上から始めない」より先に見る。** あの制約が守っている
+  // のは**ブランチを作ること**である。統合済みのブランチに積むと変更が届かない
+  // （AUT-38）。**既にあるブランチへ戻るのは、積む行為ではない。**
+  if (hasBranch(repoPath, branch, git)) {
+    return resume({ root, repoPath, repo, branch, item, current, git });
+  }
+
   // **別のブランチの上から始めない。** 前の作業のブランチに積むと、その提出が閉じている場合、
   // 変更は既定ブランチへ届かない（AUT-38）。
   if (current !== defaultBranch) {
@@ -250,14 +351,10 @@ export async function run(
     ]);
   }
 
-  const branch = branchNameFor(item.id, values.branch);
   try {
     git(repoPath, ["checkout", "-b", branch]);
   } catch (error) {
-    return fail([
-      `ブランチ ${branch} を作れない: ${message(error)}`,
-      "同じ名前のブランチが既にある場合は --branch で別の名前を渡すこと。",
-    ]);
+    return fail([`ブランチ ${branch} を作れない: ${message(error)}`]);
   }
 
   // 3. マーカー -------------------------------------------------------------

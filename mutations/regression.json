@@ -504,5 +504,40 @@
     "from": ".autodrive/\n",
     "to": "",
     "why": "追跡すると、クローンした先が他人のマーカーを持ち、記録の宛先が他人の作業単位へ向かう"
+  },
+  {
+    "name": "AUT-206 再開せず、別名のブランチを作らせる",
+    "file": "src/vendored/internal/beginCli.js",
+    "from": "  if (hasBranch(repoPath, branch, git)) {\n",
+    "to": "  if (false) {\n",
+    "why": "再開したいのに別名を勧めることになり、1つの作業単位に2本のブランチができる"
+  },
+  {
+    "name": "AUT-206 未コミットのまま戻す",
+    "file": "src/vendored/internal/beginCli.js",
+    "from": "  if (dirty !== \"\") {\n",
+    "to": "  if (false) {\n",
+    "why": "前の作業の変更が、戻る先のブランチへ持ち越されて混ざる"
+  },
+  {
+    "name": "AUT-206 再開時に、紐づけ先を置き直さない",
+    "file": "src/vendored/internal/beginCli.js",
+    "from": "  placeState(root, repoPath, repo, branch, item.id);\n  return {\n    output: [\n      `${item.id} を再開した",
+    "to": "  return {\n    output: [\n      `${item.id} を再開した",
+    "why": "戻ったあとに書いた記録が、前に居た作業単位へ向かう（AUT-221 と同じ形）"
+  },
+  {
+    "name": "AUT-206 ブランチの有無を、終了コードだけで見る",
+    "file": "src/vendored/internal/beginCli.js",
+    "from": "    return typeof out === \"string\" && out.trim() !== \"\";",
+    "to": "    return true;",
+    "why": "例外を握りつぶす層が挟まると、無いブランチを「ある」と答える"
+  },
+  {
+    "name": "AUT-206 配布物から、手で checkout しない旨を落とす",
+    "file": "src/templates/autodrive.md",
+    "from": "**手で `git checkout` しないこと。** 記録の紐づけ先が前の作業単位を指したままになり、\n**戻ったあとに書いた記録が、そちらへ向かう。**\n",
+    "to": "",
+    "why": "入口を通らずに戻ると、記録が前の作業単位へ向かう（AUT-221 と同じ形）"
   }
 ]
