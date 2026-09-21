@@ -539,5 +539,26 @@
     "from": "**手で `git checkout` しないこと。** 記録の紐づけ先が前の作業単位を指したままになり、\n**戻ったあとに書いた記録が、そちらへ向かう。**\n",
     "to": "",
     "why": "入口を通らずに戻ると、記録が前の作業単位へ向かう（AUT-221 と同じ形）"
+  },
+  {
+    "name": "AUT-207 登録されていれば、指す先を確かめない",
+    "file": "src/vendored/internal/checks.js",
+    "from": "    const exists = bases.some((b) => existsSync(resolve(b, resolved)));",
+    "to": "    const exists = true;",
+    "why": "配布物の置き場所が変わると、登録だけが古く残り、黙って記録が止まる"
+  },
+  {
+    "name": "AUT-207 指す先が無くても、有効にする",
+    "file": "src/vendored/internal/checks.js",
+    "from": "      r.notImplemented(\"記録の自動化が実在しないものを指しているため、有効の条件を満たさない\");\n",
+    "to": "",
+    "why": "記録が続く保証が無いのに有効を名乗る"
+  },
+  {
+    "name": "AUT-207 起点を渡さず、登録先からだけ探す",
+    "file": "src/vendored/internal/main.js",
+    "from": "scope, root: resolve(values.root) };",
+    "to": "scope };",
+    "why": "${CLAUDE_PROJECT_DIR} が解決できず、実在するフックを無いと言う"
   }
 ]

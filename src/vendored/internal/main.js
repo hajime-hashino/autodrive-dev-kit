@@ -173,7 +173,8 @@ export async function run(argv) {
     trackerToken === undefined
       ? null
       : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
-  const input = { repos, events, broken, api, tracker, scope };
+  // **起点も渡す。** 登録されたフックの指す先を、起点からも探すため（AUT-207）。
+  const input = { repos, events, broken, api, tracker, scope, root: resolve(values.root) };
 
   if (values.enact !== undefined) return enact(values.enact, values.root, repos);
   if (values.substitute !== undefined) {
