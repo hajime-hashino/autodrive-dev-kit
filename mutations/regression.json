@@ -490,5 +490,12 @@
     "from": "    ...data.scale.perRepo.map(\n",
     "to": "    ...[].map(\n",
     "why": "名前だけ並べても、読み手はどこからの話かを追えない"
+  },
+  {
+    "name": "AUT-221 作業状態を、着手した場所にだけ置く",
+    "file": "src/vendored/internal/beginCli.js",
+    "from": "  for (const at of new Set([root, repoPath])) {",
+    "to": "  for (const at of [root]) {",
+    "why": "対象リポジトリが自分の .autodrive を持つと、そこの古いマーカーへ記録が落ちる"
   }
 ]

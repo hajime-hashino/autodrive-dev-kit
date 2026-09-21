@@ -56,6 +56,40 @@ export const runGit = (repoPath, args) =>
   });
 
 /** ブランチ名。作業単位のIDを小文字にしたものを既定とする。 */
+/**
+ * 作業状態を置く。**記録を読む側と同じ場所へ置く。**
+ *
+ * ## なぜ2か所へ置くか
+ *
+ * 起点は `.autodrive` を**探し上げて**決まる（`findRoot`）。したがって
+ * **対象リポジトリが自分の `.autodrive` を持っていると、そこで止まる。**
+ *
+ * 作業場のルートから `begin <ID> --repo <子>` を打つと、以前は作業場側にしか
+ * 置かれなかった。そのあと子の中から記録コマンドを打つと、
+ *
+ *   1. 起点は子になる（子に `.autodrive` があるため）
+ *   2. 子の対応表にこのブランチが無いので、引けない
+ *   3. **子の古いマーカーへ落ちる**
+ *
+ * **実際に、完了済みの作業単位へ記録が入り、そのまま提出に載った**（AUT-221）。
+ * 配布物が禁じている「別の作業単位の記録を、いま着手した作業単位の提出に載せる形」
+ * である。
+ *
+ * ## 2つ持って食い違わないか
+ *
+ * **対応表は足すだけで、同じ鍵には同じ値が入る**（`rememberBranch`）。
+ * マーカーは1つの値だが、**いま着手している作業単位は1つ**なので、両方が同じものを
+ * 指す。**どちらから読んでも同じ答えになる。**
+ *
+ * どちらも追跡対象外（`.autodrive/`）であり、提出には載らない。
+ */
+export function placeState(root , repoPath , repo , branch , workItemId) {
+  for (const at of new Set([root, repoPath])) {
+    writeMarker(at, workItemId, repo);
+    rememberBranch(at, repo, branch, workItemId);
+  }
+}
+
 export function branchNameFor(workItemId , given) {
   const trimmed = (given ?? "").trim();
   if (trimmed !== "") return trimmed;
@@ -231,17 +265,13 @@ export async function run(
   // **対象リポジトリを Tracker にも記す。** 手元のマーカーだけに書いていたため、
   // 一覧を見てもどれがどのリポジトリの作業か分からなかった（AUT-114）。
   await tracker.advance(item.id, "started", repo);
-  writeMarker(root, item.id, repo);
+  placeState(root, repoPath, repo, branch, item.id);
 
   // 取り残された記録 -------------------------------------------------------
   //
   // **提出のあとに書かれた記録を、ここで拾う。** 報告して止まった時点でフックが
   // 走るため、最後の1件は構造的にコミットされない（AUT-156）。持ち越されるだけでは
   // 次の作業単位のコミットに紛れて入るか、次が無ければ残り続ける。
-  // **ブランチと作業単位の対応を書き残す。** マーカーは次の着手で入れ替わるが、
-  // ブランチは残る。戻って書いた記録が、正しい作業単位へ向かうため（AUT-172）。
-  rememberBranch(root, repo, branch, item.id);
-
   const stranded = detect(repoPath, git);
 
   // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
