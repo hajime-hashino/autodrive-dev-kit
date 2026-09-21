@@ -420,5 +420,47 @@
     "from": "| システム・受入 | **検証環境** |\n",
     "to": "",
     "why": "どこで動かすかが決まらない。手元で通して確かめたことにされる"
+  },
+  {
+    "name": "AUT-211 証跡に点を付ける",
+    "file": "src/vendored/internal/quality.js",
+    "from": "  const out = [\"品質の証跡\", \"\"];",
+    "to": "  const out = [\"品質の証跡\", `評価: ${data.escaped.total === 0 ? \"良好\" : \"要改善\"}`, \"\"];",
+    "why": "測れない基準を指標に置くと、達成したことにできてしまう（定義§1）"
+  },
+  {
+    "name": "AUT-211 0件を、黙って0と出す",
+    "file": "src/vendored/internal/quality.js",
+    "from": "  return hasAnyRecord\n    ? `記録が1件も無い。",
+    "to": "  return false\n    ? `記録が1件も無い。",
+    "why": "起きなかったのか記録していないのかが区別できない。0件が「問題なし」と読まれる"
+  },
+  {
+    "name": "AUT-211 見ていない範囲を落とす",
+    "file": "src/vendored/internal/quality.js",
+    "from": "        `      **見ていない: ${s.notLooked}**`,\n",
+    "to": "",
+    "why": "見た範囲だけが残り、全部見たと読まれる（定義§8）"
+  },
+  {
+    "name": "AUT-211 未記入の欄を、埋まっているものとして数える",
+    "file": "src/vendored/internal/quality.js",
+    "from": "    .filter(({ line }) => line.includes(\"（例：\") || line.includes(\"（ここに書く）\"));",
+    "to": "    .filter(() => false);",
+    "why": "テンプレートのままの欄が、決めたものとして読まれる"
+  },
+  {
+    "name": "AUT-211 言っていないことを、言わない",
+    "file": "src/vendored/internal/quality.js",
+    "from": "    \"  - **プロダクトの品質が良いことを示していない。** 何を確かめたかを示しているだけである\",\n",
+    "to": "",
+    "why": "出せる範囲を超えて読まれ、証跡自体が誤りになる"
+  },
+  {
+    "name": "AUT-211 読めなかった記録を黙る",
+    "file": "src/vendored/internal/qualityCli.js",
+    "from": "  if (broken.length > 0) {",
+    "to": "  if (false) {",
+    "why": "読めた分が全部だと受け取られる"
   }
 ]
