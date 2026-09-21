@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { CHECKS, observeStops } from "../src/vendored/internal/checks.js";
+import { dirname, join, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** 参照実装の根。**入口が起点を渡しているかを見るため。** */
+const KIT_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "..");
+import { CHECKS, hookState, observeStops } from "../src/vendored/internal/checks.js";
 
 
 import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "../src/vendored/internal/state.js";
@@ -43,15 +47,25 @@ function fakeRepo(
   };
 }
 
-/** 記録を自動で残す仕掛けが登録されているリポジトリ。有効の条件のひとつ。 */
-function repoWithHook(name) {
+/**
+ * 記録を自動で残す仕掛けが登録されているリポジトリ。有効の条件のひとつ。
+ *
+ * **実体も置く。** 登録だけでは足りない。指す先が無ければ、フックは黙って
+ * 落ちる（AUT-207）。`missing` を渡すと、登録だけして実体を置かない。
+ */
+function repoWithHook(name, { missing = false } = {}) {
   const path = tempDir("autodrive-repo-");
+  const command = "k/hooks/record-tokens";
   mkdirSync(join(path, ".claude"), { recursive: true });
   writeFileSync(
     join(path, ".claude", "settings.json"),
-    JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "k/hooks/record-tokens" }] }] } }),
+    JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command }] }] } }),
     "utf8",
   );
+  if (!missing) {
+    mkdirSync(join(path, "k", "hooks"), { recursive: true });
+    writeFileSync(join(path, "k", "hooks", "record-tokens"), "#!/bin/sh\n", "utf8");
+  }
   return { ...fakeRepo(name), path };
 }
 
@@ -784,4 +798,84 @@ test("停止以外の記録を数に混ぜない", () => {
     ...([{ type: "rework", cause: "要件のズレ", source: "t" }] ),
   ];
   assert.ok(observed(events)[0]?.startsWith("停止 1 件"), observed(events).join(" / "));
+});
+
+// ------------------------- 登録されていることと、動くことは違う（AUT-207）
+//
+// **以前は文字列 `record-tokens` が含まれるかしか見ていなかった。** 配布物の
+// 置き場所が変わったとき、登録はそのまま残り、**指す先だけが消えた**
+// （AUT-202 で `hooks/` が `src/vendored/hooks/` へ移り、3日間トークンが
+// 送られていなかった）。
+//
+// **実行基盤はフックが落ちても作業を止めない。** したがって黙って止まる。
+
+test("登録された仕掛けが実在しなければ、有効にしない", async () => {
+  const repo = repoWithHook("r", { missing: true });
+  const r = await telemetryCheck().run({
+    repos: [repo],
+    events: [event()],
+    broken: [],
+    scope: "cross",
+    tracker: fakeTrackerFor([]),
+    api: fakeApi(() => ({ ok: true, body: [] })),
+    root: repo.path,
+  });
+
+  assert.notEqual(r.state, ACTIVE, "実在しないものを指しているのに有効にしている");
+  const text = r.observations.join("\n");
+  assert.match(text, /実在しないものを指している/, `何が起きているかを言っていない:\n${text}`);
+  // **黙って止まることまで言う。** 落ちないので、誰も気づかない。
+  assert.match(text, /黙って記録が止まる/, "なぜ気づけないかを言っていない");
+});
+
+test("登録された仕掛けが実在すれば、そのことを出す", async () => {
+  const repo = repoWithHook("r");
+  const r = await telemetryCheck().run({
+    repos: [repo],
+    events: [event()],
+    broken: [],
+    scope: "cross",
+    tracker: fakeTrackerFor([]),
+    api: fakeApi(() => ({ ok: true, body: [] })),
+    root: repo.path,
+  });
+  assert.match(r.observations.join("\n"), /登録されている/, "登録を出していない");
+  assert.equal(
+    r.observations.join("\n").includes("実在しないものを指している"),
+    false,
+    "実在するのに欠けていると言っている",
+  );
+});
+
+// **`${CLAUDE_PROJECT_DIR}` を解決する。** 配られた先はこの書き方を使う。
+test("起点を表す変数を、解決して確かめる", () => {
+  const path = tempDir("autodrive-hookvar-");
+  mkdirSync(join(path, ".claude"), { recursive: true });
+  mkdirSync(join(path, "autodrive", "hooks"), { recursive: true });
+  writeFileSync(join(path, "autodrive", "hooks", "record-tokens"), "#!/bin/sh\n", "utf8");
+  writeFileSync(
+    join(path, ".claude", "settings.json"),
+    JSON.stringify({
+      hooks: {
+        Stop: [{ hooks: [{ type: "command", command: "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens" }] }],
+      },
+    }),
+    "utf8",
+  );
+  const state = hookState([{ ...fakeRepo("r"), path }], path);
+  assert.equal(state.missing, null, `解決できていない: ${state.missing}`);
+});
+
+/** テレメトリの判定。**添字で選ばない。** 並びが変わると別の判定を試してしまう。 */
+function telemetryCheck() {
+  const found = CHECKS.find((c) => c.key === "telemetry_recorded");
+  assert.ok(found !== undefined, "telemetry_recorded が無い");
+  return found;
+}
+
+// **起点が渡っていることまで見る**（AUT-207）。`hookState` だけを試験しても、
+// **呼び出し側が起点を渡さなければ効かない。** 変異が1件生き残って分かった。
+test("判定の入口が、起点を渡している", () => {
+  const src = readFileSync(join(KIT_ROOT, "src", "vendored", "internal", "main.js"), "utf8");
+  assert.match(src, /root: resolve\(values\.root\)/, "入口が起点を渡していない");
 });

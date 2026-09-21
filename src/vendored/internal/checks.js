@@ -7,7 +7,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { ACTIVE, INVARIANTS, NOT_IN_SCOPE, Result, SUBSTITUTED, UNSUBSTITUTED } from "./state.js";
 
@@ -42,6 +42,26 @@ function resultFor(key) {
  * という方針（BOOTSTRAP）の前提になっている。
  */
 export function hookRegistered(repos) {
+  return hookState(repos).registeredIn;
+}
+
+/**
+ * 登録された仕掛けが、実在するものを指しているか。
+ *
+ * **登録されていることと、動くことは違う。** 以前は文字列 `record-tokens` が
+ * 含まれるかしか見ていなかった。**配布物の置き場所が変わったとき、登録は
+ * そのまま残り、指す先だけが消えた**（AUT-202 で `hooks/` が `src/vendored/hooks/`
+ * へ移り、3日間トークンが送られていなかった。AUT-207 で判明）。
+ *
+ * **黙って止まる。** 実行基盤はフックが落ちても作業を止めない（落ちても作業を
+ * 止めないのは正しい）。したがって**誰も気づかない。**
+ *
+ * `${CLAUDE_PROJECT_DIR}` は起点に置き換える。**相対パスは、起点と登録された
+ * リポジトリの両方から探す。** どちらの書き方も実在しうる。
+ *
+ * @returns {{ registeredIn: string | null, command: string | null, missing: string | null }}
+ */
+export function hookState(repos, root = null) {
   for (const repo of repos) {
     const path = join(repo.path, ".claude", "settings.json");
     if (!existsSync(path)) continue;
@@ -51,9 +71,32 @@ export function hookRegistered(repos) {
     } catch {
       continue;
     }
-    if (JSON.stringify(settings.hooks ?? {}).includes("record-tokens")) return repo.name;
+    const found = hookCommands(settings).find((c) => c.includes("record-tokens"));
+    if (found === undefined) continue;
+
+    const bases = [root, repo.path].filter((b) => typeof b === "string" && b !== "");
+    const resolved = found.replace("${CLAUDE_PROJECT_DIR}/", "").replace("${CLAUDE_PROJECT_DIR}", "");
+    const exists = bases.some((b) => existsSync(resolve(b, resolved)));
+    return { registeredIn: repo.name, command: found, missing: exists ? null : resolved };
   }
-  return null;
+  return { registeredIn: null, command: null, missing: null };
+}
+
+/** 登録された命令を並べる。**形が変わっても落ちない。** */
+function hookCommands(settings) {
+  const out = [];
+  const walk = (node) => {
+    if (typeof node === "string") return out.push(node);
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node !== null && typeof node === "object") {
+      for (const [key, value] of Object.entries(node)) {
+        if (key === "command" && typeof value === "string") out.push(value);
+        else walk(value);
+      }
+    }
+  };
+  walk(settings.hooks ?? {});
+  return out;
 }
 
 /**
@@ -262,7 +305,7 @@ function hasValue(event, attr) {
   return typeof value === "string" && value.trim() !== "";
 }
 
-const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker, api }) => {
+const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker, api, root = null }) => {
   const r = resultFor("telemetry_recorded");
 
   if (allEvents.length === 0) {
@@ -391,13 +434,25 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
 
   if (scope === "cross") {
     // 登録は起点のリポジトリに1つ置かれる。self では見えないので判定しない。
-    const registeredIn = hookRegistered(repos);
-    if (registeredIn === null) {
+    const hook = hookState(repos, root);
+    if (hook.registeredIn === null) {
       r.observe("記録を自動で残す仕掛けが .claude/settings.json に登録されていない");
       // 登録が無ければ、いま自動で書けていても続く保証が無い。有効とは呼べない。
       r.notImplemented("記録の自動化が登録されていないため、有効の条件を満たさない");
+    } else if (hook.missing !== null) {
+      // **登録されているのに、指す先が無い。** 登録だけを見ていると通る。
+      r.observe(
+        `記録を自動で残す仕掛けが、実在しないものを指している: ${hook.missing}` +
+          `（${hook.registeredIn}/.claude/settings.json）`,
+      );
+      r.observe(
+        "**実行基盤はフックが落ちても作業を止めない。** したがって黙って記録が止まる。" +
+          "配布物の置き場所が変わったときに、登録だけが古く残る形である",
+      );
+      // **登録が指す先が無いなら、記録が続く保証は無い。** 有効とは呼べない。
+      r.notImplemented("記録の自動化が実在しないものを指しているため、有効の条件を満たさない");
     } else {
-      r.observe(`記録を自動で残す仕掛けは ${registeredIn} に登録されている`);
+      r.observe(`記録を自動で残す仕掛けは ${hook.registeredIn} に登録されている`);
     }
   }
 
