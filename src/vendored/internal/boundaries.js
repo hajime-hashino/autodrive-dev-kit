@@ -19,10 +19,15 @@ const FIELDS = ["detectable", "reversible", "state"];
  * **読み飛ばさないと、根拠の本文に現れた `state:` を属性と誤読する。**
  */
 export function parseAreas(text) {
+  /** @type {Area[]} */
   const areas = [];
   const lines = text.split("\n");
 
+  // **`null` で初期化した変数に型を書かないこと自体が誤りである。** 書かないと
+  // `null` 型と推論され、値を入れた瞬間に落ちる（型検査を入れて判明。AUT-226）。
+  /** @type {Partial<Area> | null} */
   let current = null;
+  /** @type {number | null} */
   let blockIndent = null;
 
   const flush = () => {

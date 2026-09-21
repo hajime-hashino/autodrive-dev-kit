@@ -61,7 +61,10 @@ function tally(rows, pick) {
 /**
  * 記録から証跡を組み立てる。**読むだけで、判定しない。**
  *
- * @param {{ events: object[], quality: Array<{ repo: string, body: string | null }> }} input
+ * **記録の形を `object` と書かないこと。** 属性を読めない型になり、`e.type` すら
+ * 引けなくなる（型検査を入れて判明。AUT-226）。
+ *
+ * @param {{ events: import("./telemetry.js").TelemetryEvent[], quality: Array<{ repo: string, body: string | null }> }} input
  */
 export function summarize({ events, quality }) {
   const of = (type) => events.filter((e) => e.type === type);

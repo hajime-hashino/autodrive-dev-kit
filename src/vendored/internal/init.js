@@ -374,6 +374,7 @@ function placeSandbox(root , kitRoot , config , plan) {
   if (config.ports.sandbox === "none") return false;
 
   // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
+  /** @type {{ placed: Placed[], writes: Array<{ path: string, body: string }> }} */
   const folded = { placed: [], writes: plan.writes };
   for (const file of ["init-firewall.sh", "post-create.sh", "check-setup.sh", "README.md"]) {
     managed(`.devcontainer/${file}`, template(kitRoot, `devcontainer/${file}`), folded);
@@ -387,9 +388,19 @@ function placeSandbox(root , kitRoot , config , plan) {
   return true;
 }
 
+/**
+ * @param {string} root
+ * @param {string} kitRoot
+ * @param {import("./config.js").Config | null} config
+ * @param {boolean} inside
+ * @returns {InitResult}
+ */
 export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **置くものと、置いた記録を一緒に運ぶ。** 管理下のものは溜めるだけにして、
   // 手で変えられていないかを確かめてから、まとめて書く。
+  // **空の配列に型を書かないと `never[]` と推論される。** 入れたものを後から
+  // 読めない（型検査を入れて判明。AUT-226）。
+  /** @type {{ placed: Placed[], writes: Array<{ path: string, body: string }> }} */
   const plan = { placed: [], writes: [] };
   const placed = plan.placed;
 
