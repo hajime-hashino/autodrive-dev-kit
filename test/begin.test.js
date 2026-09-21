@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { branchNameFor, defaultBranchOf, run } from "../src/vendored/internal/beginCli.js";
-import { rememberBranch } from "../src/vendored/internal/workItem.js";
+import { branchNameFor, defaultBranchOf, placeState, run } from "../src/vendored/internal/beginCli.js";
+import { STATE_DIR, defaultRoot, rememberBranch, resolveWorkItem } from "../src/vendored/internal/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -371,4 +372,56 @@ test("前の作業単位の対応を、消さずに足す", async () => {
   // **消すと、前のブランチへ戻って書いた記録が迷子になる。** それがこの表の目的。
   assert.equal(map["agent-playground/aut-98"]?.work_item_id, "AUT-98", "前の対応が消えている");
   assert.equal(map["agent-playground/aut-99"]?.work_item_id, "AUT-99");
+});
+
+// ------------------------------- 作業状態は、記録を読む側と同じ場所へ置く（AUT-221）
+//
+// **起点は `.autodrive` を探し上げて決まる。** したがって対象リポジトリが自分の
+// `.autodrive` を持っていると、そこで止まる。
+//
+// 作業場のルートから `begin <ID> --repo <子>` を打つと、以前は作業場側にしか
+// 置かれなかった。そのあと子の中から記録を打つと、**子の古いマーカーへ落ちた。**
+// **実際に、完了済みの作業単位へ記録が入り、そのまま提出に載った。**
+
+test("着手すると、子の中から打っても正しい作業単位に解決する", () => {
+  const root = tempDir("autodrive-state-");
+  const repoPath = join(root, "child");
+  mkdirSync(join(root, STATE_DIR), { recursive: true });
+  mkdirSync(repoPath, { recursive: true });
+  execFileSync("git", ["-C", repoPath, "init", "-q"], { stdio: "ignore" });
+  execFileSync("git", ["-C", repoPath, "commit", "-q", "--allow-empty", "-m", "x"], { stdio: "ignore" });
+  execFileSync("git", ["-C", repoPath, "checkout", "-q", "-b", "aut-999"], { stdio: "ignore" });
+
+  // **子が自分の状態を持っていて、しかも古い。** これが再現の条件である。
+  mkdirSync(join(repoPath, STATE_DIR), { recursive: true });
+  writeFileSync(
+    join(repoPath, STATE_DIR, "current-work-item.json"),
+    JSON.stringify({ work_item_id: "AUT-111", repo: "child" }),
+    "utf8",
+  );
+
+  placeState(root, repoPath, "child", "aut-999", "AUT-999");
+
+  // **どちらから打っても同じ答えになること。**
+  for (const cwd of [repoPath, root]) {
+    const at = defaultRoot({}, cwd);
+    const { item } = resolveWorkItem(at, cwd);
+    assert.notEqual(item, null, `${cwd} から解決できていない`);
+    assert.equal(item.workItemId, "AUT-999", `${cwd} で古いマーカーへ落ちている`);
+  }
+});
+
+// **子が状態を持たない場合も壊さない。** 探し上げが作業場まで届く形である。
+test("子が状態を持たなければ、作業場の状態で解決する", () => {
+  const root = tempDir("autodrive-state2-");
+  const repoPath = join(root, "child");
+  mkdirSync(join(root, STATE_DIR), { recursive: true });
+  mkdirSync(repoPath, { recursive: true });
+  execFileSync("git", ["-C", repoPath, "init", "-q"], { stdio: "ignore" });
+  execFileSync("git", ["-C", repoPath, "commit", "-q", "--allow-empty", "-m", "x"], { stdio: "ignore" });
+  execFileSync("git", ["-C", repoPath, "checkout", "-q", "-b", "aut-998"], { stdio: "ignore" });
+
+  placeState(root, repoPath, "child", "aut-998", "AUT-998");
+  const { item } = resolveWorkItem(defaultRoot({}, repoPath), repoPath);
+  assert.equal(item?.workItemId, "AUT-998");
 });
