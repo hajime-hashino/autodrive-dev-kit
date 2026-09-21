@@ -44,6 +44,7 @@ AIが使うもの（人は打たなくてよい）
   autodrive-dev-kit telemetry <操作> ...    記録する
   autodrive-dev-kit sandbox <操作> ...      出口を確かめる
   autodrive-dev-kit invariants [--root <場所>]  不変条件の状態を判定する
+  autodrive-dev-kit quality [--root <場所>]     品質の証跡を出す
 
 使い方の全体は README を参照。`;
 
@@ -54,6 +55,7 @@ const DELEGATES = {
   telemetry: "telemetryCli.js",
   sandbox: "sandboxCli.js",
   invariants: "main.js",
+  quality: "qualityCli.js",
 };
 
 export function delegateFor(command) {
