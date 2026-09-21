@@ -26,6 +26,9 @@ export const MARK = Object.fromEntries(
 /** 不変条件の名前。**言語ごとに `messages.js` が持つ。** */
 export const labelOf = (key, language) => say(language, `invariant.${key}`);
 
+/**
+ * @param {import("./messages.js").Language} language
+ */
 export function renderText(results , repos , scope , language = "ja") {
   const t = (key, values) => say(language, key, values);
   const lines = [

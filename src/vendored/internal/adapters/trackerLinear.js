@@ -36,8 +36,13 @@ export function repoFrom(names) {
   return found === undefined ? null : found.slice(REPO_MARK.length);
 }
 
+/** @returns {import("../ports/tracker.js").WorkItemView} */
 function toView(raw) {
-  const entry = Object.entries(STATE_TYPE).find(([, type]) => type === raw.state.type);
+  // **`Object.entries` の鍵は `string` に広がる。** ポートが約束するのは語彙の
+  // ほうなので、ここで寄せる（型検査を入れて判明。AUT-226）。
+  const entry = /** @type {Array<[import("../ports/tracker.js").WorkItemState, string]>} */ (
+    Object.entries(STATE_TYPE)
+  ).find(([, type]) => type === raw.state.type);
   return {
     id: raw.identifier,
     title: raw.title,
@@ -212,6 +217,11 @@ export class LinearTracker {
    *
    * **ラベルを先に付ける。** 後にすると、状態だけ進んでラベルの無い作業単位が残る。それは
    * いま散らかっているものと同じ形であり、**直したはずの状態に戻る。**
+   */
+  /**
+   * @param {string} id
+   * @param {import("../ports/tracker.js").WorkItemState} to
+   * @param {string} [repo]
    */
   async advance(id , to, repo = undefined) {
     if (repo !== undefined && repo !== "") await this.mark(id, repo);

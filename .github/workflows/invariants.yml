@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.18"
+      # **依存が要る。** 型検査に使う（ADR 0001 の更新を経ている）。
+      - run: npm ci
+      - run: npm run typecheck
       - run: npm test
 
   # **判定が本当に判定しているかを見る。** テストが通ることと、テストが誤りを

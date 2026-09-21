@@ -20,14 +20,19 @@ export const NOT_IN_SCOPE = "NOT_IN_SCOPE"; // 対象外。この実行範囲で
 export const FAILING = new Set ([UNSUBSTITUTED]);
 
 
-export class Result {
-           key;
-           label;
-           observations = [];
-           substitutions = [];
-           unimplemented = [];
-  #state = null;
+/** 不変条件の状態。**`conclude` が決める。** */
+/** @typedef {"ACTIVE" | "SUBSTITUTED" | "UNSUBSTITUTED" | "NOT_IN_SCOPE"} InvariantState */
 /** @typedef {"cross" | "self"} Scope */
+
+export class Result {
+  /** @type {string} */ key;
+  /** @type {string} */ label;
+  /** @type {string[]} */ observations = [];
+  /** @type {string[]} */ substitutions = [];
+  /** @type {string[]} */ unimplemented = [];
+  // **`null` で初期化した変数に型を書かないと、`null` 型と推論される。**
+  // 状態を入れた瞬間に落ちる（型検査を入れて判明。AUT-226）。
+  /** @type {InvariantState | null} */ #state = null;
   constructor(key , label) {
     this.key = key;
     this.label = label;

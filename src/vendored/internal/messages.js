@@ -19,6 +19,7 @@
  */
 
 /** 選べる言語。**増やすなら、すべての文をその言語で埋めること。** */
+/** @type {Language[]} */
 export const LANGUAGES = ["ja", "en"];
 
 /** @typedef {"ja" | "en"} Language */

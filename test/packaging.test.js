@@ -13,7 +13,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -108,7 +108,11 @@ test("参照されている型が、すべて定義されている", async () =>
       const TYPEDEF = /@typedef \{((?:(?!\*\/)[\s\S])*?)\} (\w+)/g;
       for (const m of body.matchAll(TYPEDEF)) {
         defined.add(m[2]);
-        for (const t of m[1].matchAll(/\b([A-Z]\w+)\b/g)) used.add(t[1]);
+        // **文字列リテラルを型名として拾わない。** `"ACTIVE" | "SUBSTITUTED"` の
+        // ような並びは値であって型の参照ではない。**拾うと、定義が無いと言って
+        // 落ちる。落ちる理由が嘘になる**（型検査を入れて判明。AUT-226）。
+        const body2 = m[1].replace(/"[^"]*"/g, "").replace(/'[^']*'/g, "");
+        for (const t of body2.matchAll(/\b([A-Z]\w+)\b/g)) used.add(t[1]);
       }
     }
   };
@@ -174,4 +178,44 @@ test("自分の CI が呼ぶ autodrive-dev-kit のパスが、実在する", () 
   for (const path of new Set(called)) {
     assert.ok(statSync(join(KIT, path), { throwIfNoEntry: false }), `CI が呼ぶのに実在しない: ${path}`);
   }
+});
+
+// -------------------------------------------- 型検査が配線されていること（AUT-226）
+//
+// **JSDoc で型を書いているのに、誰も確かめていなかった。** 入れたところ、書いた型が
+// 効いていない箇所が3つ出た（存在しない型を指していた／import せずに名前だけ書いて
+// いた／実装がポートの約束と合っていなかった）。
+//
+// **型を文書として書くだけでは、文書が嘘をついていても分からない。**
+test("型検査が、打てる形で配線されている", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
+  assert.equal(pkg.scripts?.typecheck, "tsc --noEmit", "型検査の打ち方が無い");
+  // **開発時の依存に限る**（ADR 0001 の改訂）。配られるものはゼロのまま。
+  assert.equal(pkg.dependencies, undefined, "配られるものに依存が入っている");
+  assert.ok(pkg.devDependencies?.typescript, "型検査の道具が無い");
+});
+
+// **CI で走ること。** 打てるだけでは、誰も打たない。
+test("型検査が CI で走る", () => {
+  const wf = readFileSync(join(KIT, ".github", "workflows", "invariants.yml"), "utf8");
+  assert.match(wf, /run: npm run typecheck/, "CI が型検査を走らせていない");
+  // **依存を取ってこないと走らない。**
+  assert.match(wf, /run: npm ci/, "CI が依存を取っていない");
+});
+
+// **ロックファイルを追跡する。** 除外したまま依存を入れると、固定されないうえ
+// **差分にも出ないので気づけない**（AUT-226）。
+test("ロックファイルが追跡されている", () => {
+  // **`check-ignore` は一致しないと非ゼロで終わる。** 例外の有無で見る。
+  let ignored = false;
+  try {
+    execFileSync("git", ["-C", KIT, "check-ignore", "package-lock.json"], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    ignored = true;
+  } catch {
+    ignored = false;
+  }
+  assert.equal(ignored, false, "ロックファイルが除外されている");
+  assert.ok(existsSync(join(KIT, "package-lock.json")), "ロックファイルが置かれていない");
 });

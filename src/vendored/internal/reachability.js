@@ -53,7 +53,8 @@ export function probe(host, { port = 443, timeoutMs = 4000 } = {}) {
     socket.once("connect", () => finish(true, null));
     socket.once("timeout", () => finish(false, "つながらない（時間切れ）"));
     // **名前が引けない場合と、塞がれている場合を分ける。** 直し方が違う。
-    socket.once("error", (e) =>
+    // **Node のエラーは `code` を持つ。** `Error` だけでは引けない（AUT-226）。
+    socket.once("error", (/** @type {NodeJS.ErrnoException} */ e) =>
       finish(false, e.code === "ENOTFOUND" || e.code === "EAI_AGAIN" ? "名前が引けない" : "つながらない"),
     );
   });

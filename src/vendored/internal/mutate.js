@@ -70,8 +70,11 @@ export function runOnce(root, exec = execFileSync) {
   let out;
   try {
     out = String(exec("npm", ["test"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     // 非ゼロで終わった＝落ちた。**何が出ていたかは残す。**
+    //
+    // **`execFileSync` が投げるものは `Error` ではない。** `stdout` と `stderr` を
+    // 持つ。型の上では表せないため `any` で受け、直後に文字列へ寄せる（AUT-226）。
     const said = [error?.stdout, error?.stderr, error?.message]
       .map((v) => (v === undefined || v === null ? "" : String(v)))
       .filter((v) => v !== "")
@@ -119,7 +122,10 @@ export function applyOne(root, m, run = runTests) {
  *
  * **素の状態で通らなければ、何も当てずに止まる。** 変異の結果が読めないためである。
  *
- * @returns {{ baseline: boolean, outcomes: Outcome[] }}
+ * **素の状態で落ちたときは、そのときの出力も返す。** 返さないと、読んだ人には
+ * 何が落ちたのか分からない。
+ *
+ * @returns {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string }}
  */
 export function mutate(root, mutations, run = runTests) {
   // **素の状態は、理由まで見る。** 落ちたときに何が起きたのかを残す。
@@ -129,6 +135,9 @@ export function mutate(root, mutations, run = runTests) {
 }
 
 /** 人が読む形にする。**捕まえられなかったものを目立たせる。** */
+/**
+ * @param {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string }} result
+ */
 export function describe({ baseline, outcomes, baselineOutput }) {
   if (!baseline) {
     return [
