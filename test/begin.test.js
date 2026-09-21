@@ -388,9 +388,9 @@ test("着手すると、子の中から打っても正しい作業単位に解�
   const repoPath = join(root, "child");
   mkdirSync(join(root, STATE_DIR), { recursive: true });
   mkdirSync(repoPath, { recursive: true });
-  execFileSync("git", ["-C", repoPath, "init", "-q"], { stdio: "ignore" });
-  execFileSync("git", ["-C", repoPath, "commit", "-q", "--allow-empty", "-m", "x"], { stdio: "ignore" });
-  execFileSync("git", ["-C", repoPath, "checkout", "-q", "-b", "aut-999"], { stdio: "ignore" });
+  // **コミットを作らない。** 作ると git の身元設定が要り、CI で落ちる。
+  // ここが見るのはブランチ名だけで、履歴は要らない。
+  execFileSync("git", ["-C", repoPath, "init", "-q", "-b", "aut-999"], { stdio: "ignore" });
 
   // **子が自分の状態を持っていて、しかも古い。** これが再現の条件である。
   mkdirSync(join(repoPath, STATE_DIR), { recursive: true });
@@ -417,9 +417,7 @@ test("子が状態を持たなければ、作業場の状態で解決する", ()
   const repoPath = join(root, "child");
   mkdirSync(join(root, STATE_DIR), { recursive: true });
   mkdirSync(repoPath, { recursive: true });
-  execFileSync("git", ["-C", repoPath, "init", "-q"], { stdio: "ignore" });
-  execFileSync("git", ["-C", repoPath, "commit", "-q", "--allow-empty", "-m", "x"], { stdio: "ignore" });
-  execFileSync("git", ["-C", repoPath, "checkout", "-q", "-b", "aut-998"], { stdio: "ignore" });
+  execFileSync("git", ["-C", repoPath, "init", "-q", "-b", "aut-998"], { stdio: "ignore" });
 
   placeState(root, repoPath, "child", "aut-998", "AUT-998");
   const { item } = resolveWorkItem(defaultRoot({}, repoPath), repoPath);
