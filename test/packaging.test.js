@@ -206,10 +206,15 @@ test("型検査が CI で走る", () => {
 // **ロックファイルを追跡する。** 除外したまま依存を入れると、固定されないうえ
 // **差分にも出ないので気づけない**（AUT-226）。
 test("ロックファイルが追跡されている", () => {
+  // **`--no-index` を付ける。** 付けないと、`check-ignore` は**追跡済みのファイルを
+  // 「無視されない」と答える。** 除外の指定が戻っていても気づけない。手元では
+  // 未追跡だったので一致し、CI ではコミット済みなので一致せず、**CI でだけ変異が
+  // 生き残った**（AUT-226）。
+  //
   // **`check-ignore` は一致しないと非ゼロで終わる。** 例外の有無で見る。
   let ignored = false;
   try {
-    execFileSync("git", ["-C", KIT, "check-ignore", "package-lock.json"], {
+    execFileSync("git", ["-C", KIT, "check-ignore", "--no-index", "package-lock.json"], {
       stdio: ["ignore", "ignore", "ignore"],
     });
     ignored = true;
@@ -218,4 +223,9 @@ test("ロックファイルが追跡されている", () => {
   }
   assert.equal(ignored, false, "ロックファイルが除外されている");
   assert.ok(existsSync(join(KIT, "package-lock.json")), "ロックファイルが置かれていない");
+  // **追跡されていること。** 置いてあるだけでは固定にならない。
+  const tracked = execFileSync("git", ["-C", KIT, "ls-files", "package-lock.json"], {
+    encoding: "utf8",
+  }).trim();
+  assert.equal(tracked, "package-lock.json", "ロックファイルが追跡されていない");
 });

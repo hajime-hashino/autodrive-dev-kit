@@ -446,7 +446,9 @@ test("作業状態の置き場が、このリポジトリで追跡されない",
   // 無い場所で一致しない。** 手元には在り CI には無いので、手元だけ通る
   // （実際に CI で落ちた）。中のファイルを聞けば、実在に関わらず一致する。
   const asked = `${STATE_DIR}/current-work-item.json`;
-  const ignored = execFileSync("git", ["-C", KIT_ROOT, "check-ignore", asked], {
+  // **`--no-index` を付ける。** 付けないと、追跡済みのものを「無視されない」と
+  // 答える。ここで見たいのは**除外の指定が在るか**であり、追跡の状態ではない。
+  const ignored = execFileSync("git", ["-C", KIT_ROOT, "check-ignore", "--no-index", asked], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   }).trim();
