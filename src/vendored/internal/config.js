@@ -180,6 +180,7 @@ function readAppDestinations(raw) {
   return { destinations, error: null };
 }
 /** 既定。**推奨であって、決定ではない。** */
+/** @returns {Config} */
 export function defaults() {
   return {
     version: 1,

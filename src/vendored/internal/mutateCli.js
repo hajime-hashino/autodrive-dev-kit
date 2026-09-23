@@ -67,7 +67,8 @@ export function run(argv, root = KIT) {
   try {
     mutations = JSON.parse(readFileSync(resolve(root, path), "utf8"));
   } catch (error) {
-    return { output: `変異の一覧を読めない: ${error.message}`, code: 2 };
+    const why = error instanceof Error ? error.message : String(error);
+    return { output: `変異の一覧を読めない: ${why}`, code: 2 };
   }
   if (!Array.isArray(mutations) || mutations.length === 0) {
     return { output: "変異が1つも書かれていない", code: 2 };

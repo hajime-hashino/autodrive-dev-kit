@@ -567,5 +567,19 @@
     "from": "### 人の発言を、そのまま引かない\n",
     "to": "### 人の発言について\n",
     "why": "何を言われたかが残り、後から読む人には言い回しだけが伝わる"
+  },
+  {
+    "name": "AUT-226 CI から型検査を落とす",
+    "file": ".github/workflows/invariants.yml",
+    "from": "      - run: npm run typecheck\n",
+    "to": "",
+    "why": "書いた型が実装と合っているかを誰も確かめなくなる。文書が嘘をついていても分からない"
+  },
+  {
+    "name": "AUT-226 ロックファイルを、また除外する",
+    "file": ".gitignore",
+    "from": "node_modules/\n",
+    "to": "node_modules/\npackage-lock.json\n",
+    "why": "固定されないうえ、除外されているので差分にも出ず気づけない"
   }
 ]

@@ -1,6 +1,6 @@
 {
   "name": "autodrive-dev-kit",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "license": "Apache-2.0",
   "author": "Hajime Hashino",
   "private": true,
@@ -20,7 +20,12 @@
   },
   "scripts": {
     "invariants": "node src/vendored/internal/main.js",
+    "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.js\"",
     "mutate": "node src/vendored/internal/mutateCli.js mutations/regression.json"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.4",
+    "typescript": "7.0.2"
   }
 }
