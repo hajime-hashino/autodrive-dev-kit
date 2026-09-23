@@ -12,7 +12,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { allCaught, applyOne, describe, mutate, runTests } from "../src/vendored/internal/mutate.js";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { tempDir } from "./helpers/tmp.js";
+
+const KIT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function project(body = "元の中身\n") {
   const root = tempDir("autodrive-mutate-t-");
@@ -260,4 +264,39 @@ test("全体と、1件あたりの両方を出す", () => {
 test("素の状態で落ちたら、時間は出さない", () => {
   const text = describe({ baseline: false, outcomes: [], baselineOutput: "落ちた" }).join("\n");
   assert.equal(text.includes("秒かかった"), false, "当てていないのに時間を出している");
+});
+
+// --------------------------------------------------- 変異の一覧そのもの
+
+/**
+ * **置換元が実在しなければ、変異は当たらない。**
+ *
+ * `applyOne` は当てられなかった変異を `not-applied` として返し、`allCaught` は
+ * それを通さない。**したがって最後は捕まる。** 問題は捕まる場所である。
+ *
+ * 実際に起きたこと（AUT-232）。`exitCode` を複数行へ整形したところ、そこを指す
+ * 変異（AUT-157）の置換元が当たらなくなった。**手元では新しく足した3件しか
+ * 当てておらず、気づいたのは CI が11分42秒かけて落ちたときだった。**
+ *
+ * **実装を触れば、変異の置換元は普通に古くなる。** 古くなったことを、変異を
+ * 全部当てるより先に知りたい。ここは1秒で終わる。
+ */
+test("変異の置換元が、すべて実在する", () => {
+  const list = JSON.parse(readFileSync(join(KIT_ROOT, "mutations", "regression.json"), "utf8"));
+  assert.ok(list.length > 0, "変異を読めていない。読み方が壊れている");
+
+  const stale = list
+    .filter((x) => !readFileSync(join(KIT_ROOT, x.file), "utf8").includes(x.from))
+    .map((x) => `${x.name}（${x.file}）`);
+
+  assert.deepEqual(stale, [], "置換元が実在しない。実装を触ったときに追随していない");
+});
+
+// **置き換えた結果が同じなら、何も壊していない。** 壊していないものは、
+// 捕まえたことにならない。
+test("変異は、必ず中身を変える", () => {
+  const list = JSON.parse(readFileSync(join(KIT_ROOT, "mutations", "regression.json"), "utf8"));
+  const empty = list.filter((x) => x.from === x.to).map((x) => x.name);
+
+  assert.deepEqual(empty, [], "置換の前後が同じ");
 });

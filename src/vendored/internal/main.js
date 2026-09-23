@@ -18,6 +18,7 @@ import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
 import { describe as describeTracked, forbidden } from "./tracked.js";
 import { describe as describeIsolation, isolationGaps } from "./isolation.js";
+import { describe as describeSections, drift, findDefinition } from "./definitionSections.js";
 
 import { renderJson, renderText } from "./report.js";
 import { ACTIVE, INVARIANTS, Result } from "./state.js";
@@ -225,6 +226,14 @@ export async function run(argv) {
     isolationGaps(r.path).map((g) => ({ ...g, path: `${r.name}/${g.path}` })),
   );
 
+  // **引いている定義の節が、引いているつもりの節のままか。**
+  //
+  // 不変条件ではない（定義§9は4つで固定）。上の2つと同じ位置に置く。
+  //
+  // **横断でしか見られない。** 定義リポジトリが並んでいる場所だけが判定できる。
+  // 無ければ何も返さず、素通りする（AUT-232）。
+  const sections = drift(findDefinition(values.root));
+
   const body =
     values.format === "json"
       ? renderJson(results, repos, scope, language, tracked, isolation)
@@ -233,8 +242,13 @@ export async function run(argv) {
     output:
       values.format === "json"
         ? body
-        : [body, ...describeTracked(tracked), ...describeIsolation(isolation)].join("\n"),
-    code: exitCode(results, tracked.length, isolation.length),
+        : [
+            body,
+            ...describeTracked(tracked),
+            ...describeIsolation(isolation),
+            ...describeSections(sections),
+          ].join("\n"),
+    code: exitCode(results, tracked.length, isolation.length, sections.length),
   };
 }
 
@@ -247,11 +261,15 @@ export async function run(argv) {
  * **隔離の設定が欠けていても落とす。** 同じ理由である。触ってよいファイルに
  * した以上、壊れたまま統合される経路を残さない（AUT-157）。
  *
+ * **定義の節が動いていても落とす。** 観測に留めると、直す機会が来ない。実際に
+ * 11箇所が別の節を指したまま、誰も気づかなかった（AUT-232）。
+ *
  * **判断をここへ出しているのは、直接確かめるためである。** `invariants` を通して見ると、
  * 一時リポジトリでは記録が無くてどのみち落ちるため、差が出ない。
  */
-export function exitCode(results, forbiddenCount, isolationCount = 0) {
-  return results.some((r) => r.failing) || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;
+export function exitCode(results, forbiddenCount, isolationCount = 0, sectionCount = 0) {
+  const failing = results.some((r) => r.failing);
+  return failing || forbiddenCount > 0 || isolationCount > 0 || sectionCount > 0 ? 1 : 0;
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
