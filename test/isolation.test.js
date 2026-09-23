@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
+import { readConfig, writeConfig } from "../src/vendored/internal/config.js";
 import { describe, isolationGaps, readDefinition } from "../src/vendored/internal/isolation.js";
 import { setup } from "../src/vendored/internal/setup.js";
 import { useRecommended } from "../src/vendored/internal/ports/interview.js";
@@ -63,6 +64,57 @@ test("サンドボックスを使っていなければ、何も言わない", ()
   const root = tempDir("autodrive-isolation-none-");
   mkdirSync(join(root, ".git"), { recursive: true });
   assert.deepEqual(isolationGaps(root), []);
+});
+
+// ------------------------------------------------------------ 何を見るかは宣言が決める（ADR 0012）
+
+/** 構成の `sandbox` を書き換える。 */
+function declare(root, sandbox) {
+  const { config } = readConfig(root);
+  assert.notEqual(config, null, "構成が読めない");
+  writeConfig(root, { ...config, ports: { ...config.ports, sandbox } });
+}
+
+// **知らないものを、知っている形に当てない。** Orca を選んだプロジェクトに
+// devcontainer の判定を当てると、何も悪いことをしていないのに落ちる。
+test("devcontainer 以外を宣言したプロジェクトは、判定しない", () => {
+  const root = placed();
+  dropPostStart(root); // 定義は壊れたまま置いておく
+  declare(root, "orca");
+
+  assert.deepEqual(isolationGaps(root), [], "宣言していないものを判定している");
+});
+
+// **名前を知らなくても同じ。** 一覧は網羅ではない。
+test("参照実装が知らない名前でも、判定しない", () => {
+  const root = placed();
+  dropPostStart(root);
+  declare(root, "claude-managed-agent");
+
+  assert.deepEqual(isolationGaps(root), []);
+});
+
+// **以前はここが黙って通っていた。** 定義が無ければ空で返していたため、
+// devcontainer と宣言したまま消すと、誰も言わなかった（AUT-218）。
+test("devcontainer と宣言して、定義が無い形を捕まえる", () => {
+  const root = placed();
+  rmSync(join(root, ".devcontainer"), { recursive: true });
+
+  const gaps = isolationGaps(root);
+  assert.equal(gaps.length, 1, JSON.stringify(gaps));
+  assert.ok(gaps[0].gap.includes("定義が無い"), gaps[0].gap);
+  // **直し方まで言う。** 使っていないなら構成を変えればよいと分かる形にする。
+  assert.ok(gaps[0].why.includes("sandbox"), gaps[0].why);
+});
+
+// **`init` を打っていない作業場がある。** 構成が無いからといって判定が消えると、
+// いま効いている検出が黙って無くなる。
+test("構成が無ければ、置かれているもので決める", () => {
+  const root = placed();
+  dropPostStart(root);
+  rmSync(join(root, "autodrive.json"));
+
+  assert.deepEqual(gapsOf(root), ["postStartCommand が init-firewall.sh を呼んでいない"]);
 });
 
 // ------------------------------------------------------------ 壊し方を当てる
