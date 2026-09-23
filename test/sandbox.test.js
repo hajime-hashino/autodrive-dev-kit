@@ -29,9 +29,16 @@ function project(name = "autodrive-sandbox-") {
   return root;
 }
 
-/** 指定した答えを返す。 */
+/**
+ * 指定した答えを返す。
+ *
+ * **ポートの名前で引く。問いの文で引かない。** 文で引いていたところ、問いを
+ * 言い換えた時点で当たらなくなり、**答えたはずのものが推奨に倒れた**（AUT-218）。
+ * 落ちたから気づいたが、落ち方は「置いていないはずのものが置かれている」であり、
+ * 原因から遠い。
+ */
 function answering(answers) {
-  return { answer: (q) => answers[q.ask] ?? null };
+  return { answer: (q) => answers[q.port] ?? null };
 }
 
 // ---------------------------------------------------------------- 置くもの
@@ -55,7 +62,7 @@ test("構成がサンドボックスを使うなら、置く", () => {
 // **使わないと決めたものを置かない。** 置くと、構成の記録と実物が食い違う。
 test("使わないと決めたら、置かない", () => {
   const root = project();
-  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
+  const port = answering({ sandbox: NONE });
   const result = setup("init", root, KIT, port);
 
   assert.equal(existsSync(join(root, ".devcontainer")), false, "使わないのに置いている");
@@ -71,7 +78,7 @@ test("構成の記録と、置かれたものが一致する", () => {
     [NONE, false],
   ] ) {
     const root = project();
-    const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": answer });
+    const port = answering({ sandbox: answer });
     const result = setup("init", root, KIT, port);
 
     assert.equal(result.config?.ports.sandbox, answer);
@@ -234,7 +241,7 @@ test("開き直してから、AIに話しかける順で言う", () => {
 
 // **使わないと決めたなら、言わない。** 置いていないものを開けとは言えない。
 test("サンドボックスを使わないなら、開き直せと言わない", () => {
-  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
+  const port = answering({ sandbox: NONE });
   const said = setup("init", project(), KIT, port, false).todo.join("\n");
   assert.equal(said.includes("Reopen in Container"), false, said);
 });
@@ -601,7 +608,7 @@ test("機能を足していなくても、lock の書き換えで update は止�
 // 置いてはいけない。
 test("サンドボックスを使わないなら、lock も置かない", () => {
   const root = project();
-  const port = answering({ "AIを、隔離された環境（サンドボックス）の中で動かしますか？": NONE });
+  const port = answering({ sandbox: NONE });
   setup("init", root, KIT, port);
 
   assert.equal(existsSync(join(root, ".devcontainer", "devcontainer-lock.json")), false);

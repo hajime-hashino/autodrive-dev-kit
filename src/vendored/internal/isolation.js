@@ -35,6 +35,20 @@
  * **ここが見るのは、その自己検証が走る設定があるか、だけである。** 呼び出しごと
  * 外されると、自己検証も走らないため誰も気づけない。そこがちょうど穴になっている。
  *
+ * ## devcontainer を選んだプロジェクトだけを見る
+ *
+ * サンドボックスの実装は外に多くあり（Orca、Claude Managed Agent、Kubernetes
+ * Agent Sandbox、Codex Sandbox など）、**この道具が中身を知っているのは
+ * devcontainer だけである。** 知らないものを、知っている形に当てて判定すると、
+ * 何も悪いことをしていないプロジェクトが落ちる。
+ *
+ * **判定の根拠は、置かれたファイルではなく宣言に移した**（ADR 0012）。
+ * `autodrive.json` に `sandbox: "devcontainer"` と書いたなら見る。別の名前を
+ * 書いたなら見ない。**その場合、何が守られているかは `docs/quality.md` に書く。**
+ *
+ * 副産物として、穴が1つ塞がる。以前は定義ファイルが無ければ空で返していたため、
+ * **devcontainer と宣言したまま定義ごと消すと、黙って通っていた。**
+ *
  * ## 不変条件ではない
  *
  * 定義§9の不変条件は4つで固定であり、**5つ目を足すのは定義の変更**である
@@ -44,6 +58,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { readConfig } from "./config.js";
 
 /** サンドボックスの定義。 */
 const DEFINITION = ".devcontainer/devcontainer.json";
@@ -99,20 +115,49 @@ function invokes(command, name) {
 }
 
 /**
+ * 宣言されたサンドボックスを、判定の対象にするか。
+ *
+ * **構成が読めるなら、宣言が決める。** `devcontainer` 以外を選んだプロジェクトに、
+ * devcontainer の形を当てない。
+ *
+ * **構成が無いなら、置かれているもので決める。** `init` を打っていない作業場が
+ * ある（参照実装を直に指しているもの）。そこで判定が消えると、いま効いている
+ * 検出が黙って無くなる。
+ *
+ * @param {string} root
+ * @returns {boolean}
+ */
+export function judged(root) {
+  const { config } = readConfig(root);
+  if (config === null) return existsSync(join(root, DEFINITION));
+  return config.ports.sandbox === "devcontainer";
+}
+
+/**
  * 隔離の設定に空いた穴を返す。
  *
- * **サンドボックスを使っていないプロジェクトは、何も返さない。** 定義が無ければ、
- * 見るものが無い。
+ * **devcontainer を選んでいないプロジェクトは、何も返さない。** 見方を知らない
+ * ものを、知っている形に当てない。
  *
  * @param {string} root リポジトリの場所
  * @returns {Array<{ path: string, gap: string, why: string }>}
  */
 export function isolationGaps(root) {
-  const path = join(root, DEFINITION);
-  if (!existsSync(path)) return [];
+  if (!judged(root)) return [];
 
+  const path = join(root, DEFINITION);
   const gaps = [];
   const add = (gap, why) => gaps.push({ path: DEFINITION, gap, why });
+
+  // **宣言したのに定義が無いなら、それが穴である。** 以前はここで空を返しており、
+  // 定義ごと消すと黙って通っていた（AUT-218）。
+  if (!existsSync(path)) {
+    add(
+      "devcontainer と宣言しているが、定義が無い",
+      "隔離が何も無い状態で動く。**使わないなら `autodrive.json` の `sandbox` を変えること**",
+    );
+    return gaps;
+  }
 
   let text;
   try {

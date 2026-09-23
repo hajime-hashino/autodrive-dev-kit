@@ -602,5 +602,23 @@
     "from": "  if (elapsedMs !== undefined && elapsedMs > 0 && outcomes.length > 0) {",
     "to": "  if (false) {",
     "why": "件数は増え続ける。測っていないと、いつ長くなったか分からず、待ち時間を惜しんで確かめなくなる"
+  },
+  {
+    "name": "AUT-218 宣言を見ずに、置かれたファイルだけで判定する",
+    "file": "src/vendored/internal/isolation.js",
+    "from": "  if (config === null) return existsSync(join(root, DEFINITION));\n  return config.ports.sandbox === \"devcontainer\";",
+    "to": "  return existsSync(join(root, DEFINITION));"
+  },
+  {
+    "name": "AUT-218 devcontainer と宣言したまま定義を消しても黙る",
+    "file": "src/vendored/internal/isolation.js",
+    "from": "  if (!existsSync(path)) {\n    add(",
+    "to": "  if (!existsSync(path)) {\n    return gaps;\n    add("
+  },
+  {
+    "name": "AUT-218 devcontainer 以外を選んでも .devcontainer/ を置く",
+    "file": "src/vendored/internal/init.js",
+    "from": "  if (config.ports.sandbox !== \"devcontainer\") return false;",
+    "to": "  if (config.ports.sandbox === \"none\") return false;"
   }
 ]
