@@ -26,6 +26,7 @@ import {
   infer,
   readConfig,
   suggestPrefix,
+  TRACKER_PREFIX,
   writeConfig,
 } from "./config.js";
 
@@ -172,6 +173,39 @@ function interview(
   return { config, decisions };
 }
 
+/**
+ * 作業単位IDの接頭辞を聞く。
+ *
+ * **案はリポジトリ名から作る。** 決定ではない。そのまま Enter で案を採れる。
+ *
+ * **聞けなければ案で進み、そう書く。** 端末が無い場合（CI、テスト）である。
+ * 黙って案に倒れると、決めていないものが決めたものに見える。
+ *
+ * @param {import("./ports/interview.js").InterviewPort} interviewer
+ * @param {"ja" | "en"} language
+ * @param {string} repoName
+ * @returns {{ prefix: string | null, how: string }}
+ */
+export function askPrefix(interviewer, language, repoName) {
+  const suggested = suggestPrefix(repoName);
+  const answered =
+    interviewer.value === undefined
+      ? null
+      : interviewer.value({
+          ask: say(language, "ask.tracker.prefix"),
+          why: say(language, "ask.tracker.prefix.why"),
+          shape: say(language, "ask.tracker.prefix.shape"),
+          pattern: TRACKER_PREFIX,
+          suggested,
+          language,
+        });
+
+  if (answered !== null) return { prefix: answered, how: say(language, "decided.chosen") };
+  if (suggested !== null) return { prefix: suggested, how: say(language, "decided.recommended") };
+  // **埋められないなら、埋めない。** 空で進むと、形の違う値が構成に入る。
+  return { prefix: null, how: say(language, "decided.undecided") };
+}
+
 function gitRemote(root) {
   try {
     return execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
@@ -272,17 +306,13 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
 
   // **番号しか持たない実装には、接頭辞を用意する。**
   //
-  // 聞かないのは、**この口が自由記述を受け取らないため**である（`ports/interview.js`）。
-  // 選択肢に並べられないものは、案を書いておいて人が直す形にする。構成は
-  // プロジェクトのものであり、こちらが上書きしない（ADR 0005）。
+  // **聞く。** 選択肢に並べられないが、形は決まっている。形が決まっているものは
+  // 書かせてよい（`ports/interview.js`）。**案を書いておいて人が直す形にしない。**
+  // ブランチ名と記録のファイル名になるため、後から変えると既に書いた記録が迷子になる。
   if (mode !== "update" && config.ports.tracker === "github-issues" && config.tracker.prefix === null) {
-    const suggested = suggestPrefix(basename(resolve(root)));
-    config.tracker.prefix = suggested;
-    decisions.push(
-      suggested === null
-        ? "tracker.prefix: **決められなかった。** autodrive.json に2〜4文字で書くこと"
-        : `tracker.prefix: ${suggested}（リポジトリ名から作った案）`,
-    );
+    const { prefix, how } = askPrefix(interviewer, config.language, basename(resolve(root)));
+    config.tracker.prefix = prefix;
+    decisions.push(`tracker.prefix: ${prefix ?? "**決まっていない**"}${how}`);
   }
 
   // 置く ----------------------------------------------------------------------

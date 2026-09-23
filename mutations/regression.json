@@ -694,5 +694,25 @@
     "from": "      await this.#setMark(number, STATE_MARK, null);\n      await this.#call(\"PATCH\"",
     "to": "      await this.#call(\"PATCH\"",
     "why": "閉じた Issue に着手中の印が付いたままになる"
+  },
+  {
+    "name": "AUT-234 形に合わない答えを、そのまま受け取る",
+    "file": "src/vendored/internal/adapters/interviewTerminal.js",
+    "from": "  if (!question.pattern.test(trimmed)) return { value: null, retry: true };",
+    "to": "  ",
+    "why": "書いたつもりの人が、通らなかったことに気づけない。形の違う値が構成に入る"
+  },
+  {
+    "name": "AUT-234 接頭辞を聞かず、案で進む",
+    "file": "src/vendored/internal/setup.js",
+    "from": "    interviewer.value === undefined\n      ? null\n      : interviewer.value({",
+    "to": "    true\n      ? null\n      : interviewer.value({",
+    "why": "案を書いておいて人が直す形に戻る。後から変えると記録が迷子になる"
+  },
+  {
+    "name": "AUT-234 案が無くても、空で進める",
+    "file": "src/vendored/internal/adapters/interviewTerminal.js",
+    "from": "    return question.suggested === null\n      ? { value: null, retry: true }\n      : { value: question.suggested, retry: false };",
+    "to": "    return { value: question.suggested, retry: false };"
   }
 ]

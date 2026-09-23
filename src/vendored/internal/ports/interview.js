@@ -4,8 +4,27 @@
  * **端末から切り離す。** 端末に直に書くと、テストが端末を要求する。判定できない
  * ものは、いずれ判定されなくなる。
  *
- * 選択肢を出して選ばせる形に限っている。**自由記述を受け取らない。** 自由記述は、
- * 受け取った側が意味を解釈することになり、何が選ばれたのかが記録から読めなくなる。
+ * 聞き方は2つある。**選ばせるか、形を決めて書かせるか。**
+ *
+ * | 聞き方 | いつ使うか |
+ * |---|---|
+ * | `answer` | 選択肢が並べられる。実装の選択、使うか使わないか |
+ * | `value` | 並べられない。名前、識別子、接頭辞 |
+ *
+ * ## 書かせるほうは、形を決めてから聞く
+ *
+ * **解釈しないこと。** 受け取った側が意味を読み取る形にすると、何が決まったのかが
+ * 記録から読めなくなる。避けるのはそれであって、書かせること自体ではない。
+ *
+ * したがって `value` は**問い自身が形（`pattern`）を持つ。** 合わない答えは
+ * 飲み込まず、聞き直す。通った値はそのまま記録され、誰も読み替えない。
+ *
+ * **形を決められないものは、聞かない。** 「何でもよい」は解釈を呼ぶ。
+ *
+ * ここは一度、**選ばせる形だけに限っていた。** そのため並べられないものが
+ * 「案を書いておくので人が直す」になり、聞く機会が無いまま構成に入っていた
+ * （AUT-234 の接頭辞）。**規約の理由は解釈を避けることであって、入力の種類を
+ * 減らすことではなかった。**
  */
 
 /** @typedef {{ ask: string, why: string, choices: ReadonlyArray<{ value: string; label: string }>, recommended: string }} Question */
@@ -17,8 +36,32 @@
  */
 
 
+/**
+ * 形を決めて書かせる問い。
+ *
+ * **`pattern` は問いが持つ。** 受け取る側に判断を残すと、そこが解釈になる。
+ *
+ * **`suggested` は案であって既定ではない。** そのまま Enter は「案でよい」という
+ * 明示された選択として扱う。案が無ければ、書くまで聞き直す。
+ *
+ * @typedef {{
+ *   ask: string,
+ *   why: string,
+ *   pattern: RegExp,
+ *   shape: string,
+ *   suggested: string | null,
+ *   language?: "ja" | "en",
+ * }} ValueQuestion
+ */
+
 /** 誰にも聞けないとき。**推奨で進める。** 端末が無い場合（CI、テスト）に使う。 */
 export const useRecommended = {
   answer: () => null,
+  value: () => null,
 };
-/** @typedef {{ answer(question: Question): string | null }} InterviewPort */
+/**
+ * @typedef {{
+ *   answer(question: Question): string | null,
+ *   value?(question: ValueQuestion): string | null,
+ * }} InterviewPort
+ */
