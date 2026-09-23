@@ -205,8 +205,8 @@
   {
     "name": "AUT-157 隔離の配線を見ない",
     "file": "src/vendored/internal/main.js",
-    "from": "  return results.some((r) => r.failing) || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;",
-    "to": "  return results.some((r) => r.failing) || forbiddenCount > 0 ? 1 : 0;",
+    "from": "  return failing || forbiddenCount > 0 || isolationCount > 0 || sectionCount > 0 ? 1 : 0;",
+    "to": "  return failing || forbiddenCount > 0 || sectionCount > 0 ? 1 : 0;",
     "why": "見つけても終了コードに出ない。CI で誰も気づかない。**呼び出し側で 0 を渡す形は、この判定では捕まえられない**（一時リポジトリでは記録が無く、どのみち落ちるため差が出ない）。追跡してはいけないものの判定も同じ位置にある"
   },
   {
@@ -630,8 +630,8 @@
   {
     "name": "AUT-232 節の食い違いを見つけても落とさない",
     "file": "src/vendored/internal/main.js",
-    "from": "    isolationCount > 0 ||\n    sectionCount > 0",
-    "to": "    isolationCount > 0"
+    "from": "  return failing || forbiddenCount > 0 || isolationCount > 0 || sectionCount > 0 ? 1 : 0;",
+    "to": "  return failing || forbiddenCount > 0 || isolationCount > 0 ? 1 : 0;"
   },
   {
     "name": "AUT-232 節の食い違いを出力に出さない",
