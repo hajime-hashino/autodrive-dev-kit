@@ -638,5 +638,26 @@
     "file": "src/vendored/internal/main.js",
     "from": "            ...describeSections(sections),",
     "to": "            "
+  },
+  {
+    "name": "AUT-230 プロダクトと作る場を、同じ節に戻す",
+    "file": "src/templates/quality.md",
+    "from": "# 開発環境・開発プロセスの品質",
+    "to": "## つづき",
+    "why": "同じ重さで読まれる。壊れたときに損をする人が違う"
+  },
+  {
+    "name": "AUT-230 人が担保するものの欄を落とす",
+    "file": "src/templates/quality.md",
+    "from": "## 人が確認するもの",
+    "to": "## 参考",
+    "why": "自動で見ているものが全部だと読まれる（定義§17）"
+  },
+  {
+    "name": "AUT-230 「無い」と書いた行の行き先を求めない",
+    "file": "src/templates/quality.md",
+    "from": "いつ見直すか、または作業単位のIDを添えること。",
+    "to": "そう書くこと。",
+    "why": "穴が見えたまま残る。実際に残った"
   }
 ]
