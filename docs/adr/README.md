@@ -18,6 +18,7 @@
 | [0010](0010-distribution-boundary-in-the-tree.md) | 配布の境界を、一覧ではなく階層で表す。`src/vendored/` が複製され、`src/templates/` は配るが複製しない | 承認 | 2026-09-18 |
 | [0011](0011-applying-an-app-standard-to-a-tool.md) | アプリ向けの開発標準を、道具にどこまで適用するか。入れた先に要求することは寄せない。自分の開発の仕方は寄せる | 承認 | 2026-09-21 |
 | [0012](0012-sandbox-is-declared-not-built.md) | サンドボックスは、プロジェクトが宣言するもの。参照実装が中身を知るのは devcontainer だけで、判定もそこに限る | 承認 | 2026-09-23 |
+| [0013](0013-work-item-id-and-state-on-github-issues.md) | GitHub Issues で、作業単位IDと状態をどう持つか。IDは接頭辞付き、状態は開いている側をラベルで分ける | 承認 | 2026-09-23 |
 
 ## 書き方
 
