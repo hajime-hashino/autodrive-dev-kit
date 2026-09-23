@@ -1,11 +1,15 @@
 {
   "name": "autodrive-dev-kit",
-  "version": "0.12.8",
+  "version": "0.12.9",
   "license": "Apache-2.0",
   "author": "Hajime Hashino",
   "private": true,
   "type": "module",
   "description": "AIオートドライビング開発の参照実装",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hajime-hashino/autodrive-dev-kit.git"
+  },
   "bin": {
     "autodrive-dev-kit": "src/vendored/bin/autodrive-dev-kit"
   },

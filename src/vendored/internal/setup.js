@@ -222,7 +222,7 @@ function refuse(message) {
 }
 
 /** 外から取ってくるときの打ち方。**README と同じものを指す。** */
-export const FROM_SOURCE = "npx github:hajimegane/autodrive-dev-kit";
+export const FROM_SOURCE = "npx github:hajime-hashino/autodrive-dev-kit";
 
 /**
  * ここから置けるか。
