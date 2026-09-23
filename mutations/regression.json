@@ -620,5 +620,23 @@
     "file": "src/vendored/internal/init.js",
     "from": "  if (config.ports.sandbox !== \"devcontainer\") return false;",
     "to": "  if (config.ports.sandbox === \"none\") return false;"
+  },
+  {
+    "name": "AUT-232 節の中身が入れ替わっても黙る（存在だけ見る）",
+    "file": "src/vendored/internal/definitionSections.js",
+    "from": "    if (actual !== expected) moved.push({ n, expected, actual });",
+    "to": "    if (actual === null) moved.push({ n, expected, actual });"
+  },
+  {
+    "name": "AUT-232 節の食い違いを見つけても落とさない",
+    "file": "src/vendored/internal/main.js",
+    "from": "    isolationCount > 0 ||\n    sectionCount > 0",
+    "to": "    isolationCount > 0"
+  },
+  {
+    "name": "AUT-232 節の食い違いを出力に出さない",
+    "file": "src/vendored/internal/main.js",
+    "from": "            ...describeSections(sections),",
+    "to": "            "
   }
 ]
