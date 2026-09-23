@@ -1,0 +1,1 @@
+{"ts":"2026-09-23T13:33:04.143Z","work_item_id":"AUT-231","model":"claude-opus-5","kit_version":"0.12.11","emitter":"adapter","type":"miss","target":"sessionState の探し方","detail":"AUT-221 で作業状態のマーカーを両方の起点へ置くようにしたため、子リポジトリが .autodrive を持つようになり、起点の探し上げが子で止まるようになった。その結果、必須属性 model が直近10件のうち6件で欠けた。器があることと中身があることを区別していなかった","cause":"設計のズレ","found_in":"別の作業単位（AUT-218）で記録を書いたとき"}

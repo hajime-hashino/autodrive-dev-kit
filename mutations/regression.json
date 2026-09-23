@@ -742,5 +742,19 @@
     "from": "    const placed = all.filter((sha) => repo.git(\"show\", `${sha}^:boundaries.yaml`) === null);",
     "to": "    const placed = [];",
     "why": "init した全プロジェクトが最初の提出で落ちる。手元では通るため、落ちる理由が分からない"
+  },
+  {
+    "name": "AUT-231 セッションの記録を、起点の1箇所だけで探す",
+    "file": "src/vendored/internal/sessionState.js",
+    "from": "  const path = findSessionState(root);\n  if (path === null) return EMPTY;",
+    "to": "  const path = sessionStatePath(root);\n  if (!existsSync(path)) return EMPTY;",
+    "why": "子リポジトリから記録すると必須属性 model が欠ける。後から遡って付与できない"
+  },
+  {
+    "name": "AUT-231 見つからない理由を、まだ無いと断定する",
+    "file": "src/vendored/internal/adapters/telemetryJsonl.js",
+    "from": "              \"セッションの記録が見つからない（起点から上へ辿って探した）。\" +",
+    "to": "              \"セッションの記録がまだ無い。最初のターンで書かれた\" + \"\" +",
+    "why": "確かめていない理由を書くと、読んだ人が別の場所を探さなくなる"
   }
 ]
