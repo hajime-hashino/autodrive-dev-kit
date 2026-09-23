@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { delegateFor, MODES } from "../src/vendored/internal/cli.js";
@@ -1243,4 +1243,50 @@ test("この決定を書いた ADR が、人の発言を引いていない", () 
   );
   const quotes = body.split("\n").filter((l) => l.startsWith("> "));
   assert.deepEqual(quotes, [], `発言を引いている:\n${quotes.join("\n")}`);
+});
+
+// ------------------------------------------------------------ 置き場所の名前
+
+/**
+ * **所有者の名前が、どこか1箇所だけ古いまま残る。**
+ *
+ * アカウント名が変わったとき、14箇所を手で直した（AUT-236）。**手で直す以上、
+ * 1つ見落とす。** 見落としても静かに通り、リダイレクトが効いている間は誰も
+ * 気づかない。**リダイレクトは、同名のリポジトリが作られると切れる。**
+ *
+ * URL が生きているかは見ない（通信になる）。**揃っているかだけを見る。** 揃って
+ * いないことは、部分的に直した証拠である。
+ */
+test("GitHub の所有者の名前が、全部そろっている", () => {
+  const pkg = JSON.parse(readFileSync(join(KIT, "package.json"), "utf8"));
+  const expected = /github\.com\/([^/]+)\//.exec(pkg.repository?.url ?? "")?.[1];
+  assert.notEqual(expected, undefined, "package.json の repository から所有者を読めない");
+
+  const odd = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === ".git") continue;
+      // **テストは見ない。** `o/r` のような作り物が入っており、拾うと誤検出になる。
+      if (entry.name === "test") continue;
+      // **変異の一覧も見ない。** 置換先に違う名前を書くのが仕事であり、拾うと
+      // 必ず落ちる。**この一覧が実装と揃っているかは、置換元が実在するかの判定が
+      // 見ている**（`mutate.test.js`）。
+      if (entry.name === "regression.json") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!/\.(js|json|md|ya?ml)$/.test(entry.name)) continue;
+      const body = readFileSync(path, "utf8");
+      // `github:owner/repo` と `github.com/owner/repo` を拾う。
+      // **`api.github.com/repos/...` は拾わない。** 所有者ではなく API の道である。
+      for (const m of body.matchAll(/(?<!api\.)github(?::|\.com\/)([A-Za-z0-9-]+)\//g)) {
+        if (m[1] !== expected) odd.push(`${relative(KIT, path)}  ${m[0]}`);
+      }
+    }
+  };
+  walk(KIT);
+
+  assert.deepEqual(odd, [], `所有者の名前がそろっていない（package.json は ${expected}）`);
 });

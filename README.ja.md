@@ -2,7 +2,7 @@
 
 **システム開発に精通していなくても、AIの案内で開発を進められるようにするための autodrive-dev-kit。**
 
-[AIオートドライビング開発](https://github.com/hajimegane/autodrive-dev-definition)の参照実装。
+[AIオートドライビング開発](https://github.com/hajime-hashino/autodrive-dev-definition)の参照実装。
 
 *English version: [README.md](README.md)*
 
@@ -59,7 +59,7 @@
 
 ```sh
 cd <あなたのプロジェクト>
-npx github:hajimegane/autodrive-dev-kit init
+npx github:hajime-hashino/autodrive-dev-kit init
 ```
 
 **clone も PATH の設定も要らない。** Node 22.18 以上があれば動く（型注釈をそのまま実行するため）。
@@ -296,7 +296,7 @@ npm run mutate  # 過去に直した誤りを戻し、テストが落ちるか�
 
 `LICENSE` と `NOTICE` ファイルだけは残しておいてください。`init` でプロジェクトに適用するとこれらのファイルも `autodrive/` にコピーされますので、普通にご利用する場合は特に何も気にしなくて大丈夫です。
 
-手法そのものは別のリポジトリにあり、ライセンスも別です。[AIオートドライビング開発](https://github.com/hajimegane/autodrive-dev-definition) は **CC BY 4.0** で、コードではなく散文であるためです。引用も翻訳も教材化も自由で、出所だけ示していただければ大丈夫です。
+手法そのものは別のリポジトリにあり、ライセンスも別です。[AIオートドライビング開発](https://github.com/hajime-hashino/autodrive-dev-definition) は **CC BY 4.0** で、コードではなく散文であるためです。引用も翻訳も教材化も自由で、出所だけ示していただければ大丈夫です。
 
 ## フォークする
 

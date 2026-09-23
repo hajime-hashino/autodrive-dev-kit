@@ -315,7 +315,7 @@ autodrive-dev-kit のために要るもの（`GH_TOKEN` など）は `.env.examp
 ## autodrive-dev-kit を更新する
 
 ```sh
-npx github:hajimegane/autodrive-dev-kit update
+npx github:hajime-hashino/autodrive-dev-kit update
 ```
 
 **これは人が打つものではない。作業単位にして、こちらが行う。**
@@ -342,7 +342,7 @@ npx github:hajimegane/autodrive-dev-kit update
 **最新でなくてよい。** 名前の後ろに `#` とバージョンを付けると、その版が来る。
 
 ```sh
-npx github:hajimegane/autodrive-dev-kit#v0.1.1 update
+npx github:hajime-hashino/autodrive-dev-kit#v0.1.1 update
 ```
 
 **人が版を指したときだけ、こう打つ。** 指されていなければ最新を取る。どの版があるかは

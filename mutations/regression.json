@@ -191,7 +191,7 @@
   {
     "name": "AUT-152 配布物が、プロジェクトの中のコピーで update を打たせる",
     "file": "src/templates/autodrive-reference.md",
-    "from": "npx github:hajimegane/autodrive-dev-kit update\n",
+    "from": "npx github:hajime-hashino/autodrive-dev-kit update\n",
     "to": "{{KIT}}/bin/autodrive-dev-kit update\n",
     "why": "コピーにはテンプレートが無い。案内どおりに打つと必ず落ちる"
   },
@@ -728,5 +728,12 @@
     "from": "      if (added.length > 0) already.needs = [...(already.needs ?? []), ...added];",
     "to": "      ",
     "why": "後から来たほうの権限が静かに消える。使う操作だけが落ちる"
+  },
+  {
+    "name": "AUT-236 所有者の名前を1箇所だけ古いまま残す",
+    "file": "docs/commands.md",
+    "from": "npx github:hajime-hashino/autodrive-dev-kit update",
+    "to": "npx github:example-owner/autodrive-dev-kit update",
+    "why": "手で直す以上1つ見落とす。リダイレクトが効いている間は誰も気づかない"
   }
 ]

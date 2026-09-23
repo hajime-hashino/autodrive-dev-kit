@@ -2,7 +2,7 @@
 
 **A toolkit that lets you build software with AI, without needing to be an engineer yourself.**
 
-Reference implementation of [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition).
+Reference implementation of [AI Autodriving Development](https://github.com/hajime-hashino/autodrive-dev-definition).
 
 *日本語版は [README.ja.md](README.ja.md) にあります。*
 
@@ -59,7 +59,7 @@ Run this inside the project you want to adopt it in.
 
 ```sh
 cd <your project>
-npx github:hajimegane/autodrive-dev-kit init
+npx github:hajime-hashino/autodrive-dev-kit init
 ```
 
 **No clone, no PATH setup.** Node 22.18 or newer is all you need.
@@ -300,7 +300,7 @@ You are free to distribute it, modify it, and use it, including commercially. Pl
 
 Just keep the `LICENSE` and `NOTICE` files alongside it. `init` copies both into `autodrive/` when you adopt the toolkit in a project, so if you are simply using it there is nothing you need to think about.
 
-The method itself is in a separate repository under a different license. [AI Autodriving Development](https://github.com/hajimegane/autodrive-dev-definition) is **CC BY 4.0**, because it is prose rather than code — quote it, translate it, teach from it; just say where it came from.
+The method itself is in a separate repository under a different license. [AI Autodriving Development](https://github.com/hajime-hashino/autodrive-dev-definition) is **CC BY 4.0**, because it is prose rather than code — quote it, translate it, teach from it; just say where it came from.
 
 ## Forking
 
