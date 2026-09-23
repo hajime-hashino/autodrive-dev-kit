@@ -125,20 +125,26 @@ export function applyOne(root, m, run = runTests) {
  * **素の状態で落ちたときは、そのときの出力も返す。** 返さないと、読んだ人には
  * 何が落ちたのか分からない。
  *
- * @returns {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string }}
+ * @returns {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string, elapsedMs?: number }}
  */
-export function mutate(root, mutations, run = runTests) {
+export function mutate(root, mutations, run = runTests, now = () => Date.now()) {
   // **素の状態は、理由まで見る。** 落ちたときに何が起きたのかを残す。
   const first = run === runTests ? runOnce(root) : { ok: run(root), output: "" };
-  if (!first.ok) return { baseline: false, outcomes: [], baselineOutput: first.output };
-  return { baseline: true, outcomes: mutations.map((m) => applyOne(root, m, run)), baselineOutput: "" };
+  if (!first.ok) return { baseline: false, outcomes: [], baselineOutput: first.output, elapsedMs: 0 };
+
+  // **かかった時間を測る。** 件数は判定を足すたびに増えるので、放っておくと
+  // 伸びる。**遅くなると、待ち時間を惜しんで確かめないまま提出する**（AUT-206 と
+  // AUT-225 で実際に起きた）。**測っていないと、いつ長くなったか分からない。**
+  const startedAt = now();
+  const outcomes = mutations.map((m) => applyOne(root, m, run));
+  return { baseline: true, outcomes, baselineOutput: "", elapsedMs: now() - startedAt };
 }
 
 /** 人が読む形にする。**捕まえられなかったものを目立たせる。** */
 /**
- * @param {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string }} result
+ * @param {{ baseline: boolean, outcomes: Outcome[], baselineOutput?: string, elapsedMs?: number }} result
  */
-export function describe({ baseline, outcomes, baselineOutput }) {
+export function describe({ baseline, outcomes, baselineOutput, elapsedMs }) {
   if (!baseline) {
     return [
       "**素の状態でテストが落ちている。変異は当てていない。**",
@@ -157,6 +163,13 @@ export function describe({ baseline, outcomes, baselineOutput }) {
       ? `${outcomes.length} 個すべてで落ちた。`
       : `**${bad.length} 個が捕まえられていない。** 判定を足すこと。`,
   );
+  // **1件あたりも出す。** 全体だけだと、件数が増えたのか1件が遅くなったのかが
+  // 区別できない。**区別できないと、どちらを直せばよいか決められない。**
+  if (elapsedMs !== undefined && elapsedMs > 0 && outcomes.length > 0) {
+    const total = Math.round(elapsedMs / 1000);
+    const each = (elapsedMs / outcomes.length / 1000).toFixed(1);
+    lines.push("", `${total} 秒かかった（1件あたり ${each} 秒）。`);
+  }
   return lines;
 }
 
