@@ -73,6 +73,9 @@ const FOR_IMPLEMENTATION = {
     { host: "pkg-containers.githubusercontent.com", why: "同上" },
   ],
   linear: [{ host: "api.linear.app", why: "作業単位の取得・起票・状態の更新" }],
+  // **Repo に GitHub を使っていなくても要る。** 作業単位だけ GitHub に置く構成が
+  // ありうる。重複は落とされるので、両方に書いても一覧は増えない。
+  "github-issues": [{ host: "api.github.com", why: "作業単位の取得・起票・状態の更新" }],
   "cloudflare-workers": [
     { host: "api.cloudflare.com", why: "配布先の状態の確認" },
     // **記憶で答えないために要る。** 読み取り専用の公式文書であり、資格情報は

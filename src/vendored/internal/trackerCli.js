@@ -11,7 +11,7 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { LinearTracker } from "./adapters/trackerLinear.js";
+import { createTracker } from "./ports/trackerFactory.js";
 import { isWorkItemState } from "./ports/tracker.js";
 
 import { STATE_DIR, defaultRoot } from "./workItem.js";
@@ -149,13 +149,13 @@ export async function run(
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
   const root = defaultRoot();
-  const token = process.env.LINEAR_API_KEY;
   const argv = process.argv.slice(2);
-  if (token === undefined && OPERATIONS[argv[0] ?? ""] !== undefined) {
-    console.error("Tracker の資格情報が無い（LINEAR_API_KEY 未設定）");
+  // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
+  const { tracker, error } = createTracker(root);
+  if (tracker === null && OPERATIONS[argv[0] ?? ""] !== undefined) {
+    console.error(error ?? "Tracker を組み立てられない");
     process.exit(2);
   }
-  const tracker = new LinearTracker(token ?? "", process.env.AUTODRIVE_TRACKER_TEAM);
   try {
     const { output, code } = await run(argv, root, tracker);
     (code === 0 ? console.log : console.error)(output);

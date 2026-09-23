@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { QUESTIONS, setup } from "../src/vendored/internal/setup.js";
 
-import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig } from "../src/vendored/internal/config.js";
+import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig, suggestPrefix } from "../src/vendored/internal/config.js";
 import {
   chosen,
   howToHandle,
@@ -31,20 +31,25 @@ import { tempDir } from "./helpers/tmp.js";
 
 const KIT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-function project() {
-  const root = tempDir("autodrive-setup-");
+function project(name = "autodrive-setup-") {
+  const root = tempDir(name);
   mkdirSync(join(root, ".git"), { recursive: true });
   return root;
 }
 
-/** 決まった答えを返す。**問いも記録する。** 何を聞かれたかが判定の対象になる。 */
+/**
+ * 決まった答えを返す。**問いも記録する。** 何を聞かれたかが判定の対象になる。
+ *
+ * **問いの文でもポート名でも引ける。** 文で引く呼び出しが既にあるため残すが、
+ * 新しく書くならポート名を使うこと。**問いを言い換えた時点で当たらなくなる。**
+ */
 function answering(answers) {
   const asked = [];
   return {
     asked,
     answer(q) {
       asked.push(q);
-      return answers[q.ask] ?? null;
+      return answers[q.ask] ?? answers[q.port] ?? null;
     },
   };
 }
@@ -57,6 +62,20 @@ const run = (mode , root , port = useRecommended, inside = true) =>
   setup(mode, root, KIT, port, inside);
 
 const configOf = (root) => readConfig(root).config;
+
+/**
+ * 問いをポート名で引く。
+ *
+ * **位置で引かない。** `QUESTIONS[0]` と書いていたところ、問いを1つ先頭に足した
+ * 時点で別のポートを指した（AUT-234）。**足すたびに壊れる引き方をしない。**
+ */
+const ask = (port) => {
+  const found = QUESTIONS.find((q) => q.port === port);
+  assert.notEqual(found, undefined, `問いが無い: ${port}`);
+  return found;
+};
+
+
 
 // ---------------------------------------------------------------- 前提の確認
 
@@ -87,18 +106,18 @@ for (const mode of ["init", "apply"] ) {
 
 test("init は聞いて、答えのとおりに構成を残す", () => {
   const root = project();
-  const port = answering({ [QUESTIONS[0].ask]: NONE });
+  const port = answering({ [ask("preview").ask]: NONE });
 
   const r = run("init", root, port);
   assert.equal(r.code, 0);
-  assert.equal(configOf(root)?.ports[QUESTIONS[0].port], NONE);
+  assert.equal(configOf(root)?.ports[ask("preview").port], NONE);
   assert.ok(port.asked.length > 0, "何も聞いていない");
 
   // **選んだことと、推奨のまま進んだことを見分けられる。** 混ぜると、選んだ
   // 覚えのないものが選んだように見える。
-  const chosenLine = r.decisions.find((d) => d.startsWith(`${QUESTIONS[0].port}: `));
+  const chosenLine = r.decisions.find((d) => d.startsWith(`${ask("preview").port}: `));
   assert.ok(chosenLine?.includes("選んだもの"), chosenLine ?? "");
-  const notChosen = r.decisions.find((d) => d.startsWith(`${QUESTIONS[1].port}: `));
+  const notChosen = r.decisions.find((d) => d.startsWith(`${ask("sandbox").port}: `));
   assert.equal(notChosen?.includes("選んだもの"), false, notChosen ?? "");
 });
 
@@ -199,7 +218,7 @@ test("apply は既にあるものを見て、それを推奨にする", () => {
   const port = answering({});
   const r = run("apply", root, port);
 
-  const preview = port.asked.find((q) => q.ask === QUESTIONS[0].ask);
+  const preview = port.asked.find((q) => q.ask === ask("preview").ask);
   assert.equal(preview?.recommended, "cloudflare-workers", "見て分かったことを推奨にしていない");
   assert.equal(configOf(root)?.ports.preview, "cloudflare-workers");
 
@@ -208,7 +227,7 @@ test("apply は既にあるものを見て、それを推奨にする", () => {
   // この場所にはサンドボックスが置かれていない。
   const sandbox = port.asked.find((q) => q.port === "sandbox");
   assert.equal(sandbox?.recommended, NONE, "既定の推奨が、見て分かったことを押しのけている");
-  assert.notEqual(sandbox?.recommended, QUESTIONS[1].recommended, "静的な推奨と区別がついていない");
+  assert.notEqual(sandbox?.recommended, ask("sandbox").recommended, "静的な推奨と区別がついていない");
   assert.equal(configOf(root)?.ports.sandbox, NONE);
 
   // **根拠を出す。** 何を見てそう言っているかが分からないと、確かめようがない。
@@ -234,8 +253,8 @@ test("見て分からなかったものは、問いの推奨のまま", () => {
   const port = answering({});
   run("apply", root, port);
 
-  const preview = port.asked.find((q) => q.ask === QUESTIONS[0].ask);
-  assert.equal(preview?.recommended, QUESTIONS[0].recommended);
+  const preview = port.asked.find((q) => q.ask === ask("preview").ask);
+  assert.equal(preview?.recommended, ask("preview").recommended);
 });
 
 test("推測は、見て分かったものだけに根拠を付ける", () => {
@@ -260,7 +279,7 @@ test("リモートが無くても、推測は落ちない", () => {
 // **決めた内容はプロジェクトのものである。** 入れ替えで触らない。
 test("入れ替えは、構成を読むだけで書き換えない", () => {
   const root = project();
-  run("init", root, answering({ [QUESTIONS[0].ask]: "cloudflare-workers" }));
+  run("init", root, answering({ [ask("preview").ask]: "cloudflare-workers" }));
 
   writeFileSync(
     join(root, CONFIG_FILE),
@@ -350,7 +369,7 @@ test("バージョンが違えば読まない", () => {
 // **読めない答えを推奨として飲み込まない。** 選んだつもりの人が、選ばれなかった
 // ことに気づけない。
 test("選択肢に無い答えは、聞き直す", () => {
-  const q = QUESTIONS[0];
+  const q = ask("preview");
   assert.deepEqual(chosen(q, "9"), { value: null, retry: true });
   assert.deepEqual(chosen(q, "はい"), { value: null, retry: true });
   assert.deepEqual(chosen(q, "1.5"), { value: null, retry: true });
@@ -358,13 +377,13 @@ test("選択肢に無い答えは、聞き直す", () => {
 });
 
 test("そのまま Enter は推奨を選んだことになる", () => {
-  const q = QUESTIONS[0];
+  const q = ask("preview");
   assert.deepEqual(chosen(q, ""), { value: q.recommended, retry: false });
   assert.deepEqual(chosen(q, "  "), { value: q.recommended, retry: false });
 });
 
 test("番号は、そのまま並び順に対応する", () => {
-  const q = QUESTIONS[0];
+  const q = ask("preview");
   q.choices.forEach((c, i) => assert.equal(chosen(q, String(i + 1)).value, c.value));
 });
 
@@ -419,8 +438,9 @@ test("端末を開けるなら、質問を出して待つ", () => {
     () => {},
   );
 
-  assert.equal(port.answer(QUESTIONS[0]), QUESTIONS[0].choices[1].value);
-  assert.ok(written.join("").includes(QUESTIONS[0].ask), "質問を出していない");
+  const q = ask("preview");
+  assert.equal(port.answer(q), q.choices[1].value);
+  assert.ok(written.join("").includes(q.ask), "質問を出していない");
 });
 
 // **開けた端末は閉じる。** 開いたままにすると、次に開けなくなる余地ができる。
@@ -681,4 +701,56 @@ test("使わなくなった項目が空なら、言わない", () => {
   writeRawConfig(root, { screen: "yes", devcontainer_features: [] });
 
   assert.equal(run("update", root).notes.join("\n").includes("もう読んでいない"), false);
+});
+
+// -------------------------------------------------- 作業単位IDの接頭辞（AUT-234）
+
+// **番号しか持たない実装には、接頭辞が要る。** `#123` はシェルで壊れ、
+// リポジトリをまたぐと衝突する（ADR 0013）。
+test("接頭辞の案を、リポジトリ名から作る", () => {
+  assert.equal(suggestPrefix("aiep-app"), "AIEP");
+  assert.equal(suggestPrefix("claude-agents-sample"), "CLAU");
+  assert.equal(suggestPrefix("autodrive-dev-kit"), "AUTO");
+});
+
+// **読めない案しか作れないなら、埋めない。** 既定で埋めて進むより、聞くほうがよい。
+test("案を作れなければ、null を返す", () => {
+  assert.equal(suggestPrefix("-"), null, "区切りだけから案を作っている");
+  assert.equal(suggestPrefix(""), null);
+  assert.equal(suggestPrefix("1app"), null, "数字で始まる案を作っている");
+});
+
+// **壊れた値で進まない。** ブランチ名と記録のファイル名が、その値のまま作られる。
+test("接頭辞の形が違えば、構成を読まずに止まる", () => {
+  const root = project();
+  writeFileSync(
+    join(root, CONFIG_FILE),
+    JSON.stringify({ ...defaults(), tracker: { prefix: "too-long-and-lower" } }),
+    "utf8",
+  );
+
+  const { config, error } = readConfig(root);
+  assert.equal(config, null, "壊れた値のまま読んでいる");
+  assert.match(error ?? "", /tracker\.prefix/);
+});
+
+// **GitHub Issues を選んだときだけ用意する。** Linear は自分で識別子を持っている。
+test("GitHub Issues を選ぶと、接頭辞の案が構成に入る", () => {
+  const root = project("aiep-app-");
+  const r = run("init", root, answering({ tracker: "github-issues" }));
+
+  assert.equal(configOf(root)?.ports.tracker, "github-issues");
+  assert.equal(configOf(root)?.tracker.prefix, "AIEP");
+  // **どう決まったかを出す。** 案であることが読めること。
+  assert.ok(
+    r.decisions.some((d) => d.startsWith("tracker.prefix: ")),
+    r.decisions.join(" / "),
+  );
+});
+
+test("Linear を選んだときは、接頭辞を作らない", () => {
+  const root = project();
+  run("init", root, answering({ tracker: "linear" }));
+
+  assert.equal(configOf(root)?.tracker.prefix, null, "要らない接頭辞を作っている");
 });

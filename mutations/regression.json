@@ -659,5 +659,40 @@
     "from": "いつ見直すか、または作業単位のIDを添えること。",
     "to": "そう書くこと。",
     "why": "穴が見えたまま残る。実際に残った"
+  },
+  {
+    "name": "AUT-234 構成を読まず、linear で組み立てる",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "  const implementation = config?.ports.tracker ?? \"linear\";",
+    "to": "  const implementation = \"linear\";",
+    "why": "ports.tracker が読まれない状態に戻る。選んだつもりで選べていない"
+  },
+  {
+    "name": "AUT-234 別の接頭辞の作業単位IDを受け取る",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "  const m = new RegExp(`^${prefix}-(\\\\d+)$`).exec(String(id ?? \"\").trim());",
+    "to": "  const m = /(\\d+)/.exec(String(id ?? \"\").trim());",
+    "why": "番号さえ合えば通る。関係の無い Issue を進めることになる"
+  },
+  {
+    "name": "AUT-234 取りやめを完了として閉じる",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "        state_reason: to === \"done\" ? \"completed\" : \"not_planned\",",
+    "to": "        state_reason: \"completed\",",
+    "why": "やらないと決めたものが、完了として数えられる"
+  },
+  {
+    "name": "AUT-234 提出を作業単位として数える",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "    return raw.filter((r) => r.pull_request === undefined).map((r) => this.#toView(r));",
+    "to": "    return raw.map((r) => this.#toView(r));",
+    "why": "Issues API は PR も返す。落とさないと提出が作業単位になる"
+  },
+  {
+    "name": "AUT-234 閉じるときに、着手中のラベルを残す",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "      await this.#setMark(number, STATE_MARK, null);\n      await this.#call(\"PATCH\"",
+    "to": "      await this.#call(\"PATCH\"",
+    "why": "閉じた Issue に着手中の印が付いたままになる"
   }
 ]
