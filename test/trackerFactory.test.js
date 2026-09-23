@@ -68,12 +68,50 @@ test("構成が github-issues なら、GitHub Issues で組み立てる", () => 
   assert.notEqual(tracker, null);
 });
 
-// **Linear の名前を使い回さない。** 片方を絞れなくなる。
-test("github-issues は、別の環境変数を読む", () => {
+// **Linear の名前は読まない。** 実装が違う。
+test("github-issues は、Linear の環境変数を読まない", () => {
   const { tracker, error } = createTracker(project(asGithub), { LINEAR_API_KEY: "k" }, slug);
 
   assert.equal(tracker, null);
+  assert.match(error ?? "", /GH_TOKEN/);
+});
+
+// **同じ GitHub に対する書ける鍵を2つ求めない**（AUT-235）。どちらもエージェントが
+// 自分の作業のために持つものであり、分けても守れるものが増えない。
+test("GH_TOKEN があれば、作業単位の鍵は要らない", () => {
+  const { tracker, error } = createTracker(project(asGithub), { GH_TOKEN: "g" }, slug);
+
+  assert.equal(error, null, error ?? "");
+  assert.notEqual(tracker, null);
+});
+
+// **分けたい人は分けられる。** 既に設定した先が壊れない。
+test("作業単位の鍵があれば、そちらを使う", () => {
+  const { tracker, error } = createTracker(
+    project(asGithub),
+    { AUTODRIVE_TRACKER_TOKEN: "t", GH_TOKEN: "g" },
+    slug,
+  );
+
+  assert.equal(error, null);
+  assert.notEqual(tracker, null);
+});
+
+// **判定用の鍵では動かない。** 読むだけの鍵であり、兼ねると分離が消える（定義§9）。
+test("判定用の鍵は、作業単位の鍵として使わない", () => {
+  const { tracker, error } = createTracker(project(asGithub), { AUTODRIVE_CI_TOKEN: "c" }, slug);
+
+  assert.equal(tracker, null, "判定用の鍵で組み立てている");
+  assert.match(error ?? "", /GH_TOKEN/);
+});
+
+// **どちらも無ければ、両方の名前を言う。** 片方しか言わないと、もう片方で
+// 足りることが分からない。
+test("どちらも無ければ、両方の名前を言う", () => {
+  const { error } = createTracker(project(asGithub), {}, slug);
+
   assert.match(error ?? "", /AUTODRIVE_TRACKER_TOKEN/);
+  assert.match(error ?? "", /GH_TOKEN/);
 });
 
 // **接頭辞が無ければ、識別子を作れない。** 黙って番号だけで進めない。

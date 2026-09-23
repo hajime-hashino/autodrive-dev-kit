@@ -303,3 +303,73 @@ test("読取専用の鍵に、書ける鍵で兼ねない理由が書いてあ�
   const text = envExample(defaults());
   assert.ok(text.includes(ci.note), "テンプレートに載っていない。人が読む場所に無ければ届かない");
 });
+
+// ---------------------------------------------- 同じ鍵を2つ並べない（AUT-235）
+
+/** GitHub Issues を使う構成。 */
+function usingGithubIssues() {
+  const config = defaults();
+  config.ports.tracker = "github-issues";
+  return config;
+}
+
+// **同じ GitHub に対する書ける鍵を2つ求めない。** 実際に人が2つ用意する羽目になった。
+test("GitHub Issues を使っても、作業単位のための鍵を別に求めない", () => {
+  const names = credentialsFor(usingGithubIssues()).map((c) => c.name);
+
+  assert.equal(
+    names.includes("AUTODRIVE_TRACKER_TOKEN"),
+    false,
+    `同じ用途の鍵が2つ並んでいる: ${names.join(", ")}`,
+  );
+  assert.ok(names.includes("GH_TOKEN"), names.join(", "));
+});
+
+// **権限は消えないこと。** 名前で落とすと、後から来たほうの権限が静かに消える。
+test("GH_TOKEN の権限に、作業単位の分が合流する", () => {
+  const token = credentialsFor(usingGithubIssues()).find((c) => c.name === "GH_TOKEN");
+
+  const permissions = (token?.needs ?? []).map((n) => `${n.permission}/${n.level}`);
+  assert.ok(permissions.includes("Issues/Read and write"), permissions.join(", "));
+  // 元から要るものが残っていること。
+  assert.ok(permissions.includes("Contents/Read and write"), permissions.join(", "));
+  assert.ok(permissions.includes("Pull requests/Read and write"), permissions.join(", "));
+});
+
+// **同じ権限を二重に並べない。** 読む人が、違うものかと考えることになる。
+test("合流しても、同じ権限は1回しか出ない", () => {
+  const token = credentialsFor(usingGithubIssues()).find((c) => c.name === "GH_TOKEN");
+  const permissions = (token?.needs ?? []).map((n) => `${n.permission}/${n.level}`);
+
+  assert.equal(new Set(permissions).size, permissions.length, permissions.join(", "));
+});
+
+// **両方の用途が読めること。** 片方しか書かないと、もう片方で使っていることが消える。
+test("合流した鍵は、両方の用途を書いている", () => {
+  const token = credentialsFor(usingGithubIssues()).find((c) => c.name === "GH_TOKEN");
+
+  assert.ok(token?.why.includes("提出"), token?.why);
+  assert.ok(token?.why.includes("作業単位"), token?.why);
+  // **分けたい人への案内も残ること。**
+  assert.ok(token?.note?.includes("AUTODRIVE_TRACKER_TOKEN"), token?.note);
+});
+
+// **判定用の分離は、変えない。** 兼ねると判定する側が判定対象を書き換えられる（定義§9）。
+test("判定用の鍵は、いまも別である", () => {
+  const names = credentialsFor(usingGithubIssues()).map((c) => c.name);
+  assert.ok(names.includes("AUTODRIVE_CI_TOKEN"), names.join(", "));
+
+  const ci = credentialsFor(usingGithubIssues()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
+  assert.ok(ci?.note?.includes("GH_TOKEN で兼ねないこと"), ci?.note);
+  // **Issues の権限は、こちらへ付かない。** 読むだけの鍵である。
+  const permissions = (ci?.needs ?? []).map((n) => n.permission);
+  assert.equal(permissions.includes("Issues"), false, permissions.join(", "));
+});
+
+// **Linear を使う構成は、変わらないこと。**
+test("Linear を使う構成に、Issues の権限を足さない", () => {
+  const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
+  const permissions = (token?.needs ?? []).map((n) => n.permission);
+
+  assert.equal(permissions.includes("Issues"), false, `要らない権限を求めている: ${permissions.join(", ")}`);
+});

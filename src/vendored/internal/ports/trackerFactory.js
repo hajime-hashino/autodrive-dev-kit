@@ -78,11 +78,21 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
   }
 
   if (implementation === "github-issues") {
-    const token = env.AUTODRIVE_TRACKER_TOKEN;
+    // **無ければ `GH_TOKEN` を使う。** どちらもエージェントが自分の作業のために
+    // 持つ書ける鍵であり、同じ対象を指す。**分けても守れるものが増えない**（AUT-235）。
+    //
+    // **`AUTODRIVE_CI_TOKEN` は兼ねない。** あちらは判定が使う読むだけの鍵であり、
+    // 兼ねると判定する側が判定対象を書き換えられる（定義§9）。**その関係は、
+    // ここには無い。**
+    //
+    // **`AUTODRIVE_TRACKER_TOKEN` を読むのはやめない。** 絞りたい人は分けられる。
+    const token = env.AUTODRIVE_TRACKER_TOKEN || env.GH_TOKEN;
     if (token === undefined || token === "") {
       return {
         tracker: null,
-        error: "Tracker の資格情報が無い（AUTODRIVE_TRACKER_TOKEN 未設定）",
+        error:
+          "Tracker の資格情報が無い（AUTODRIVE_TRACKER_TOKEN も GH_TOKEN も未設定）。" +
+          "**GH_TOKEN があれば足りる**（Issues の読み書きが要る）",
         implementation,
       };
     }
