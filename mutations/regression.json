@@ -735,5 +735,12 @@
     "from": "npx github:hajime-hashino/autodrive-dev-kit update",
     "to": "npx github:example-owner/autodrive-dev-kit update",
     "why": "手で直す以上1つ見落とす。リダイレクトが効いている間は誰も気づかない"
+  },
+  {
+    "name": "AUT-239 初期設置も、変更として数える",
+    "file": "src/vendored/internal/checks.js",
+    "from": "    const placed = all.filter((sha) => repo.git(\"show\", `${sha}^:boundaries.yaml`) === null);",
+    "to": "    const placed = [];",
+    "why": "init した全プロジェクトが最初の提出で落ちる。手元では通るため、落ちる理由が分からない"
   }
 ]

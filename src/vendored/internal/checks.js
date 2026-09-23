@@ -493,6 +493,19 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
  *
  * boundaries.yaml を動かした全コミットが、委譲範囲の変更履歴から参照されているか。
  * 未参照のコミットが1件でもあれば、残っていない変更があるということ。
+ *
+ * ## 初期設置は数えない
+ *
+ * **表を置くことは、委譲範囲の変更ではない。** 定義§8がそう言っている。
+ *
+ * > 表を置いた最初の変更は、承認の対象だが起動の証拠にはならない。
+ * > **表を用意することと、表を動かすことは別である。**
+ *
+ * `checkOuterLoopRunning` は最初からこの扱いだったが、**こちらは除外していなかった。**
+ * その結果、`init` した全プロジェクトが最初の提出で落ちた（AUT-239、GitHub #102）。
+ *
+ * **手元では通っていた。** `boundaries.yaml` が未コミットの間は `git log` が空を返す。
+ * **コミットした瞬間に落ちる。** 置いた本人には、何が起きたのか分からない。
  */
 const checkBoundaryChangeLogged = async ({ repos, events }) => {
   const r = resultFor("boundary_change_logged");
@@ -507,7 +520,23 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
   const unreferenced = [];
   for (const repo of targets) {
     const log = repo.git("log", "--format=%H", "--", "boundaries.yaml") ?? "";
-    const commits = log.split("\n").map((c) => c.trim()).filter(Boolean);
+    const all = log.split("\n").map((c) => c.trim()).filter(Boolean);
+
+    // **初期設置を落とす。** 親に `boundaries.yaml` が無いコミットがそれにあたる
+    // （`checkOuterLoopRunning` と同じ見分け方）。
+    const placed = all.filter((sha) => repo.git("show", `${sha}^:boundaries.yaml`) === null);
+    const commits = all.filter((sha) => !placed.includes(sha));
+    for (const sha of placed) {
+      r.observe(`${repo.name}: ${sha.slice(0, 7)} は委譲範囲の表の初期設置（変更として数えない）`);
+    }
+
+    // **動かした変更が無いなら、履歴はまだ要らない。** 置いただけの状態で
+    // 「履歴が無い」と言うと、**置いた本人が、何を書けばよいか分からないまま落ちる。**
+    if (commits.length === 0) {
+      r.observe(`${repo.name}: 委譲範囲を動かした変更はまだ無い`);
+      continue;
+    }
+
     const historyPath = repo.boundaryHistoryFile();
     if (historyPath === null) {
       r.observe(`${repo.name}: boundaries.yaml はあるが委譲範囲の変更履歴が無い`);

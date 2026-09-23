@@ -15,7 +15,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -349,4 +349,100 @@ test("作業状態を追跡しない。理由も書いてある", () => {
   assert.ok(ignore.includes("共有すると壊れる"), "なぜ追跡しないのかが書かれていない");
   // **無い状態が黙って通らないこと**も、ここで伝える。
   assert.ok(ignore.includes("unattributed"), ignore);
+});
+
+// ------------------------------------------------------ 最初のコミット（AUT-239）
+
+/** `init` した一式をコミットして、判定を打つ。 */
+function committedAndJudged(extra = () => {}) {
+  const root = initialized();
+  const git = (...args) =>
+    execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+
+  git("add", "-A");
+  git("commit", "-q", "-m", "init で置いた一式");
+  extra(root, git);
+
+  // **落ちても出力を拾う。** 素のプロジェクトは記録がまだ無く、そちらで終了コードが
+  // 1 になる。**投げたまま捨てると、見たい判定の行まで失う。**
+  let out;
+  try {
+    out = execFileSync(
+      "node",
+      [join(KIT, "src", "vendored", "internal", "main.js"), "--root", root, "--scope", "self"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (error) {
+    out = String(error.stdout ?? "") + String(error.stderr ?? "");
+  }
+  return { root, git, out };
+}
+
+/**
+ * **置いた一式をコミットしただけで落ちていた**（GitHub #102）。
+ *
+ * `init` した全プロジェクトが最初の提出で踏む。**手元では通っていた** ——
+ * `boundaries.yaml` が未コミットの間は `git log` が空を返すためである。
+ * **コミットした瞬間に落ちる。**
+ *
+ * 単体の作り物では捕まらなかった。`git` の作り物が、何を聞かれても同じ値を
+ * 返していたためである。**実物のリポジトリでしか出ない。**
+ */
+test("init した一式をコミットしただけでは、委譲範囲の判定が落ちない", () => {
+  const { out } = committedAndJudged();
+
+  const section = out.slice(out.indexOf("委譲範囲の変更が履歴に残ること"));
+  assert.ok(
+    out.includes("[有効] 委譲範囲の変更が履歴に残ること"),
+    `置いただけで落ちている:\n${section.slice(0, 400)}`,
+  );
+  // **何を見てそう言っているかを出す。** 通ったことだけでは、見ていないのと区別できない。
+  assert.ok(out.includes("初期設置"), `初期設置だと言っていない:\n${section.slice(0, 400)}`);
+});
+
+// **緩めすぎていないこと。** 動かした変更は、これまでどおり履歴を求める。
+test("委譲範囲を動かした変更は、履歴が無ければ落ちる", () => {
+  const { out } = committedAndJudged((root, git) => {
+    writeFileSync(
+      join(root, "boundaries.yaml"),
+      "version: 1\nareas:\n  - id: implement/product-code\n    operation: 実装する\n" +
+        "    target: プロダクトのコード\n    detectable: true\n    reversible: true\n    state: 観察中\n",
+      "utf8",
+    );
+    git("add", "-A");
+    git("commit", "-q", "-m", "委譲範囲を動かす");
+  });
+
+  assert.ok(
+    out.includes("[要対応] 委譲範囲の変更が履歴に残ること"),
+    `動かしたのに落ちていない:\n${out.slice(out.indexOf("委譲範囲"), out.indexOf("委譲範囲") + 400)}`,
+  );
+});
+
+// 履歴に書けば通ること。**通る道があることまで確かめる。**
+test("動かした変更を履歴に書けば、通る", () => {
+  const { out } = committedAndJudged((root, git) => {
+    writeFileSync(
+      join(root, "boundaries.yaml"),
+      "version: 1\nareas:\n  - id: implement/product-code\n    operation: 実装する\n" +
+        "    target: プロダクトのコード\n    detectable: true\n    reversible: true\n    state: 観察中\n",
+      "utf8",
+    );
+    git("add", "-A");
+    git("commit", "-q", "-m", "委譲範囲を動かす");
+    const sha = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    mkdirSync(join(root, "docs"), { recursive: true });
+    writeFileSync(
+      join(root, "docs", "boundary-changes.md"),
+      `## 2026-09-23 実装を観察中へ\n- 根拠: 実績なし（初期の観察）\n- 設定変更: commit ${sha}\n`,
+      "utf8",
+    );
+    git("add", "-A");
+    git("commit", "-q", "-m", "履歴を足す");
+  });
+
+  assert.ok(
+    out.includes("[有効] 委譲範囲の変更が履歴に残ること"),
+    `履歴を書いても通らない:\n${out.slice(out.indexOf("委譲範囲"), out.indexOf("委譲範囲") + 400)}`,
+  );
 });
