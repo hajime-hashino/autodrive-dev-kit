@@ -24,7 +24,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { LinearTracker } from "./adapters/trackerLinear.js";
+import { createTracker } from "./ports/trackerFactory.js";
 import { discoverRepos } from "./repos.js";
 import { describeOthers, detect, strandedFiles } from "./strandedTelemetry.js";
 import { defaultRoot, rememberBranch } from "./workItem.js";
@@ -420,13 +420,13 @@ export async function run(
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
   const root = defaultRoot();
-  const token = process.env.LINEAR_API_KEY;
   const argv = process.argv.slice(2);
-  if (token === undefined && argv.length > 0) {
-    console.error("Tracker の資格情報が無い（LINEAR_API_KEY 未設定）");
+  // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
+  const { tracker, error } = createTracker(root);
+  if (tracker === null && argv.length > 0) {
+    console.error(error ?? "Tracker を組み立てられない");
     process.exit(2);
   }
-  const tracker = new LinearTracker(token ?? "", process.env.AUTODRIVE_TRACKER_TEAM);
   try {
     const { output, code } = await run(argv, root, tracker, runGit);
     (code === 0 ? console.log : console.error)(output);

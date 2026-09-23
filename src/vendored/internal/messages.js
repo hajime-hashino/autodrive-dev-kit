@@ -54,6 +54,11 @@ const MESSAGES = {
     "decided.recorded": "（記録されたもの）",
 
     // --- 聞くこと ---
+    "ask.tracker": "作業単位（やること）を、どこで管理しますか？",
+    "ask.tracker.why":
+      "起票・状態・記録の紐づけに使います。**途中で変えると、それまでの作業単位が追えなくなります。**",
+    "ask.tracker.linear": "Linear を使う",
+    "ask.tracker.github": "GitHub Issues を使う（コードと同じ場所で管理する）",
     "ask.preview": "提出のたびに、動くものを見られる場所を用意しますか？",
     "ask.preview.why":
       "画面の見え方は、動くものを見ないと決められません。用意すると、提出ごとに URL が出ます。",
@@ -138,6 +143,11 @@ const MESSAGES = {
     "decided.seen": " (found: {because})",
     "decided.recorded": " (from the recorded configuration)",
 
+    "ask.tracker": "Where do you track work items?",
+    "ask.tracker.why":
+      "Used for filing, status, and linking records. **Changing it later breaks the trail of earlier work items.**",
+    "ask.tracker.linear": "Linear",
+    "ask.tracker.github": "GitHub Issues (same place as the code)",
     "ask.preview": "Do you want a place to see the running app on every submission?",
     "ask.preview.why":
       "You cannot decide how a screen looks without seeing it run. With this, every submission gets a URL.",

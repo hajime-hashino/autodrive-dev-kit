@@ -312,4 +312,11 @@ npm run mutate  # 過去に直した誤りを戻し、テストが落ちるか�
 
 `NOTICE` には自分の行を足してよい。Apache-2.0 が認めている。ファイルを変えたときは、変えたと書くこと（§4(b)）。
 
-CI には2つのシークレットが要る。`AUTODRIVE_CI_TOKEN` と `LINEAR_API_KEY`。
+CI には2つのシークレットが要る。`AUTODRIVE_CI_TOKEN` と、Tracker の資格情報。
+
+| `ports.tracker` | Tracker の資格情報 |
+|---|---|
+| `linear` | `LINEAR_API_KEY` |
+| `github-issues` | `AUTODRIVE_TRACKER_TOKEN`（Issues の読み書きのみ。`AUTODRIVE_CI_TOKEN` とは別に持つ） |
+
+`github-issues` を選ぶ場合、`autodrive.json` に `tracker.prefix` が要る。作業単位IDの頭に付く2〜4文字で、`AIEP-123` のようになる（ADR 0013）。

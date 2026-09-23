@@ -13,7 +13,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { TEMPLATES_DIR, init } from "./init.js";
 import { LANGUAGES, say } from "./messages.js";
 
@@ -25,6 +25,7 @@ import {
   hasConfig,
   infer,
   readConfig,
+  suggestPrefix,
   writeConfig,
 } from "./config.js";
 
@@ -54,6 +55,17 @@ import {
 export function questionsFor(language) {
   const t = (key, values) => say(language, key, values);
   return [
+    {
+      port: "tracker",
+      language,
+      ask: t("ask.tracker"),
+      why: t("ask.tracker.why"),
+      choices: [
+        { value: "linear", label: t("ask.tracker.linear") },
+        { value: "github-issues", label: t("ask.tracker.github") },
+      ],
+      recommended: "linear",
+    },
     {
       port: "preview",
       language,
@@ -256,6 +268,21 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
     const asked = interview(interviewer, {});
     config = asked.config;
     decisions = asked.decisions;
+  }
+
+  // **番号しか持たない実装には、接頭辞を用意する。**
+  //
+  // 聞かないのは、**この口が自由記述を受け取らないため**である（`ports/interview.js`）。
+  // 選択肢に並べられないものは、案を書いておいて人が直す形にする。構成は
+  // プロジェクトのものであり、こちらが上書きしない（ADR 0005）。
+  if (mode !== "update" && config.ports.tracker === "github-issues" && config.tracker.prefix === null) {
+    const suggested = suggestPrefix(basename(resolve(root)));
+    config.tracker.prefix = suggested;
+    decisions.push(
+      suggested === null
+        ? "tracker.prefix: **決められなかった。** autodrive.json に2〜4文字で書くこと"
+        : `tracker.prefix: ${suggested}（リポジトリ名から作った案）`,
+    );
   }
 
   // 置く ----------------------------------------------------------------------

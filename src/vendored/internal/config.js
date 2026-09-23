@@ -36,7 +36,7 @@ export const UNKNOWN = "unknown";
  * 2つ目が入ったときに増える場所が既にある。
  */
 export const PORT_CHOICES = {
-  tracker: ["linear"],
+  tracker: ["linear", "github-issues"],
   repo: ["github"],
   runner: ["github-actions"],
   // **ここだけ、一覧が網羅ではない。** サンドボックスは実装が外に多くあり
@@ -66,10 +66,42 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
 /** @typedef {{ name: string, why: string, lost: string }} AppCredential */
 
 /**
+ * 作業単位IDの接頭辞。
+ *
+ * **実装が番号しか持たない場合に要る。** GitHub Issues の `#123` は、そのままでは
+ * ブランチ名にもファイル名にもできず（シェルで `#` がコメントになる）、リポジトリを
+ * またぐと衝突する。`AIEP-123` の形にして、Linear の `AUT-123` と同じ扱いにする。
+ *
+ * **2〜4文字に限る。** 長いとブランチ名が読みにくくなり、短いと衝突する。
+ *
+ * **衝突しないことは、この道具では確かめられない。** 別のリポジトリが同じ接頭辞を
+ * 使っていても分からない。決めるのは人である。
+ */
+export const TRACKER_PREFIX = /^[A-Z][A-Z0-9]{1,3}$/;
+
+/**
+ * 接頭辞の案を作る。**決定ではない。** 人に確かめる。
+ *
+ * リポジトリ名の最初の区切りまでを大文字にして、4文字で切る。
+ * `aiep-app` なら `AIEP`、`claude-agents-sample` なら `CLAU`。
+ *
+ * **読めない案しか作れないなら null を返す。** 既定で埋めて進むより、聞くほうがよい。
+ */
+export function suggestPrefix(repoName) {
+  const head = String(repoName ?? "")
+    .split(/[-_./]/)[0]
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 4);
+  return TRACKER_PREFIX.test(head) ? head : null;
+}
+
+/**
  * @typedef {{
  *   version: 1,
  *   language: "ja" | "en",
  *   ports: Record<PortName, string>,
+ *   tracker: { prefix: string | null },
  *   app: {
  *     screen: "yes" | "no" | "unknown",
  *     credentials: AppCredential[],
@@ -205,6 +237,9 @@ export function defaults() {
       telemetry: "jsonl",
       flag: NONE,
     },
+    // **接頭辞は既定を持たない。** リポジトリごとに違い、推測で埋めると
+    // 別のリポジトリと衝突する。要る実装を選んだときに聞く。
+    tracker: { prefix: null },
     // **アプリ自身の資格情報も宛先も、聞かない。** 何を作るかが決まる前には
     // 分からない。何を作るかを聞き終えたあとで、AIがここへ足す。
     app: { screen: UNKNOWN, credentials: [], destinations: [] },
@@ -292,6 +327,20 @@ export function readConfig(root) {
   const screen = raw.app?.screen ?? UNKNOWN;
   const language = raw.language === "en" || raw.language === "ja" ? raw.language : base.language;
 
+  // **接頭辞は、書いてあれば形を確かめる。** 壊れた値で進むと、ブランチ名と
+  // 記録のファイル名がその値のまま作られる。**後から直すと、既に書いた記録が
+  // 迷子になる。**
+  const rawPrefix = raw.tracker?.prefix;
+  if (rawPrefix !== undefined && rawPrefix !== null && !TRACKER_PREFIX.test(rawPrefix)) {
+    return {
+      config: null,
+      error:
+        `${CONFIG_FILE} の tracker.prefix が形になっていない（${JSON.stringify(rawPrefix)}）。` +
+        "**英大文字で始まる2〜4文字。** 作業単位IDの頭に付き、ブランチ名と記録のファイル名になる",
+    };
+  }
+  const prefix = typeof rawPrefix === "string" ? rawPrefix : null;
+
   const app = readAppCredentials(raw.app?.credentials);
   if (app.error !== null) return { config: null, error: app.error };
 
@@ -307,6 +356,7 @@ export function readConfig(root) {
       version: 1,
       language,
       ports,
+      tracker: { prefix },
       app: {
         screen,
         credentials: app.credentials,
