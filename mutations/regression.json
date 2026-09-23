@@ -595,5 +595,12 @@
     "from": "    return found === undefined ? null : found.why;",
     "to": "    return found === undefined ? null : `${found.why}（${body.match(found.re)?.[0]}）`;",
     "why": "直すための仕掛けが漏洩の経路になる"
+  },
+  {
+    "name": "AUT-227 かかった時間を出さない",
+    "file": "src/vendored/internal/mutate.js",
+    "from": "  if (elapsedMs !== undefined && elapsedMs > 0 && outcomes.length > 0) {",
+    "to": "  if (false) {",
+    "why": "件数は増え続ける。測っていないと、いつ長くなったか分からず、待ち時間を惜しんで確かめなくなる"
   }
 ]
