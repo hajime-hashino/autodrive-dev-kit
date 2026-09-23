@@ -103,6 +103,48 @@ export function chosen(question , line) {
 }
 
 /**
+ * 書かれた値を受け取る。**形に合わないものは飲み込まない。**
+ *
+ * `chosen` と同じく、出力と入力から切り離してある。**ここが判定の対象である。**
+ *
+ * - そのまま Enter は「案でよい」。**案が無ければ、書くまで聞き直す**
+ * - 形に合わなければ聞き直す。**読めない答えを案として飲み込まない**
+ * - 終端なら諦める（端末が閉じた）
+ *
+ * @param {import("../ports/interview.js").ValueQuestion} question
+ * @param {string | null} line
+ * @returns {{ value: string | null, retry: boolean }}
+ */
+export function accepted(question, line) {
+  if (line === null) return { value: null, retry: false };
+
+  const trimmed = line.trim();
+  if (trimmed === "") {
+    // 案が無いのに Enter を押されたら、空で進めずに聞き直す。
+    return question.suggested === null
+      ? { value: null, retry: true }
+      : { value: question.suggested, retry: false };
+  }
+  if (!question.pattern.test(trimmed)) return { value: null, retry: true };
+  return { value: trimmed, retry: false };
+}
+
+/**
+ * 書かせる問いを出す。
+ *
+ * **形を先に見せる。** 見せずに聞き直すと、何が悪かったのかが分からない。
+ */
+export function renderValue(question) {
+  const language = question.language ?? "ja";
+  const lines = [``, question.ask, `  ${question.why}`, ``, `  ${question.shape}`];
+  if (question.suggested !== null) {
+    lines.push(`  ${say(language, "ask.suggested", { value: question.suggested })}`);
+  }
+  lines.push(``, say(language, "ask.prompt.value"));
+  return lines.join("\n");
+}
+
+/**
  * 問いを出す。
  *
  * **言語は問いが持つ。** 出す側が決めると、言語を選ぶ前の問い（言語そのものを
@@ -138,26 +180,48 @@ export function terminalInterview(
   write = (s) => process.stdout.write(s),
   close = closeSync,
 ) {
+  /**
+   * 聞いて、答えが通るまで繰り返す。**2つの聞き方で共通である。**
+   *
+   * **開けないなら、質問を出さない。** 出すなら必ず待つ。
+   */
+  const askUntilAccepted = (show, take, complain) => {
+    const fd = open();
+    if (fd === null) return null;
+
+    try {
+      for (;;) {
+        write(show());
+        const { value, retry } = take(read(fd));
+        if (!retry) return value;
+        write(complain());
+      }
+    } finally {
+      try {
+        close(fd);
+      } catch {
+        // 閉じられなくても、聞けたことは変わらない。
+      }
+    }
+  };
+
   return {
     answer(question) {
-      // **開けないなら、質問を出さない。** 出すなら必ず待つ。
-      const fd = open();
-      if (fd === null) return null;
+      const language = question.language ?? "ja";
+      return askUntilAccepted(
+        () => render(question),
+        (line) => chosen(question, line),
+        () => say(language, "ask.notAChoice"),
+      );
+    },
 
-      try {
-        for (;;) {
-          write(render(question));
-          const { value, retry } = chosen(question, read(fd));
-          if (!retry) return value;
-          write(say(question.language ?? "ja", "ask.notAChoice"));
-        }
-      } finally {
-        try {
-          close(fd);
-        } catch {
-          // 閉じられなくても、聞けたことは変わらない。
-        }
-      }
+    value(question) {
+      const language = question.language ?? "ja";
+      return askUntilAccepted(
+        () => renderValue(question),
+        (line) => accepted(question, line),
+        () => say(language, "ask.notInShape", { shape: question.shape }),
+      );
     },
   };
 }

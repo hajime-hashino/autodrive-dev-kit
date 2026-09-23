@@ -319,4 +319,4 @@ CI には2つのシークレットが要る。`AUTODRIVE_CI_TOKEN` と、Tracker
 | `linear` | `LINEAR_API_KEY` |
 | `github-issues` | `AUTODRIVE_TRACKER_TOKEN`（Issues の読み書きのみ。`AUTODRIVE_CI_TOKEN` とは別に持つ） |
 
-`github-issues` を選ぶ場合、`autodrive.json` に `tracker.prefix` が要る。作業単位IDの頭に付く2〜4文字で、`AIEP-123` のようになる（ADR 0013）。
+`github-issues` を選ぶ場合、`autodrive.json` に `tracker.prefix` が要る。作業単位IDの頭に付く2〜4文字で、`AIEP-123` のようになる（ADR 0013）。**`init` が聞く。** リポジトリ名から作った案が出るので、そのままでよければ Enter。

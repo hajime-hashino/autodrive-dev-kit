@@ -12,14 +12,16 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { QUESTIONS, setup } from "../src/vendored/internal/setup.js";
+import { QUESTIONS, askPrefix, setup } from "../src/vendored/internal/setup.js";
 
 import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig, suggestPrefix } from "../src/vendored/internal/config.js";
 import {
+  accepted,
   chosen,
   howToHandle,
   openTerminal,
   render,
+  renderValue,
   terminalInterview,
 } from "../src/vendored/internal/adapters/interviewTerminal.js";
 import { useRecommended } from "../src/vendored/internal/ports/interview.js";
@@ -735,17 +737,74 @@ test("接頭辞の形が違えば、構成を読まずに止まる", () => {
 });
 
 // **GitHub Issues を選んだときだけ用意する。** Linear は自分で識別子を持っている。
-test("GitHub Issues を選ぶと、接頭辞の案が構成に入る", () => {
+test("GitHub Issues を選ぶと、接頭辞が構成に入る", () => {
   const root = project("aiep-app-");
   const r = run("init", root, answering({ tracker: "github-issues" }));
 
   assert.equal(configOf(root)?.ports.tracker, "github-issues");
   assert.equal(configOf(root)?.tracker.prefix, "AIEP");
-  // **どう決まったかを出す。** 案であることが読めること。
-  assert.ok(
-    r.decisions.some((d) => d.startsWith("tracker.prefix: ")),
-    r.decisions.join(" / "),
-  );
+  // **どう決まったかを出す。** 聞けたのか、案のままなのかが読めること。
+  const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
+  assert.ok(line !== undefined, r.decisions.join(" / "));
+  assert.ok(line.includes("推奨のまま"), `聞けなかったことが出ていない: ${line}`);
+});
+
+// **聞く。** 案を書いておいて人が直す形にしない。ブランチ名と記録のファイル名に
+// なるため、後から変えると既に書いた記録が迷子になる（人の指摘）。
+test("接頭辞を聞き、答えを採る", () => {
+  const root = project("aiep-app-");
+  const port = { ...answering({ tracker: "github-issues" }), value: () => "APP" };
+
+  const r = run("init", root, port);
+
+  assert.equal(configOf(root)?.tracker.prefix, "APP", "答えを採っていない");
+  const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
+  assert.ok(line?.includes("選んだもの"), `選んだことが出ていない: ${line}`);
+});
+
+// **問いが形を持つこと。** 受け取る側に判断を残すと、そこが解釈になる。
+test("接頭辞の問いは、形と案を持っている", () => {
+  const seen = [];
+  const port = {
+    ...answering({ tracker: "github-issues" }),
+    value: (q) => {
+      seen.push(q);
+      return null;
+    },
+  };
+  run("init", project("aiep-app-"), port);
+
+  assert.equal(seen.length, 1, "聞いていない");
+  assert.ok(seen[0].pattern.test("AIEP"), "形が通らない");
+  assert.equal(seen[0].pattern.test("too-long"), false, "何でも通る形になっている");
+  assert.equal(seen[0].suggested, "AIEP", "案を出していない");
+  // **何に使われるかを言う。** 後から変えられないものを、断りなく聞かない。
+  assert.ok(seen[0].why.includes("ブランチ名"), seen[0].why);
+});
+
+// **Linear では聞かない。** 要らないことを聞かない。
+test("Linear を選んだときは、接頭辞を聞かない", () => {
+  let asked = 0;
+  const port = {
+    ...answering({ tracker: "linear" }),
+    value: () => {
+      asked += 1;
+      return "X";
+    },
+  };
+  run("init", project(), port);
+
+  assert.equal(asked, 0, "要らない問いを出している");
+});
+
+// **聞けず、案も作れないなら、埋めない。** 空で進むと形の違う値が構成に入る。
+test("案も作れず聞けなければ、決まっていないと書く", () => {
+  const root = project("1-");
+  const r = run("init", root, answering({ tracker: "github-issues" }));
+
+  assert.equal(configOf(root)?.tracker.prefix, null, "読めない値を入れている");
+  const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
+  assert.ok(line?.includes("決まっていない"), line);
 });
 
 test("Linear を選んだときは、接頭辞を作らない", () => {
@@ -753,4 +812,100 @@ test("Linear を選んだときは、接頭辞を作らない", () => {
   run("init", root, answering({ tracker: "linear" }));
 
   assert.equal(configOf(root)?.tracker.prefix, null, "要らない接頭辞を作っている");
+});
+
+// -------------------------------------------------- 形を決めて書かせる（AUT-234）
+
+// **形に合わないものを飲み込まない。** 書いたつもりの人が、通らなかったことに
+// 気づけない。
+test("形に合う答えだけを受け取る", () => {
+  const q = { ask: "", why: "", shape: "2〜4文字", pattern: /^[A-Z][A-Z0-9]{1,3}$/, suggested: "AIEP" };
+
+  assert.deepEqual(accepted(q, "APP"), { value: "APP", retry: false });
+  // 前後の空白は落とす。**打ち間違いではない。**
+  assert.deepEqual(accepted(q, "  APP  "), { value: "APP", retry: false });
+  assert.deepEqual(accepted(q, "app"), { value: null, retry: true });
+  assert.deepEqual(accepted(q, "TOOLONG"), { value: null, retry: true });
+});
+
+// そのまま Enter は「案でよい」。**無言の同意ではなく、明示された選択である。**
+test("そのまま Enter で、案を採る", () => {
+  const q = { ask: "", why: "", shape: "", pattern: /^[A-Z]+$/, suggested: "AIEP" };
+  assert.deepEqual(accepted(q, ""), { value: "AIEP", retry: false });
+});
+
+// **案が無いのに Enter を押されたら、空で進めない。**
+test("案が無ければ、書くまで聞き直す", () => {
+  const q = { ask: "", why: "", shape: "", pattern: /^[A-Z]+$/, suggested: null };
+  assert.deepEqual(accepted(q, ""), { value: null, retry: true });
+});
+
+// 端末が閉じたら諦める。**聞き直し続けない。**
+test("終端なら、諦める", () => {
+  const q = { ask: "", why: "", shape: "", pattern: /^[A-Z]+$/, suggested: "AIEP" };
+  assert.deepEqual(accepted(q, null), { value: null, retry: false });
+});
+
+// **形を先に見せる。** 見せずに聞き直すと、何が悪かったのかが分からない。
+test("問いを出すとき、形と案を見せる", () => {
+  const text = renderValue({
+    ask: "接頭辞は？",
+    why: "ブランチ名になる",
+    shape: "英大文字2〜4文字",
+    pattern: /^[A-Z]+$/,
+    suggested: "AIEP",
+    language: "ja",
+  });
+
+  assert.ok(text.includes("接頭辞は？"), text);
+  assert.ok(text.includes("英大文字2〜4文字"), "形を見せていない");
+  assert.ok(text.includes("AIEP"), "案を見せていない");
+});
+
+test("案が無ければ、案の行を出さない", () => {
+  const text = renderValue({
+    ask: "a", why: "b", shape: "c", pattern: /^[A-Z]+$/, suggested: null, language: "ja",
+  });
+  assert.equal(text.includes("そのまま Enter"), false, "採れない案を案内している");
+});
+
+// **通るまで聞き直すこと。** 1回で諦めると、打ち間違いが案に倒れる。
+test("形に合うまで、聞き直す", () => {
+  const written = [];
+  const lines = ["app", "APP"];
+  const port = terminalInterview(
+    () => 9,
+    () => lines.shift() ?? null,
+    (s) => written.push(s),
+    () => {},
+  );
+
+  const got = port.value({
+    ask: "a", why: "b", shape: "英大文字2〜4文字", pattern: /^[A-Z][A-Z0-9]{1,3}$/,
+    suggested: null, language: "ja",
+  });
+
+  assert.equal(got, "APP");
+  assert.ok(written.join("").includes("その形では受け取れない"), "聞き直しを伝えていない");
+});
+
+// **開けないなら、質問を出さない。** 出しておいて待たないと、聞いているように
+// 見えて答えを受け取っていない状態になる（AUT-101 と同じ理由）。
+test("端末を開けなければ、書かせる問いも出さない", () => {
+  const written = [];
+  const port = terminalInterview(() => null, () => "APP", (s) => written.push(s), () => {});
+
+  assert.equal(
+    port.value({ ask: "a", why: "b", shape: "c", pattern: /^[A-Z]+$/, suggested: null }),
+    null,
+  );
+  assert.deepEqual(written, [], "聞けないのに質問を出している");
+});
+
+// **聞けない口でも落ちないこと。** 既にある呼び出しは value を持たない。
+test("書かせる口を持たない相手でも、落ちない", () => {
+  assert.equal(useRecommended.value(), null);
+  const { prefix, how } = askPrefix({ answer: () => null }, "ja", "aiep-app");
+  assert.equal(prefix, "AIEP");
+  assert.ok(how.includes("推奨のまま"), how);
 });
