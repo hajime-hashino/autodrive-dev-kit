@@ -27,7 +27,18 @@ import {
 /** @typedef {import("./repos.js").Repo} Repo */
 /** @typedef {import("./repoApi.js").RepoApi} RepoApi */
 /** @typedef {import("./ports/tracker.js").TrackerPort} TrackerPort */
-/** @typedef {{ repos: Repo[], events: TelemetryEvent[], broken: string[], api: RepoApi, tracker: TrackerPort | null, scope: Scope }} CheckInput */
+// **他のファイルにある型は、引いてこないと使えない。** 引かずに名前だけ書いても
+// 解決されず、**書いた型が効いていない状態になる**（型検査を入れて判明。AUT-226）。
+/** @typedef {import("./telemetry.js").TelemetryEvent} TelemetryEvent */
+/** @typedef {import("./state.js").Scope} Scope */
+/**
+ * 判定へ渡すもの。
+ *
+ * **`root` は、登録された仕掛けの指す先を解決するために要る**（AUT-207）。
+ * 既定値だけを置いて型に書かないと、`null` 型として起き、呼び出し側が落ちる。
+ *
+ * @typedef {{ repos: Repo[], events: TelemetryEvent[], broken: string[], api: RepoApi, tracker: TrackerPort | null, scope: Scope, root?: string | null }} CheckInput
+ */
 function resultFor(key) {
   const invariant = INVARIANTS.find((i) => i.key === key);
   if (invariant === undefined) throw new Error(`未知の不変条件: ${key}`);
@@ -59,6 +70,11 @@ export function hookRegistered(repos) {
  * `${CLAUDE_PROJECT_DIR}` は起点に置き換える。**相対パスは、起点と登録された
  * リポジトリの両方から探す。** どちらの書き方も実在しうる。
  *
+ * @returns {{ registeredIn: string | null, command: string | null, missing: string | null }}
+ */
+/**
+ * @param {Repo[]} repos
+ * @param {string | null} root
  * @returns {{ registeredIn: string | null, command: string | null, missing: string | null }}
  */
 export function hookState(repos, root = null) {
@@ -305,6 +321,7 @@ function hasValue(event, attr) {
   return typeof value === "string" && value.trim() !== "";
 }
 
+/** @param {CheckInput} input */
 const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker, api, root = null }) => {
   const r = resultFor("telemetry_recorded");
 
@@ -400,7 +417,8 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   observeStops(r, allEvents);
 
   const known = new Set (EMITTERS);
-  const unknownEmitters = [...new Set(allEvents.map((e) => e.emitter))].filter((v) => !known.has(v));
+  // **記録の値は `unknown` である。** 文字列へ寄せてから比べる（AUT-226）。
+  const unknownEmitters = [...new Set(allEvents.map((e) => String(e.emitter)))].filter((v) => !known.has(v));
   if (unknownEmitters.length > 0) {
     r.observe(`emitter に未定義の値がある: ${JSON.stringify(unknownEmitters)}`);
     return r.conclude(UNSUBSTITUTED);
@@ -531,6 +549,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
   // 確かめられない状態は、代替なのではなく判定できていない状態であり、
   // 定義§9はそれ自体を失敗として扱うとしている。代替を添えて通すと、判定できて
   // いないことが代替の中に紛れる。
+  /** @type {string | null} */
   let approvalUnreadable = null;
   let qualified = 0;
 

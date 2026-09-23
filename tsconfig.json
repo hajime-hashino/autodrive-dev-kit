@@ -1,0 +1,29 @@
+{
+  // **検査のためだけに置く。ビルドはしない。**
+  //
+  // 実装は素の JS で、型は JSDoc で書く（ADR 0001）。**書いた型が実装と
+  // 合っているかを確かめるのが、この設定の役目である。**
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+
+    "strict": true,
+    // **暗黙の any だけ許す。** 引数の型を書いていない箇所が 425 あり、
+    // 一度に揃えると、この作業単位が型注釈を書くだけの作業になる。
+    // **許していることは `docs/quality.md` に書く。見ていない範囲が読めるように。**
+    "noImplicitAny": false,
+
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true,
+
+    // **Node の型を明示する。** import が `node:` 前置であるため、
+    // 自動解決に任せると拾われない。
+    "types": ["node"]
+  },
+  // **まず実装だけを見る。** テストを入れると 575 件になり、うち 312 件は
+  // テスト実行器の型が無いことによる。**そちらは段を分ける**（docs/quality.md に書く）。
+  "include": ["src/vendored/internal/**/*.js", "src/vendored/bin/*.js"]
+}

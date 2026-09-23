@@ -174,6 +174,7 @@ export async function run(argv) {
       ? null
       : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
   // **起点も渡す。** 登録されたフックの指す先を、起点からも探すため（AUT-207）。
+  /** @type {import("./checks.js").CheckInput} */
   const input = { repos, events, broken, api, tracker, scope, root: resolve(values.root) };
 
   if (values.enact !== undefined) return enact(values.enact, values.root, repos);

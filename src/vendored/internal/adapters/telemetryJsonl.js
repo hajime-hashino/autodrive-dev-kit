@@ -14,6 +14,9 @@ import { appendEvent, resolveWorkItem, telemetryPath } from "../workItem.js";
 export class JsonlTelemetry {
            #root;
            #now;
+  // **`null` で初期化した変数に型を書かないと `null` 型と推論される。** 値を
+  // 入れた瞬間に落ち、呼び出し側では `never` になる（AUT-226）。
+  /** @type {WriteResult | null} */
   #last = null;
 /** @typedef {{ path: string, attributed: boolean }} WriteResult */
   constructor(root , now = () => new Date()) {

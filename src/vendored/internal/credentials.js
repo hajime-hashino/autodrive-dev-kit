@@ -15,7 +15,8 @@
  *   why: string,
  *   lost: string,
  *   needs?: Array<{ permission: string, level: string, why: string, via: string }>,
- *   note?: string
+ *   note?: string,
+ *   ofApp?: boolean
  * }} Credential
  */
 

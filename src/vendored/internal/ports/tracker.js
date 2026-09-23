@@ -29,6 +29,21 @@ export const STATES = ["backlog", "todo", "started", "done", "canceled"];
  *   repo: string | null,
  * }} WorkItemView
  */
+/**
+ * Tracker ポートが持つ操作。
+ *
+ * **実装名を書かないこと。** ここに現れてよいのは操作と、その意味だけである。
+ *
+ * @typedef {{
+ *   get: (id: string) => Promise<WorkItemView>,
+ *   list: (limit?: number) => Promise<WorkItemView[]>,
+ *   create: (input: { title: string, body: string }) => Promise<WorkItemView>,
+ *   mark: (id: string, repo: string) => Promise<unknown>,
+ *   advance: (id: string, to: WorkItemState, repo?: string) => Promise<WorkItemView>,
+ *   note: (id: string, text: string) => Promise<unknown>,
+ * }} TrackerPort
+ */
+
 export function isWorkItemState(value) {
   return (STATES).includes(value);
 }

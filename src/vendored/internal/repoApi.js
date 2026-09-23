@@ -6,6 +6,22 @@
  */
 
 /** @typedef {{ status: number, body: unknown }} ApiResponse */
+/**
+ * Repo ポートのうち、判定が読むところ。
+ *
+ * **`status 0` は「読めなかった」を表す。** 通信できない場合も判定不能として扱う。
+ * 判定は「調べられなかった」を通過にしないため、ここを 0 と 200 で分ける（定義§9）。
+ *
+ * @typedef {{ status: number, body: unknown }} RepoResponse
+ * @typedef {{
+ *   available: boolean,
+ *   rulesets: (slug: string) => Promise<RepoResponse>,
+ *   submissionsFor: (slug: string, sha: string) => Promise<RepoResponse>,
+ *   submissionsIn: (slug: string) => Promise<RepoResponse>,
+ *   repository: (slug: string) => Promise<RepoResponse>,
+ * }} RepoApi
+ */
+
 export function createRepoApi(token) {
   const get = async (path) => {
     if (!token) return { status: 0, body: { message: "トークンが無い" } };

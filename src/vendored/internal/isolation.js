@@ -60,18 +60,33 @@ const CAPABILITIES = ["NET_ADMIN", "NET_RAW"];
  * **行まるごとのコメントだけを落とす。** 行の途中から落とすと、`https://` の
  * `//` を拾ってURLを壊す。テンプレートのコメントは行の先頭にある。
  *
- * @returns {{ json: object | null, error: string | null }}
+ * @returns {{ json: DevcontainerJson | null, error: string | null }}
  */
 export function readDefinition(text) {
   const stripped = text.replace(/^\s*\/\/.*$/gm, "");
   try {
+    /** @type {DevcontainerJson | null} */
     const json = JSON.parse(stripped);
     if (json === null || typeof json !== "object") return { json: null, error: "中身が項目になっていない" };
     return { json, error: null };
   } catch (e) {
-    return { json: null, error: (e).message };
+    return { json: null, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * サンドボックスの定義のうち、判定が読むところ。
+ *
+ * **`object` と書かないこと。** どの項目も引けない型になる（型検査を入れて判明。
+ * AUT-226）。**ここに並ぶのが、判定が見ている項目のすべてである。**
+ *
+ * @typedef {{
+ *   postStartCommand?: unknown,
+ *   postCreateCommand?: unknown,
+ *   runArgs?: unknown,
+ *   remoteUser?: unknown,
+ * }} DevcontainerJson
+ */
 
 /** 呼び出しの中に、その名前が出てくるか。**配列でも文字列でも受ける。** */
 function invokes(command, name) {
