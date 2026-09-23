@@ -180,17 +180,34 @@ const FOR_IMPLEMENTATION = {
       lost: "再発行する",
     },
   ],
+  // **同じ鍵に権限を足す。別の鍵を並べない。**
+  //
+  // 以前は `AUTODRIVE_TRACKER_TOKEN` を必須として並べていた。**同じ GitHub に
+  // 対する書ける鍵が2つ並ぶ**ことになり、実際に人が2つ用意する羽目になった
+  // （AUT-235）。どちらもエージェントが自分の作業のために持つものであり、
+  // **分けても守れるものが増えない。**
+  //
+  // `AUTODRIVE_CI_TOKEN` を分けている理由（判定する側が判定対象を書き換えられる）
+  // は、ここには当てはまらない。
+  //
+  // 名前が同じものは `needs` が合流する（`credentialsFor`）。Repo に GitHub を
+  // 使っていない構成でも、この1件だけで成立する。
   "github-issues": [
     {
-      name: "AUTODRIVE_TRACKER_TOKEN",
+      name: "GH_TOKEN",
       why: "作業単位の取得・起票・状態の更新",
       lost: "再発行する。古い値は使えなくなる",
-      // **権限を書く。** 書かないと、広い権限のトークンが作られる。細かい権限で
-      // 作ろうとして足りずに落ちるほうが、全権のトークンが手元に残るよりよい。
       note:
-        "**要る権限は Issues の読み書きだけである**（fine-grained なら `Issues: Read and write` と " +
-        "`Metadata: Read-only`）。**Repo の資格情報（`AUTODRIVE_CI_TOKEN`）とは別に持つ。** " +
-        "同じ値を使い回すと、片方を絞れなくなる。",
+        "**別に持ちたい場合は `AUTODRIVE_TRACKER_TOKEN` を設定する。** " +
+        "設定されていればそちらを使う。作業単位の操作だけを絞りたいときに使う。",
+      needs: [
+        {
+          permission: "Issues",
+          level: "Read and write",
+          why: "作業単位の取得・起票・状態の更新",
+          via: "GET/POST/PATCH /repos/{repo}/issues",
+        },
+      ],
     },
   ],
   "cloudflare-workers": [
@@ -208,21 +225,43 @@ const FOR_IMPLEMENTATION = {
 };
 
 /**
- * 構成から、要る資格情報を組み立てる。**重複は落とす。**
+ * 構成から、要る資格情報を組み立てる。
+ *
+ * **同じ名前は合流させる。落とさない。**
+ *
+ * 2つのポートが同じ鍵を使うことがある（Repo と Tracker の両方が GitHub の場合）。
+ * 先に来たほうだけを採ると、**後から来たほうが要求する権限が消える。** 消えても
+ * 静かに通り、その権限を使う操作だけが落ちる。**落ちる先は、規約を知らない人の
+ * 手元である。**
  *
  * @param {import("./config.js").Config} config
  * @returns {Credential[]}
  */
 export function credentialsFor(config) {
   const out = [...ALWAYS];
-  const seen = new Set(out.map((c) => c.name));
+  /** @type {Map<string, Credential>} */
+  const byName = new Map(out.map((c) => [c.name, c]));
 
   for (const port of Object.keys(config.ports)) {
     // 使わないポート（`none`）は表に無いため、何も足さない。
     for (const c of FOR_IMPLEMENTATION[config.ports[port]] ?? []) {
-      if (seen.has(c.name)) continue;
-      seen.add(c.name);
-      out.push(c);
+      const already = byName.get(c.name);
+      if (already === undefined) {
+        const fresh = { ...c };
+        byName.set(c.name, fresh);
+        out.push(fresh);
+        continue;
+      }
+      // **権限を合流させる。** 同じ権限は二重に並べない。
+      const known = new Set((already.needs ?? []).map((n) => `${n.permission}/${n.level}`));
+      const added = (c.needs ?? []).filter((n) => !known.has(`${n.permission}/${n.level}`));
+      if (added.length > 0) already.needs = [...(already.needs ?? []), ...added];
+      // **用途も合流させる。** 片方しか書かないと、もう片方で使っていることが消える。
+      if (!already.why.includes(c.why)) already.why = `${already.why}。${c.why}`;
+      // **注記は足す。** 分けたい人への案内が消える。
+      if (c.note !== undefined && !(already.note ?? "").includes(c.note)) {
+        already.note = already.note === undefined ? c.note : `${already.note}\n    ${c.note}`;
+      }
     }
   }
 
@@ -230,8 +269,8 @@ export function credentialsFor(config) {
   // 同じだが、これはこのプロジェクト固有である。分けて並べると、どこまでが autodrive-dev-kit の
   // 都合で、どこからが作っているものの都合かが読み取れる。
   for (const c of config.app?.credentials ?? []) {
-    if (seen.has(c.name)) continue;
-    seen.add(c.name);
+    if (byName.has(c.name)) continue;
+    byName.set(c.name, c);
     out.push({ ...c, ofApp: true });
   }
   return out;
