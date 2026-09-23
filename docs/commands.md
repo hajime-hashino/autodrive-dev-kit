@@ -25,7 +25,7 @@ autodrive-dev-kit update    # 新しいバージョンへ入れ替える。構�
 したがって `update` は**外から取ってきて打つ**。
 
 ```sh
-npx github:hajimegane/autodrive-dev-kit update
+npx github:hajime-hashino/autodrive-dev-kit update
 ```
 
 コピーから打たれた場合は、置かずに止まり、この打ち方を出す。**理由を言わずに落ちると、打った側には何が起きたのか分からない**（AUT-152）。

@@ -10,7 +10,7 @@ name: tag
 #
 # これが打たれると、バージョンを指して入れ替えられるようになる。
 #
-#   npx github:hajimegane/autodrive-dev-kit#v0.1.1 update
+#   npx github:hajime-hashino/autodrive-dev-kit#v0.1.1 update
 on:
   push:
     branches: [main]

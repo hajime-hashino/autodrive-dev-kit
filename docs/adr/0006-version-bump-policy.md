@@ -15,7 +15,7 @@ ADR 0004 は autodrive-dev-kit をプロジェクトの中へ複製し、**バ�
 **タグが無くても、バージョンは指せた。**
 
 ```
-npm pack "github:hajimegane/autodrive-dev-kit#8ca3174"
+npm pack "github:hajime-hashino/autodrive-dev-kit#8ca3174"
 → TypeScript 時代の中身が降りてきた（.ts が35本、src の .js は0本）
 ```
 
@@ -52,7 +52,7 @@ npm pack "github:hajimegane/autodrive-dev-kit#8ca3174"
 **バージョンを指して入れ替えられる。**
 
 ```sh
-npx github:hajimegane/autodrive-dev-kit#v0.1.1 update
+npx github:hajime-hashino/autodrive-dev-kit#v0.1.1 update
 ```
 
 **数字そのものには、変更の大きさが乗らない。** 末尾を機械的に上げるため、0.1.1 と 0.1.2 の差が大きいか小さいかは読めない。区切りを表したくなったら、そのとき中の数字を上げる判断を人が行う。
