@@ -268,12 +268,8 @@ export async function run(argv) {
  * 一時リポジトリでは記録が無くてどのみち落ちるため、差が出ない。
  */
 export function exitCode(results, forbiddenCount, isolationCount = 0, sectionCount = 0) {
-  return results.some((r) => r.failing) ||
-    forbiddenCount > 0 ||
-    isolationCount > 0 ||
-    sectionCount > 0
-    ? 1
-    : 0;
+  const failing = results.some((r) => r.failing);
+  return failing || forbiddenCount > 0 || isolationCount > 0 || sectionCount > 0 ? 1 : 0;
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
