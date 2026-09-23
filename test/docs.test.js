@@ -1117,6 +1117,41 @@ test("決めたことの置き場が、実体として配られる", () => {
   assert.ok(existsSync(join(root, "docs", "quality.md")), "docs/quality.md が置かれていない");
 });
 
+// **利用者に届くものと、作る場を、同じ表に並べない。** 並ぶと同じ重さで読まれるが、
+// 壊れたときに損をする人が違う（人の指摘）。
+test("雛形が、プロダクトと作る場を別の節に分けている", () => {
+  const body = template(KIT, "quality.md");
+  const product = body.indexOf("# プロダクトの品質");
+  const place = body.indexOf("# 開発環境・開発プロセスの品質");
+
+  assert.notEqual(product, -1, "プロダクトの節が無い");
+  assert.notEqual(place, -1, "作る場の節が無い");
+  // **順序が意味を持つ。** 重いほうを先に読ませる。
+  assert.ok(product < place, "作る場がプロダクトより先に来ている");
+
+  // サンドボックスは作る場の側にある。**プロダクトの表に混ざると重さを取り違える。**
+  assert.ok(body.indexOf("## サンドボックス") > place, "サンドボックスがプロダクト側にある");
+});
+
+// **自動で見ているものが全部だと読まれる。** 人が担保する欄が無いと、そうなる。
+test("雛形に、人が確認するものの欄がある", () => {
+  const body = template(KIT, "quality.md");
+
+  assert.ok(body.includes("人が確認するもの"), "人が担保する欄が無い");
+  assert.ok(body.includes("定義§17"), "何が人の領域かの根拠が示されていない");
+  // **知識不足を人の領域にしない。** 混ぜると、渡せば済むものまで戻る。
+  assert.ok(
+    body.includes("知識が足りないことは"),
+    "渡せば済むものと、人が担保するものの境が書かれていない",
+  );
+});
+
+// **「無い」と書いただけでは、次が起きない。** 穴が見えたまま残る。
+test("手法が無い行に、行き先を求めている", () => {
+  const body = template(KIT, "quality.md");
+  assert.ok(body.includes("いつ見直すか、または作業単位のID"), "行き先を求めていない");
+});
+
 // **決める段が無いと、決めないまま進む。**
 test("品質を決める段が、立ち上げにある", () => {
   const steps = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8")
