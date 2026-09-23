@@ -176,7 +176,7 @@ autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <領域>
 | 実装 | 作業単位ID | 状態の持ち方 | 資格情報 |
 |---|---|---|---|
 | `linear` | Tracker が持つ（`AUT-123`） | Tracker が持つ | `LINEAR_API_KEY` |
-| `github-issues` | 接頭辞＋番号（`AIEP-123`） | 開いている側はラベル、閉じた側は理由 | `AUTODRIVE_TRACKER_TOKEN` |
+| `github-issues` | 接頭辞＋番号（`AIEP-123`） | 開いている側はラベル、閉じた側は理由 | `GH_TOKEN`（別に持つなら `AUTODRIVE_TRACKER_TOKEN`） |
 
 `github-issues` で足りない分は**アダプタが埋める**。詳細と、そうした理由は ADR 0013 にある。
 

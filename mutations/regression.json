@@ -714,5 +714,19 @@
     "file": "src/vendored/internal/adapters/interviewTerminal.js",
     "from": "    return question.suggested === null\n      ? { value: null, retry: true }\n      : { value: question.suggested, retry: false };",
     "to": "    return { value: question.suggested, retry: false };"
+  },
+  {
+    "name": "AUT-235 GH_TOKEN では動かないままにする",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "    const token = env.AUTODRIVE_TRACKER_TOKEN || env.GH_TOKEN;",
+    "to": "    const token = env.AUTODRIVE_TRACKER_TOKEN;",
+    "why": "同じ GitHub に対する書ける鍵を2つ用意させることになる"
+  },
+  {
+    "name": "AUT-235 同じ名前の鍵を落とし、権限を消す",
+    "file": "src/vendored/internal/credentials.js",
+    "from": "      if (added.length > 0) already.needs = [...(already.needs ?? []), ...added];",
+    "to": "      ",
+    "why": "後から来たほうの権限が静かに消える。使う操作だけが落ちる"
   }
 ]
