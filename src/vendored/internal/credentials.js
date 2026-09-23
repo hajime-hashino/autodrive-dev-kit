@@ -180,6 +180,19 @@ const FOR_IMPLEMENTATION = {
       lost: "再発行する",
     },
   ],
+  "github-issues": [
+    {
+      name: "AUTODRIVE_TRACKER_TOKEN",
+      why: "作業単位の取得・起票・状態の更新",
+      lost: "再発行する。古い値は使えなくなる",
+      // **権限を書く。** 書かないと、広い権限のトークンが作られる。細かい権限で
+      // 作ろうとして足りずに落ちるほうが、全権のトークンが手元に残るよりよい。
+      note:
+        "**要る権限は Issues の読み書きだけである**（fine-grained なら `Issues: Read and write` と " +
+        "`Metadata: Read-only`）。**Repo の資格情報（`AUTODRIVE_CI_TOKEN`）とは別に持つ。** " +
+        "同じ値を使い回すと、片方を絞れなくなる。",
+    },
+  ],
   "cloudflare-workers": [
     {
       name: "CLOUDFLARE_API_TOKEN",

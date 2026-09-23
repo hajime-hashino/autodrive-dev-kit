@@ -121,7 +121,7 @@ test("参照されている型が、すべて定義されている", async () =>
   // 標準で入っているものは、定義を持たない。
   const builtin = new Set([
     "Record", "Partial", "Promise", "Array", "Map", "Set", "ReadonlyArray",
-    "D1Database", "Response", "Request", "Date", "Error", "URL", "Buffer",
+    "D1Database", "Response", "Request", "Date", "Error", "URL", "Buffer", "RegExp",
   ]);
   const missing = [...used].filter((t) => !defined.has(t) && !builtin.has(t));
   assert.deepEqual(missing, [], `定義の無い型が参照されている: ${missing.join(", ")}`);

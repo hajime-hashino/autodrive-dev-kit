@@ -169,6 +169,19 @@ autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <領域>
 
 **連携が効いていないことには、判定が気づく。** `invariants` が「統合済みなのに着手中の作業単位」を観測として出す。設定を忘れた場合も、途中で外れた場合も、同じ信号が出る。
 
+### Tracker の実装
+
+`autodrive.json` の `ports.tracker` で決まる。**呼び出し側は実装名を知らない**（定義§16）。組み立てるのは `ports/trackerFactory.js` だけである。
+
+| 実装 | 作業単位ID | 状態の持ち方 | 資格情報 |
+|---|---|---|---|
+| `linear` | Tracker が持つ（`AUT-123`） | Tracker が持つ | `LINEAR_API_KEY` |
+| `github-issues` | 接頭辞＋番号（`AIEP-123`） | 開いている側はラベル、閉じた側は理由 | `AUTODRIVE_TRACKER_TOKEN` |
+
+`github-issues` で足りない分は**アダプタが埋める**。詳細と、そうした理由は ADR 0013 にある。
+
+**完了への移動は、どちらも連携に任せる。** GitHub では、提出の本文に `Closes #<番号>` を書けば統合時に閉じる。**接頭辞付きのIDでは閉じない**（GitHub が読むのは番号である）。
+
 ## `invariants`
 
 ```sh

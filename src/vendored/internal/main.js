@@ -13,7 +13,7 @@ import { CHECKS, hookRegistered } from "./checks.js";
 
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
 import { createRepoApi } from "./repoApi.js";
-import { LinearTracker } from "./adapters/trackerLinear.js";
+import { createTracker } from "./ports/trackerFactory.js";
 import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
 import { describe as describeTracked, forbidden } from "./tracked.js";
@@ -169,11 +169,9 @@ export async function run(argv) {
 
   const { events, broken } = loadEvents(repos);
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
-  const trackerToken = process.env.LINEAR_API_KEY;
-  const tracker =
-    trackerToken === undefined
-      ? null
-      : new LinearTracker(trackerToken, process.env.AUTODRIVE_TRACKER_TEAM);
+  // **構成に書かれた実装で組み立てる。** 組み立てられなければ null のまま進み、
+  // 判定はその旨を観測として出す（判定できないことを、通過にしない）。
+  const { tracker } = createTracker(values.root);
   // **起点も渡す。** 登録されたフックの指す先を、起点からも探すため（AUT-207）。
   /** @type {import("./checks.js").CheckInput} */
   const input = { repos, events, broken, api, tracker, scope, root: resolve(values.root) };

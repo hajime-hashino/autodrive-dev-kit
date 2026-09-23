@@ -49,11 +49,17 @@ const MESSAGES = {
     "decided.chosen": "（選んだもの）",
     "decided.inferred": "（見て分かったものを採った: {because}）",
     "decided.recommended": "（聞けなかったため推奨のまま）",
+    "decided.undecided": "（聞けず、案も作れなかった。autodrive.json に書くこと）",
     "decided.onlyOne": "（選択肢が1つ）",
     "decided.seen": "（見て分かった: {because}）",
     "decided.recorded": "（記録されたもの）",
 
     // --- 聞くこと ---
+    "ask.tracker": "作業単位（やること）を、どこで管理しますか？",
+    "ask.tracker.why":
+      "起票・状態・記録の紐づけに使います。**途中で変えると、それまでの作業単位が追えなくなります。**",
+    "ask.tracker.linear": "Linear を使う",
+    "ask.tracker.github": "GitHub Issues を使う（コードと同じ場所で管理する）",
     "ask.preview": "提出のたびに、動くものを見られる場所を用意しますか？",
     "ask.preview.why":
       "画面の見え方は、動くものを見ないと決められません。用意すると、提出ごとに URL が出ます。",
@@ -76,6 +82,13 @@ const MESSAGES = {
     "ask.recommended": "  ← 推奨",
     "ask.prompt": "番号を入れる（そのまま Enter で推奨）: ",
     "ask.notAChoice": "\n  それは選択肢に無い。もう一度。\n",
+    "ask.suggested": "案: {value}（そのまま Enter でこれにする）",
+    "ask.prompt.value": "入れる: ",
+    "ask.notInShape": "\n  その形では受け取れない（{shape}）。もう一度。\n",
+    "ask.tracker.prefix": "作業単位IDの頭に付ける文字を決めてください。",
+    "ask.tracker.prefix.why":
+      "`AIEP-123` のように使います。**ブランチ名と記録のファイル名になります。** 後から変えると、それまでの作業単位が追えなくなります。",
+    "ask.tracker.prefix.shape": "英大文字で始まる2〜4文字（例: AIEP）",
 
     // --- 人にしかできないこと ---
     "todo.env": ".env を作り、資格情報を書く（.env.example に必要なものが並んでいる）",
@@ -134,10 +147,16 @@ const MESSAGES = {
     "decided.chosen": " (you chose this)",
     "decided.inferred": " (took what was found: {because})",
     "decided.recommended": " (could not ask, so kept the recommendation)",
+    "decided.undecided": " (could not ask and could not suggest one; write it in autodrive.json)",
     "decided.onlyOne": " (only one option)",
     "decided.seen": " (found: {because})",
     "decided.recorded": " (from the recorded configuration)",
 
+    "ask.tracker": "Where do you track work items?",
+    "ask.tracker.why":
+      "Used for filing, status, and linking records. **Changing it later breaks the trail of earlier work items.**",
+    "ask.tracker.linear": "Linear",
+    "ask.tracker.github": "GitHub Issues (same place as the code)",
     "ask.preview": "Do you want a place to see the running app on every submission?",
     "ask.preview.why":
       "You cannot decide how a screen looks without seeing it run. With this, every submission gets a URL.",
@@ -160,6 +179,13 @@ const MESSAGES = {
     "ask.recommended": "  <- recommended",
     "ask.prompt": "Enter a number (or press Enter for the recommendation): ",
     "ask.notAChoice": "\n  That is not one of the options. Try again.\n",
+    "ask.suggested": "Suggested: {value} (press Enter to take it)",
+    "ask.prompt.value": "Enter a value: ",
+    "ask.notInShape": "\n  That is not the expected shape ({shape}). Try again.\n",
+    "ask.tracker.prefix": "Choose the characters that lead each work item ID.",
+    "ask.tracker.prefix.why":
+      "Used as in `AIEP-123`. **It becomes the branch name and the record file name.** Changing it later breaks the trail of earlier work items.",
+    "ask.tracker.prefix.shape": "2-4 characters, starting with an uppercase letter (e.g. AIEP)",
 
     "todo.env": "Create .env and fill in the credentials (.env.example lists what is needed)",
     "todo.reopen":
