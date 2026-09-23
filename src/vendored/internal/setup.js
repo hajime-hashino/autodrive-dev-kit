@@ -72,6 +72,8 @@ export function questionsFor(language) {
       why: t("ask.sandbox.why"),
       choices: [
         { value: "devcontainer", label: t("ask.sandbox.devcontainer") },
+        { value: "orca", label: t("ask.sandbox.orca") },
+        { value: "other", label: t("ask.sandbox.other") },
         { value: NONE, label: t("ask.sandbox.none") },
       ],
       recommended: "devcontainer",

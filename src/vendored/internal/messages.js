@@ -59,9 +59,13 @@ const MESSAGES = {
       "画面の見え方は、動くものを見ないと決められません。用意すると、提出ごとに URL が出ます。",
     "ask.preview.cloudflare": "用意する（Cloudflare Workers）",
     "ask.preview.none": "用意しない（画面の無いものを作る、あとで決める）",
-    "ask.sandbox": "AIを、隔離された環境（サンドボックス）の中で動かしますか？",
-    "ask.sandbox.why": "手元の環境から切り離すと、消してはいけないものへ手が届かなくなります。",
-    "ask.sandbox.devcontainer": "隔離する（devcontainer）",
+    "ask.sandbox": "AIを、どの隔離された環境（サンドボックス）の中で動かしますか？",
+    "ask.sandbox.why":
+      "手元の環境から切り離すと、消してはいけないものへ手が届かなくなります。\n" +
+      "  一式を置くのは devcontainer だけです。他を選んだ場合、用意するのはあなたです。",
+    "ask.sandbox.devcontainer": "devcontainer を使う（この道具が一式を置きます）",
+    "ask.sandbox.orca": "Orca を使う（作業ごとに使い捨ての環境を起こす）",
+    "ask.sandbox.other": "別のものを使う（あとで名前を書きます）",
     "ask.sandbox.none": "隔離しない",
     "ask.language": "セットアップの案内を、どの言語で出しますか？",
     "ask.language.why":
@@ -139,10 +143,13 @@ const MESSAGES = {
       "You cannot decide how a screen looks without seeing it run. With this, every submission gets a URL.",
     "ask.preview.cloudflare": "Yes (Cloudflare Workers)",
     "ask.preview.none": "No (nothing with a screen, or decide later)",
-    "ask.sandbox": "Do you want the AI to run inside an isolated workspace?",
+    "ask.sandbox": "Which isolated workspace should the AI run inside?",
     "ask.sandbox.why":
-      "Separating it from your machine keeps it away from things that must not be deleted.",
-    "ask.sandbox.devcontainer": "Yes (devcontainer)",
+      "Separating it from your machine keeps it away from things that must not be deleted.\n" +
+      "  Only devcontainer comes with a full set. Choose anything else and you provide it.",
+    "ask.sandbox.devcontainer": "devcontainer (this tool places the whole set)",
+    "ask.sandbox.orca": "Orca (a disposable environment per work item)",
+    "ask.sandbox.other": "Something else (write its name later)",
     "ask.sandbox.none": "No",
     "ask.language": "Which language should the setup use?",
     "ask.language.why":

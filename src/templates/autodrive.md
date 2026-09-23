@@ -292,7 +292,7 @@ AIが決めるものではない。承認を求めるのではなく、選択肢
 | Tracker | 作業単位の起票・状態・記録の紐づけ |
 | Repo | 提出を経た統合 |
 | Runner | CI と配布 |
-| Sandbox | AIを動かす隔離された場所 |
+| Sandbox | AIを動かす隔離された場所。**一式が置かれるのは devcontainer を選んだときだけ** |
 | Preview | 動くものを見せる場所 |
 | Telemetry | 記録の置き場 |
 | Flag | 露出の制御 |
