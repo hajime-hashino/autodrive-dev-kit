@@ -218,3 +218,46 @@ test("出力が無ければ、余計な見出しを出さない", () => {
   assert.match(text, /素の状態でテストが落ちている/);
   assert.equal(text.includes("そのときの出力"), false, "空の見出しを出している");
 });
+
+// ------------------------------------------- かかった時間を出す（AUT-227）
+//
+// **件数は判定を足すたびに増える。** 放っておくと伸びる。**遅くなると、待ち時間を
+// 惜しんで確かめないまま提出する。** このセッションだけで2回起きている
+// （AUT-206・AUT-225。どちらも裏で流したまま別のコマンドを打ち、結果を汚した）。
+//
+// **測っていないと、いつ長くなったか分からない。**
+
+test("かかった時間を測って返す", () => {
+  // **時計は呼ばれるたびに進める。** 実行の前後で読むため、動かないと 0 になる。
+  let clock = 1000;
+  const tick = () => {
+    clock += 2000;
+    return clock;
+  };
+  // **素の状態は通し、変異で落とす。** 素で落ちると測る前に返る。
+  const result = mutate(project(), [m()], fakeRun, tick);
+  assert.equal(result.baseline, true, "素の状態で落ちている。試験になっていない");
+  assert.ok(result.elapsedMs >= 2000, `測っていない: ${result.elapsedMs}`);
+});
+
+// **1件あたりも出す。** 全体だけだと、件数が増えたのか1件が遅くなったのかが
+// 区別できない。**区別できないと、どちらを直せばよいか決められない。**
+test("全体と、1件あたりの両方を出す", () => {
+  const lines = describe({
+    baseline: true,
+    outcomes: [
+      { name: "m1", outcome: "caught" },
+      { name: "m2", outcome: "caught" },
+    ],
+    elapsedMs: 10_000,
+  });
+  const text = lines.join("\n");
+  assert.match(text, /10 秒かかった/, `全体が出ていない:\n${text}`);
+  assert.match(text, /1件あたり 5\.0 秒/, `1件あたりが出ていない:\n${text}`);
+});
+
+// **素の状態で落ちたときは、時間を出さない。** 変異を当てていないので測る対象が無い。
+test("素の状態で落ちたら、時間は出さない", () => {
+  const text = describe({ baseline: false, outcomes: [], baselineOutput: "落ちた" }).join("\n");
+  assert.equal(text.includes("秒かかった"), false, "当てていないのに時間を出している");
+});
