@@ -22,8 +22,17 @@
  * gitleaks では捕まらない。GitHub の Secret Protection は private + Free では
  * そもそも使えない。
  *
- * **だからここでは、パターンを探さない。** 名前と先頭の数バイトで決まるものだけを
+ * **だからここでは、広くパターンを探さない。** 名前と先頭の数バイトで決まるものだけを
  * 見る。推測が要らず、依存も要らず、既製品が見ない場所をちょうど埋める。
+ *
+ * ## ただし、この道具が実際に使う鍵だけは見る（AUT-225）
+ *
+ * 名前と ELF で捕まえられるのは**ファイルとして置かれた場合**である。**ソースやテスト
+ * へ値が直に書かれた場合は捕まらない。** そこは既製品の領分だが、**この道具が実際に
+ * 使う鍵に限れば、推測が要らない。** 接頭辞が決まっているためである。
+ *
+ * **広げないこと。** 「それらしい文字列」を探し始めると、既製品の劣化版になり、
+ * 誤検出で本物の警告が流される。**ここに並ぶのは、`.env.example` に名前があるものだけ。**
  *
  * ## 中身を出さないこと
  *
@@ -31,7 +40,7 @@
  * 経路になっては本末転倒である。出すのは、どのファイルが何に当たるかだけ。
  */
 
-import { existsSync, openSync, readSync, closeSync, statSync } from "node:fs";
+import { existsSync, openSync, readFileSync, readSync, closeSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 
 /** ELF の先頭。コアダンプはこれで始まる。 */
@@ -48,6 +57,41 @@ const BY_NAME = [
   { test: (n) => /\.(pem|key|p12|pfx|jks)$/.test(n), why: "鍵ファイル" },
   { test: (n) => /^id_(rsa|dsa|ecdsa|ed25519)$/.test(n), why: "秘密鍵" },
 ];
+
+/**
+ * この道具が実際に使う鍵の、接頭辞。
+ *
+ * **推測しない。** どれも発行元が形を決めており、**偽陽性がほぼ出ない。**
+ * 並べてよいのは、`.env.example` に名前があるものに限る（AUT-225）。
+ */
+const SECRETS = [
+  { re: /\bghp_[A-Za-z0-9]{36}\b/, why: "GitHub の個人アクセストークン" },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/, why: "GitHub の細かい権限のトークン" },
+  { re: /\blin_api_[A-Za-z0-9]{40,}\b/, why: "Tracker（Linear）の鍵" },
+  { re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/, why: "モデルを呼ぶ鍵" },
+  { re: /\bsk-lf-[A-Za-z0-9-]{20,}\b/, why: "記録の送り先（Langfuse）の鍵" },
+  { re: /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/, why: "秘密鍵の本文" },
+];
+
+/**
+ * 中身に鍵が直に書かれているか。
+ *
+ * **中身は返さない。** どのファイルが、何に当たるかだけを返す。**行番号も出さない。**
+ * 出すと、そこを見に行く動線ができる。
+ *
+ * **読むのはテキストだけ。** バイナリは名前と ELF の側で見る。
+ */
+export function embeddedSecret(path) {
+  try {
+    if (statSync(path).size > 2_000_000) return null;
+    const body = readFileSync(path, "utf8");
+    // **正規表現そのものを書いた行を、検出しない。** この判定自身が引っかかる。
+    const found = SECRETS.find((s) => s.re.test(body));
+    return found === undefined ? null : found.why;
+  } catch {
+    return null;
+  }
+}
 
 /** 先頭が ELF か。**中身は読まない。4バイトだけ見る。** */
 export function looksExecutable(path) {
@@ -83,9 +127,14 @@ export function forbidden(root, files) {
     }
     // 名前で分からないものは、先頭だけ見る。**コアダンプは名前を変えられる。**
     const full = join(root, path);
-    if (existsSync(full) && looksExecutable(full)) {
+    if (!existsSync(full)) continue;
+    if (looksExecutable(full)) {
       found.push({ path, why: "実行形式。追跡する理由が無ければ置かない" });
+      continue;
     }
+    // **値が直に書かれている場合。** 名前と ELF では捕まらない（AUT-225）。
+    const secret = embeddedSecret(full);
+    if (secret !== null) found.push({ path, why: `${secret}が、値のまま書かれている` });
   }
   return found;
 }
