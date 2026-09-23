@@ -149,6 +149,46 @@ test("画面の有無は init では決めない", () => {
   for (const q of QUESTIONS) assert.notEqual(q.port , "app");
 });
 
+// -------------------------------------------------- サンドボックスの宣言（ADR 0012）
+
+const sandboxQuestion = QUESTIONS.find((q) => q.port === "sandbox");
+
+// **選んだものと、置かれるものを食い違わせない。** 以前は `none` 以外すべてに
+// `.devcontainer/` 一式が降っていた。降ってきたものは判定の対象にもなるため、
+// 使っていない設定の欠けで落ちる（AUT-218）。
+for (const chosen of ["orca", "other", NONE]) {
+  test(`sandbox に ${chosen} を選ぶと、.devcontainer/ を置かない`, () => {
+    const root = project();
+    run("init", root, answering({ [sandboxQuestion.ask]: chosen }));
+
+    assert.equal(configOf(root)?.ports.sandbox, chosen, "選んだものが構成に残っていない");
+    assert.equal(existsSync(join(root, ".devcontainer")), false, ".devcontainer/ が降っている");
+  });
+}
+
+test("sandbox に devcontainer を選ぶと、一式が置かれる", () => {
+  const root = project();
+  run("init", root, answering({ [sandboxQuestion.ask]: "devcontainer" }));
+
+  for (const file of ["devcontainer.json", "init-firewall.sh", "allowed-domains.txt"]) {
+    assert.ok(existsSync(join(root, ".devcontainer", file)), `${file} が置かれていない`);
+  }
+});
+
+// **一覧は網羅ではない。** 実装は外で増え続ける。選べる形で出ているものと、
+// 書ける値は別である。
+test("サンドボックスの問いに、devcontainer 以外の行き先がある", () => {
+  const values = sandboxQuestion.choices.map((c) => c.value);
+
+  assert.ok(values.includes("orca"), values.join(" / "));
+  assert.ok(values.includes("other"), "知らないものを選ぶ行き先が無い");
+  // **どれも札が付いていること。** 値だけ増やすと、選ぶ側に何のことか分からない。
+  for (const c of sandboxQuestion.choices) {
+    assert.notEqual(c.label, undefined, `${c.value} に札が無い`);
+    assert.notEqual(c.label.trim(), "", `${c.value} の札が空`);
+  }
+});
+
 // ---------------------------------------------------------------- apply
 
 test("apply は既にあるものを見て、それを推奨にする", () => {

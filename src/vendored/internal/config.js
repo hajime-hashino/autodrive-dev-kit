@@ -39,7 +39,17 @@ export const PORT_CHOICES = {
   tracker: ["linear"],
   repo: ["github"],
   runner: ["github-actions"],
-  sandbox: ["devcontainer", NONE],
+  // **ここだけ、一覧が網羅ではない。** サンドボックスは実装が外に多くあり
+  // （Claude Managed Agent、Kubernetes Agent Sandbox、Codex Sandbox など）、
+  // 増えるたびに参照実装を直す形にすると追いつかない。**追いつかない一覧は、
+  // 載っていないものを「使ってはいけないもの」に見せる。**
+  //
+  // **参照実装が中身を知っているのは `devcontainer` だけである。** それ以外は
+  // 名前を書き留めるだけで、置くものも判定も無い。知らない名前も通る
+  // （`readConfig` は値を照合しない）。**名前がそのまま宣言になる。**
+  //
+  // 何を保証するサンドボックスなのかは `docs/quality.md` に書く。ADR 0012。
+  sandbox: ["devcontainer", "orca", "other", NONE],
   preview: ["cloudflare-workers", NONE],
   // **`jsonl+otlp` は、2つの行き先を持つ1つの実装である。** §6のイベントは
   // リポジトリの中の JSONL へ、トークン消費は OTLP で外へ送る。分けているのは、

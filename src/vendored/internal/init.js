@@ -371,7 +371,15 @@ function driftNotes(root , kitRoot ) {
 }
 
 function placeSandbox(root , kitRoot , config , plan) {
-  if (config.ports.sandbox === "none") return false;
+  // **devcontainer を選んだときだけ置く。**
+  //
+  // 以前は `none` 以外すべてに置いていた。**選んだものと置かれるものが食い違う。**
+  // Orca を使うプロジェクトに devcontainer 一式が降ってきて、どちらが本物か
+  // 分からなくなる。**置いたものは判定の対象にもなる**ため、使っていない設定の
+  // 欠けで落ちる（AUT-218）。
+  //
+  // 他のサンドボックスは、用意するのがプロジェクトである。ADR 0012。
+  if (config.ports.sandbox !== "devcontainer") return false;
 
   // **報告だけ畳む。** 書くものは同じ一覧に入れないと、確かめる対象から漏れる。
   /** @type {{ placed: Placed[], writes: Array<{ path: string, body: string }> }} */
