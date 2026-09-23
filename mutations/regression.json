@@ -581,5 +581,19 @@
     "from": "node_modules/\n",
     "to": "node_modules/\npackage-lock.json\n",
     "why": "固定されないうえ、除外されているので差分にも出ず気づけない"
+  },
+  {
+    "name": "AUT-225 値が直に書かれていても、見ない",
+    "file": "src/vendored/internal/tracked.js",
+    "from": "    const secret = embeddedSecret(full);\n",
+    "to": "    const secret = null;\n",
+    "why": "ファイルとして置かれた場合しか捕まらない。ソースへの直書きが通る"
+  },
+  {
+    "name": "AUT-225 見つけた値を、出力に載せる",
+    "file": "src/vendored/internal/tracked.js",
+    "from": "    return found === undefined ? null : found.why;",
+    "to": "    return found === undefined ? null : `${found.why}（${body.match(found.re)?.[0]}）`;",
+    "why": "直すための仕掛けが漏洩の経路になる"
   }
 ]

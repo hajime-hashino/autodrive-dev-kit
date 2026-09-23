@@ -58,7 +58,10 @@ test("名前を変えたコアダンプも見つける", () => {
 test("資格情報と鍵ファイルを見つける", () => {
   const root = repoWith({
     ".env": "GH_TOKEN=x\n",
-    "deploy.pem": "-----BEGIN PRIVATE KEY-----\n",
+    // **本物と同じ並びで書かない。** この判定自身が「値が直に書かれている」と
+    // 拾う（AUT-225）。**テストを除外する形にはしない。** 除外すると、テストへ
+    // 本物を置かれたときに見なくなる。
+    "deploy.pem": `-----BEGIN ${"PRIVATE"} KEY-----\n`,
     id_rsa: "x\n",
   });
   const found = forbidden(root, new Repo(root).trackedFiles()).map((f) => f.path).sort();
@@ -155,4 +158,43 @@ test("配る .gitignore が、コアダンプを外している", () => {
   const text = readFileSync(join(KIT, "src", "templates", "gitignore"), "utf8");
   assert.ok(/^core$/m.test(text), "core が無い");
   assert.ok(/^core\.\*$/m.test(text), "core.* が無い");
+});
+
+// ------------------------------- 値が直に書かれている場合（AUT-225）
+//
+// **名前と ELF で捕まえられるのは、ファイルとして置かれた場合である。** ソースや
+// テストへ値が直に書かれると捕まらない。そこは既製品の領分だが、**この道具が実際に
+// 使う鍵に限れば、接頭辞が決まっており推測が要らない。**
+//
+// **広げないこと。** 「それらしい文字列」を探し始めると既製品の劣化版になり、
+// 誤検出で本物の警告が流される。
+
+test("この道具が使う鍵が、値のまま書かれていれば見つける", () => {
+  // **本物ではない。** 形だけを真似た、長さだけ合う文字列である。
+  const root = repoWith({
+    "src/a.js": `const k = "${"ghp_"}${"A".repeat(36)}";\n`,
+    "src/b.js": `const k = "${"lin_api_"}${"B".repeat(42)}";\n`,
+    "src/c.js": `const k = "${"sk-ant-"}${"C".repeat(30)}";\n`,
+  });
+  const found = forbidden(root, new Repo(root).trackedFiles()).map((f) => f.path).sort();
+  assert.deepEqual(found, ["src/a.js", "src/b.js", "src/c.js"], "値の直書きを見つけていない");
+});
+
+// **中身を出さないこと。** 直すための仕掛けが漏洩の経路になっては本末転倒である。
+test("見つけても、値そのものは出さない", () => {
+  const secret = `${"ghp_"}${"Z".repeat(36)}`;
+  const root = repoWith({ "src/a.js": `const k = "${secret}";\n` });
+  const found = forbidden(root, new Repo(root).trackedFiles());
+  assert.equal(found.length, 1);
+  assert.equal(found[0].why.includes(secret), false, "値そのものを出している");
+  assert.equal(JSON.stringify(found).includes(secret), false, "結果のどこかに値が載っている");
+});
+
+// **名前だけの一覧を、値と読み違えない。** `.env.example` は名前しか持たない。
+test("名前だけを並べたテンプレートは、捕まえない", () => {
+  const root = repoWith({
+    ".env.example": "GH_TOKEN=\nLINEAR_API_KEY=\nANTHROPIC_API_KEY=\n",
+    "docs/a.md": "`ghp_` で始まる。`lin_api_` もある。\n",
+  });
+  assert.deepEqual(forbidden(root, new Repo(root).trackedFiles()), [], "名前の並びを捕まえている");
 });
