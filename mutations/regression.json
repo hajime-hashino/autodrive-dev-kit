@@ -756,5 +756,19 @@
     "from": "              \"セッションの記録が見つからない（起点から上へ辿って探した）。\" +",
     "to": "              \"セッションの記録がまだ無い。最初のターンで書かれた\" + \"\" +",
     "why": "確かめていない理由を書くと、読んだ人が別の場所を探さなくなる"
+  },
+  {
+    "name": "AUT-240 作業単位IDでの照合をやめ、SHA だけにする",
+    "file": "src/vendored/internal/checks.js",
+    "from": "    if (workItem !== null && section.includes(workItem)) return section;",
+    "to": "    ",
+    "why": "squash / rebase で統合すると SHA が変わり、統合の後に落ちる。提出では通る"
+  },
+  {
+    "name": "AUT-240 件名に無い作業単位IDでも照合する",
+    "file": "src/vendored/internal/checks.js",
+    "from": "  const workItem = workItemInSubject(subject);",
+    "to": "  const workItem = WORK_ITEM_IN_SUBJECT.exec(history)?.[0] ?? null;",
+    "why": "関係の無い作業単位のIDで通る。どのコミットの根拠なのかが読めなくなる"
   }
 ]
