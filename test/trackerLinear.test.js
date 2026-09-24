@@ -99,3 +99,36 @@ test("ラベルから対象リポジトリを読む", () => {
   assert.equal(repoFrom(["repo:autodrive-dev-kit", "bug"]), "autodrive-dev-kit");
   assert.equal(repoFrom(["bug"]), null);
 });
+
+// --------------------------------------------------- 本文を直す（AUT-209）
+
+// **書き換えるだけ。状態は見ない。** 着手前に限る規則は呼び出し側が持つ
+// （`trackerCli.js`）。アダプタごとに同じ判断を置くと、実装が増えたときに
+// 片方だけ緩くなる。
+test("本文を書き換える要求を送る", async () => {
+  const stub = stubFetch(() => ({ issueUpdate: { issue: { ...ISSUE, description: "直した本文" } } }));
+  try {
+    const view = await new LinearTracker("k", "AUT").revise("AUT-1", "直した本文");
+
+    const sent = stub.sent[stub.sent.length - 1];
+    assert.match(sent.query, /issueUpdate/);
+    assert.match(sent.query, /description/);
+    assert.equal(sent.variables.d, "直した本文", JSON.stringify(sent.variables));
+    assert.equal(view.body, "直した本文");
+  } finally {
+    stub.restore();
+  }
+});
+
+// **状態は触らない。** 本文だけを書き換える。
+test("本文を直すとき、状態を触らない", async () => {
+  const stub = stubFetch(() => ({ issueUpdate: { issue: ISSUE } }));
+  try {
+    await new LinearTracker("k", "AUT").revise("AUT-1", "x");
+
+    const sent = stub.sent[stub.sent.length - 1];
+    assert.equal(sent.query.includes("stateId"), false, sent.query);
+  } finally {
+    stub.restore();
+  }
+});

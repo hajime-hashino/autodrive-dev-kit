@@ -190,6 +190,18 @@ export class GithubIssuesTracker {
     return this.#toView(raw);
   }
 
+  /**
+   * 本文を書き換える。
+   *
+   * **着手前に限る規則は、ここでは見ない**（`trackerCli.js` が持つ）。
+   */
+  async revise(id, body) {
+    const raw = await this.#call("PATCH", `repos/${this.#slug}/issues/${numberOf(this.#prefix, id)}`, {
+      body,
+    });
+    return this.#toView(raw);
+  }
+
   /** いま付いているラベルの名前。 */
   async #labelsOf(number) {
     const raw = await this.#call("GET", `repos/${this.#slug}/issues/${number}`);

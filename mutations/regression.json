@@ -770,5 +770,25 @@
     "from": "  const workItem = workItemInSubject(subject);",
     "to": "  const workItem = WORK_ITEM_IN_SUBJECT.exec(history)?.[0] ?? null;",
     "why": "関係の無い作業単位のIDで通る。どのコミットの根拠なのかが読めなくなる"
+  },
+  {
+    "name": "AUT-209 着手後でも本文を直せるようにする",
+    "file": "src/vendored/internal/trackerCli.js",
+    "from": "    if (!isRevisable(current.state)) {",
+    "to": "    if (false) {",
+    "why": "何を頼まれたかの記録が書き換わり、頼まれたとおり作ったかを確かめられなくなる"
+  },
+  {
+    "name": "AUT-209 着手前でも本文を直させない",
+    "file": "src/vendored/internal/ports/tracker.js",
+    "from": "export const REVISABLE_STATES = [\"backlog\", \"todo\"];",
+    "to": "export const REVISABLE_STATES = [];",
+    "why": "規約が不可逆ではないと言っているのに、直す手段が無い状態へ戻る"
+  },
+  {
+    "name": "AUT-209 断るときに、訂正の行き先を出さない",
+    "file": "src/vendored/internal/trackerCli.js",
+    "from": "          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
+    "to": "          \"\","
   }
 ]
