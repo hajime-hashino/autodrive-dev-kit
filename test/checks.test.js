@@ -76,6 +76,10 @@ function fakeApi(responder , available = true, extra = {}) {
     submissionsFor: async () => ({ status: 200, body: [] }),
     // 既定は「提出はあるが、統合されたものは無い」。取り残しの観測は出ない。
     submissionsIn: async () => ({ status: 200, body: [] }),
+    // **契約（`RepoApi`）にあるものは、作り物にも揃える。** 欠けていると、
+    // 実装が新しく呼び始めたときに「そんな関数は無い」で落ちる。**落ちる理由が、
+    // 見たい判定と関係ない**（AUT-240）。
+    repository: async () => ({ status: 200, body: { default_branch: "main" } }),
     ...extra,
   };
 }
@@ -878,4 +882,79 @@ function telemetryCheck() {
 test("判定の入口が、起点を渡している", () => {
   const src = readFileSync(join(KIT_ROOT, "src", "vendored", "internal", "main.js"), "utf8");
   assert.match(src, /root: resolve\(values\.root\)/, "入口が起点を渡していない");
+});
+
+// ------------------------------------------ 統合で SHA が変わる（AUT-240）
+
+/**
+ * **squash / rebase で統合すると、既定ブランチ上の SHA が変わる。**
+ *
+ * 履歴が参照しているのはブランチ側の SHA であり、統合後は存在しない。
+ * **落ちるのは統合の後である。** 提出の時点では通る。
+ */
+function movedRepo(history, subject = "AUT-999 委譲範囲を動かす (#5)") {
+  return {
+    ...fakeRepo("r"),
+    boundariesFile: () => "/tmp/r/boundaries.yaml",
+    boundaryHistoryFile: () => "/tmp/r/boundary-changes.md",
+    git: (...args) => {
+      if (args[0] === "log" && args[1] === "-1") return subject;
+      // 親に boundaries.yaml がある＝初期設置ではない
+      if (args[0] === "show") return "areas: []";
+      return "5014785000000\n";
+    },
+    read: () => history,
+  };
+}
+
+// **作業単位のIDで照合できること。** IDは統合の仕方で変わらない。
+test("履歴が作業単位IDを指していれば、SHA が変わっても通る", async () => {
+  const history = "## 2026-09-23 実装を観察中へ\n- 根拠: 実績なし\n- 作業単位: AUT-999\n";
+  const r = await check("boundary_change_logged").run(input({ repos: [movedRepo(history)] }));
+
+  assert.equal(r.state, ACTIVE, JSON.stringify(r.observations));
+});
+
+// **SHA での照合は残す。** 既に書かれた履歴が動かなくなる。
+test("履歴が SHA を指していれば、これまでどおり通る", async () => {
+  const history = "## 2026-08-21 緩和\n- 根拠: 12件\n- 設定変更: commit 5014785\n";
+  const r = await check("boundary_change_logged").run(input({ repos: [movedRepo(history)] }));
+
+  assert.equal(r.state, ACTIVE, JSON.stringify(r.observations));
+});
+
+// **緩めすぎていないこと。** どちらも指していなければ、これまでどおり落ちる。
+test("SHA も作業単位IDも指していなければ、有効にしない", async () => {
+  const history = "## 2026-08-21 緩和\n- 根拠: 12件\n- 設定変更: commit ffffff0\n";
+  const events = [
+    event({ type: "substitution", invariant: "boundary_change_logged", detail: "—" }),
+  ];
+  const r = await check("boundary_change_logged").run(
+    input({ repos: [movedRepo(history)], events }),
+  );
+
+  assert.equal(r.state, SUBSTITUTED);
+});
+
+// **別の作業単位のIDを、当該コミットのものとして読まない。**
+test("件名に無い作業単位IDでは、照合しない", async () => {
+  const history = "## 2026-09-23 実装を観察中へ\n- 根拠: 実績なし\n- 作業単位: AUT-111\n";
+  const events = [
+    event({ type: "substitution", invariant: "boundary_change_logged", detail: "—" }),
+  ];
+  const r = await check("boundary_change_logged").run(
+    input({ repos: [movedRepo(history, "AUT-999 委譲範囲を動かす")], events }),
+  );
+
+  assert.equal(r.state, SUBSTITUTED, "関係の無いIDで通している");
+});
+
+// **接頭辞は Tracker の実装で変わる。** GitHub Issues なら `AIEP-45`（ADR 0013）。
+test("別の接頭辞の作業単位IDでも照合する", async () => {
+  const history = "## 2026-09-23 実装を観察中へ\n- 根拠: 実績なし\n- 作業単位: AIEP-45\n";
+  const r = await check("boundary_change_logged").run(
+    input({ repos: [movedRepo(history, "AIEP-45 委譲範囲を動かす (#5)")] }),
+  );
+
+  assert.equal(r.state, ACTIVE, JSON.stringify(r.observations));
 });
