@@ -131,15 +131,17 @@ test("必須の引数が無ければ実行しない", () => {
 
 // --------------------------------------------------------- Tracker
 
-function fakeTracker() {
+function fakeTracker(state = "todo") {
   const advanced = [];
-  const view = (id , state) => ({
-    id, state, title: "題", url: `https://example.invalid/${id}`, body: "本文",
+  const revised = [];
+  const view = (id , s) => ({
+    id, state: s, title: "題", url: `https://example.invalid/${id}`, body: "本文",
   });
   return {
     advanced,
+    revised,
     async get(id) {
-      return view(id ?? "AUT-99", "todo");
+      return view(id ?? "AUT-99", state);
     },
     async create(input) {
       return { ...view("AUT-100", "backlog"), title: input.title, body: input.body };
@@ -149,6 +151,10 @@ function fakeTracker() {
       return view(id, to);
     },
     async note() {},
+    async revise(id , body) {
+      revised.push([id, body]);
+      return { ...view(id, state), body };
+    },
   };
 }
 
@@ -298,4 +304,62 @@ test("前の名前で呼んでも記録される", () => {
     // **黙って受け入れない。** 新しい名前を出さないと、2つの名前が生き続ける。
     assert.ok(res.output.includes("に変わった"), `${old} で新しい名前を案内していない`);
   }
+});
+
+// ------------------------------------------- 本文を直す（AUT-209 / 定義§16）
+
+// **規約と道具が食い違っていた。** 起票は不可逆ではないと言いながら、直す手段が
+// 無かった。
+test("着手前なら、本文を直せる", async () => {
+  const t = fakeTracker("backlog");
+  const res = await trackerRun(["本文を直す", "AUT-12", "--body", "直した本文"], root(), t);
+
+  assert.equal(res.code, 0, res.output);
+  assert.deepEqual(t.revised, [["AUT-12", "直した本文"]]);
+});
+
+test("todo でも直せる", async () => {
+  const t = fakeTracker("todo");
+  const res = await trackerRun(["本文を直す", "AUT-12", "--body", "x"], root(), t);
+
+  assert.equal(res.code, 0, res.output);
+});
+
+// **着手後の本文は「何を頼まれたか」の記録である。** 書き換えられる形にすると、
+// 「頼まれたとおり作ったか」を確かめられなくなる（定義§16）。
+for (const state of ["started", "done", "canceled"]) {
+  test(`${state} では、本文を直せない`, async () => {
+    const t = fakeTracker(state);
+    const res = await trackerRun(["本文を直す", "AUT-12", "--body", "x"], root(), t);
+
+    assert.equal(res.code, 2, res.output);
+    assert.deepEqual(t.revised, [], "断ったのに書き換えている");
+    // **行き先まで出す。** 断るだけでは、訂正のしようが分からない。
+    assert.match(res.output, /作業ログを追記する/, res.output);
+  });
+}
+
+test("本文が無ければ、必須だと言う", async () => {
+  const t = fakeTracker("backlog");
+  const res = await trackerRun(["本文を直す", "AUT-12"], root(), t);
+
+  assert.equal(res.code, 2);
+  assert.match(res.output, /--body/);
+  assert.deepEqual(t.revised, []);
+});
+
+test("作業単位が無ければ、そう言う", async () => {
+  const t = { ...fakeTracker("backlog"), async get() { return null; } };
+  const res = await trackerRun(["本文を直す", "AUT-99", "--body", "x"], root(), t);
+
+  assert.equal(res.code, 1);
+  assert.match(res.output, /該当する作業単位が無い/);
+});
+
+// **使い方に出ていること。** 出ていない操作は、無いのと同じである。
+test("使い方に、本文を直す操作と着手前の制限が出る", async () => {
+  const { output } = await trackerRun([], root(), fakeTracker());
+
+  assert.match(output, /本文を直す/);
+  assert.match(output, /着手前/, output);
 });

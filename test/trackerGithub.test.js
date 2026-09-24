@@ -268,3 +268,38 @@ test("応答が読めなくても、失敗として返す", async () => {
 
   await assert.rejects(withFetch(fetchStub, () => tracker().get("AIEP-123")), /HTTP 500/);
 });
+
+// --------------------------------------------------- 本文を直す（AUT-209）
+
+// **書き換えるだけ。状態は見ない。** 着手前に限る規則は呼び出し側が持つ。
+test("本文を書き換える要求を送る", async () => {
+  const { sent, fetchStub } = serving([{ payload: issue({ body: "直した本文" }) }]);
+
+  const view = await withFetch(fetchStub, () => tracker().revise("AIEP-123", "直した本文"));
+
+  assert.equal(sent[0].method, "PATCH");
+  assert.match(sent[0].url, /repos\/o\/r\/issues\/123$/);
+  assert.deepEqual(sent[0].body, { body: "直した本文" }, JSON.stringify(sent[0].body));
+  assert.equal(view.body, "直した本文");
+});
+
+// **状態は触らない。**
+test("本文を直すとき、開閉を触らない", async () => {
+  const { sent, fetchStub } = serving([{ payload: issue() }]);
+
+  await withFetch(fetchStub, () => tracker().revise("AIEP-123", "x"));
+
+  assert.equal(sent[0].body.state, undefined, JSON.stringify(sent[0].body));
+  assert.equal(sent[0].body.state_reason, undefined);
+});
+
+// **別の接頭辞の作業単位IDは、ここでも受け取らない。**
+test("別の接頭辞では、本文を直さない", async () => {
+  const { sent, fetchStub } = serving([{ payload: issue() }]);
+
+  await assert.rejects(
+    withFetch(fetchStub, () => tracker().revise("CAS-123", "x")),
+    /形が違う/,
+  );
+  assert.deepEqual(sent, [], "要求を送っている");
+});

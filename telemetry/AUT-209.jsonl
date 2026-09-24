@@ -1,0 +1,1 @@
+{"ts":"2026-09-24T02:35:47.324Z","work_item_id":"AUT-209","model":"claude-opus-5","kit_version":"0.12.13","emitter":"adapter","type":"sampling","area":"作業単位の本文を直す操作","looked":"実物の Tracker で断る経路（AUT-209、started）と直す経路（AUT-233、backlog）の両方","not_looked":"GitHub Issues アダプタの実物（資格情報はあるが、対象の作業単位が無い）","fixed":false,"detail":"断る経路は終了コード2と行き先の案内まで確認。直す経路は AUT-233 の本文が実際に書き換わることを確認した"}

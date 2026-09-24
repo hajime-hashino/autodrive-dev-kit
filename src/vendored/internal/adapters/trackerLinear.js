@@ -164,6 +164,21 @@ export class LinearTracker {
   }
 
   /**
+   * 本文を書き換える。
+   *
+   * **着手前に限る規則は、ここでは見ない**（`trackerCli.js` が持つ）。アダプタごとに
+   * 同じ判断を置くと、実装が増えたときに片方だけ緩くなる。
+   */
+  async revise(id , body) {
+    const data = await this.#call(
+      `mutation($id:String!,$d:String!){
+         issueUpdate(id:$id, input:{description:$d}){ issue { ${ISSUE_FIELDS} } } }`,
+      { id, d: body },
+    );
+    return toView(data.issueUpdate.issue);
+  }
+
+  /**
    * ラベルのIDを引く。無ければ作る。
    *
    * **作るところまでやる。** 使う側に「先にラベルを用意しておくこと」を課すと、用意
