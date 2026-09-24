@@ -545,7 +545,14 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
     }
     const text = repo.read(historyPath);
     r.observe(`${repo.name}: boundaries.yaml を変更したコミット ${commits.length} 件を照合`);
-    unreferenced.push(...commits.filter((c) => !text.includes(c.slice(0, 7)) && !text.includes(c)));
+    // **SHA だけで照合しない。** squash / rebase で統合すると SHA が変わり、
+    // 履歴が指す先が消える。作業単位のIDでも照合する（AUT-240）。
+    unreferenced.push(
+      ...commits.filter(
+        (c) => historySectionFor(text, c, repo.git("log", "-1", "--format=%s", c)) === null,
+      ),
+    );
+
   }
 
   if (unreferenced.length > 0) {
@@ -605,7 +612,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
       const moved = movedAreas(parseAreas(before), parseAreas(after));
       if (moved.length === 0) continue;
 
-      const section = historySectionFor(history, sha);
+      const section = historySectionFor(history, sha, repo.git("log", "-1", "--format=%s", sha));
       if (section === null) {
         r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動いたが、履歴から参照されていない`);
         continue;
@@ -705,12 +712,53 @@ async function directCommitsAcross(
   return found;
 }
 
-/** 当該コミットに触れている委譲範囲の変更履歴の節。見つからなければ null。 */
-function historySectionFor(history , sha) {
+/**
+ * 作業単位のIDらしきもの。**件名の中から拾う。**
+ *
+ * `AUT-123`・`AIEP-45` のどちらも取れる。Tracker の実装によって接頭辞は違うが、
+ * **形は `<英大文字で始まる語>-<番号>` で共通である**（ADR 0013）。
+ *
+ * **ここで実装名を知らない。** 構成を読みに行くと、判定が構成に依存する。
+ */
+const WORK_ITEM_IN_SUBJECT = /\b[A-Z][A-Z0-9]*-\d+\b/;
+
+export function workItemInSubject(subject) {
+  return WORK_ITEM_IN_SUBJECT.exec(subject ?? "")?.[0] ?? null;
+}
+
+/**
+ * 当該コミットに触れている委譲範囲の変更履歴の節。見つからなければ null。
+ *
+ * ## SHA だけで照合しない
+ *
+ * **squash / rebase で統合すると、既定ブランチ上の SHA が変わる。** 履歴が
+ * 参照しているのはブランチ側の SHA であり、統合後は存在しない。
+ *
+ * ```
+ * ブランチ側の SHA  20c0c44   ← 履歴に書かれた値
+ * 統合後 main の SHA 5014785  ← 判定が照合する値
+ * ```
+ *
+ * **落ちるのは統合の後である。** 提出の時点では通る。**通ったものが、統合した
+ * 瞬間に落ちる**（AUT-240、GitHub #102）。
+ *
+ * そこで**作業単位のIDでも照合する。** IDは統合の仕方で変わらず、squash の既定の
+ * 件名（提出の題）にも残る。**通信も要らない。**
+ *
+ * **SHA での照合は残す。** 既に書かれた履歴が動かなくなる。
+ *
+ * @param {string} history
+ * @param {string} sha
+ * @param {string | null} subject 当該コミットの件名
+ */
+function historySectionFor(history , sha, subject = null) {
   const short = sha.slice(0, 7);
+  const workItem = workItemInSubject(subject);
   const sections = history.split(/^## /m).slice(1);
   for (const section of sections) {
     if (section.includes(sha) || section.includes(short)) return section;
+    // **IDだけの節を、SHA の節と同じに扱う。** どちらもそのコミットを指している。
+    if (workItem !== null && section.includes(workItem)) return section;
   }
   return null;
 }
