@@ -12,7 +12,7 @@ import { resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createTracker } from "./ports/trackerFactory.js";
-import { isWorkItemState } from "./ports/tracker.js";
+import { REVISABLE_STATES, isRevisable, isWorkItemState } from "./ports/tracker.js";
 
 import { STATE_DIR, defaultRoot } from "./workItem.js";
 
@@ -22,8 +22,11 @@ const USAGE = `作業単位を扱う
   tracker 作業単位を起票する --title <題> --body <本文>
   tracker ステータスを進める <ID> --to <状態> [--repo <対象リポジトリ>]
   tracker 作業ログを追記する <ID> --text <内容>
+  tracker 本文を直す <ID> --body <本文>
 
   状態: backlog / todo / started / done / canceled
+  本文を直せるのは着手前（backlog / todo）に限る。着手後の訂正は
+  「作業ログを追記する」で行う。
   --repo は started へ進めるときに必須。記録の書き込み先になる。
 
 資格情報は環境変数 LINEAR_API_KEY から読む。対象が複数ある場合は
@@ -34,10 +37,12 @@ export const OPERATIONS = {
   作業単位を起票する: "create",
   ステータスを進める: "advance",
   作業ログを追記する: "note",
+  本文を直す: "revise",
   get: "get",
   create: "create",
   advance: "advance",
   note: "note",
+  revise: "revise",
 };
 
 /** 前の名前。**当面は受け付ける。** 理由は telemetryCli.js の RENAMED に書いた。 */
@@ -122,6 +127,32 @@ export async function run(
     if ((values.text ?? "").trim() === "") return { output: "--text は必須", code: 2 };
     await tracker.note(id, values.text);
     return { output: `追記した: ${id}`, code: 0 };
+  }
+
+  // **本文を直せるのは着手前に限る**（定義§16）。
+  //
+  // 着手後の本文は「何を頼まれたか」の記録であり、書き換えられる形にすると
+  // **「頼まれたとおり作ったか」を確かめられなくなる。**
+  //
+  // **規則はここにある。アダプタには置かない。** 実装が増えたときに片方だけ
+  // 緩くなる。
+  if (operation === "revise") {
+    if ((values.body ?? "").trim() === "") return { output: "--body は必須", code: 2 };
+    const current = await tracker.get(id);
+    if (current === null) return { output: "該当する作業単位が無い", code: 1 };
+    if (!isRevisable(current.state)) {
+      // **何をすればよいかまで出す。** 断るだけでは、訂正の行き先が分からない。
+      return {
+        output:
+          `${current.id} は ${current.state} であり、本文を直せない` +
+          `（直せるのは ${REVISABLE_STATES.join(" / ")}）。\n` +
+          "**着手後の本文は「何を頼まれたか」の記録である。**\n" +
+          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text "..."`,
+        code: 2,
+      };
+    }
+    const item = await tracker.revise(id, values.body);
+    return { output: `本文を直した: ${item.id}\n${item.url}`, code: 0 };
   }
 
   const to = values.to ?? "";

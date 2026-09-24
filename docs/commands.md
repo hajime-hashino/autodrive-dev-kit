@@ -137,6 +137,7 @@ autodrive-dev-kit tracker 作業単位を取得する [<ID>]
 autodrive-dev-kit tracker 作業単位を起票する --title <題> --body <本文>
 autodrive-dev-kit tracker ステータスを進める <ID> --to started --repo <対象リポジトリ>
 autodrive-dev-kit tracker 作業ログを追記する <ID> --text <内容>
+autodrive-dev-kit tracker 本文を直す <ID> --body <本文>
 
 autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --type <入力|手戻り> --detail <内容>
 autodrive-dev-kit telemetry 手戻りを記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
@@ -144,6 +145,8 @@ autodrive-dev-kit telemetry 抜き取り確認を記録する --area <領域> --
                                      --not-looked <見なかった範囲> --detail <内容> [--fixed]
 autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
 ```
+
+**本文を直せるのは着手前（`backlog` / `todo`）に限る**（定義§16）。着手後の本文は「何を頼まれたか」の記録であり、書き換えられる形にすると**「頼まれたとおり作ったか」を確かめられなくなる。** 着手後の訂正は「作業ログを追記する」で行う。断るときは、その行き先まで出す。
 
 **止まり方は2種類ある**（`--type`）。一括りにしない。入力を得る停止（何を作るかを聞く、見え方を決めてもらう、資格情報の発行を頼む）は**手法が正しく働いている証拠であり、減らす対象ではない。** 減らすのは手戻りの側である。**同じことを繰り返し聞くのは、入力ではなく手戻り。**
 
