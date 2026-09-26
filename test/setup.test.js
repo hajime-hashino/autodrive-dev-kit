@@ -909,3 +909,104 @@ test("書かせる口を持たない相手でも、落ちない", () => {
   assert.equal(prefix, "AIEP");
   assert.ok(how.includes("推奨のまま"), how);
 });
+
+// ---------------------------------------------------------------- ポートを変える
+//
+// **変え方は「autodrive.json を書き換えて update」である**（autodrive-reference.md）。
+// 入れ替えは聞かないため、足りない値・失うもの・やり直すものは、ここで言う（AUT-248）。
+
+const rewritePorts = (root, ports, tracker = undefined) => {
+  const raw = JSON.parse(readFileSync(join(root, CONFIG_FILE), "utf8"));
+  raw.ports = { ...raw.ports, ...ports };
+  if (tracker !== undefined) raw.tracker = tracker;
+  writeFileSync(join(root, CONFIG_FILE), JSON.stringify(raw, null, 2), "utf8");
+};
+
+test("github-issues へ変えて接頭辞が無ければ、置かずに止まり、決めることを出す", () => {
+  const root = project("aiep-app-");
+  run("init", root);
+  rewritePorts(root, { tracker: "github-issues" });
+  const manifest = readFileSync(join(root, "autodrive", "manifest.json"), "utf8");
+
+  const r = run("update", root);
+  assert.equal(r.code, 1);
+  assert.ok(r.message?.includes("tracker.prefix"), r.message ?? "");
+  assert.ok(r.message?.includes("案: AIEP"), r.message ?? "");
+  // **止まるなら、何も置かない。** 半端に入れ替わると、どの構成で動いているか読めない。
+  assert.equal(readFileSync(join(root, "autodrive", "manifest.json"), "utf8"), manifest);
+
+  rewritePorts(root, {}, { prefix: "AIEP" });
+  assert.equal(run("update", root).code, 0);
+});
+
+test("変えたポートは、前の値を添えて出す", () => {
+  const root = project();
+  run("init", root, answering({ preview: NONE }));
+  rewritePorts(root, { preview: "cloudflare-workers" });
+
+  const r = run("update", root);
+  assert.equal(r.code, 0, r.message ?? "");
+  assert.ok(r.decisions.includes("preview: cloudflare-workers（変えた。前は none）"), r.decisions.join(" / "));
+  assert.ok(r.decisions.includes("tracker: linear（記録されたもの）"), r.decisions.join(" / "));
+
+  // 2回目は、もう変わっていない。
+  const again = run("update", root);
+  assert.ok(again.decisions.includes("preview: cloudflare-workers（記録されたもの）"), again.decisions.join(" / "));
+});
+
+test("Tracker を変えたら、それまでの作業単位が移らないことを言う", () => {
+  const root = project();
+  run("init", root);
+  rewritePorts(root, { tracker: "github-issues" }, { prefix: "AIEP" });
+
+  const r = run("update", root);
+  const said = r.notes.join("\n");
+  assert.ok(said.includes("linear から github-issues へ"), said);
+  assert.ok(said.includes("移っていない"), said);
+
+  // 変えていなければ言わない。
+  assert.equal(run("update", root).notes.some((n) => n.includes("移っていない")), false);
+});
+
+test("変えて新しく要る資格情報だけを、発行してもらう", () => {
+  const root = project();
+  run("init", root, answering({ preview: NONE }));
+  writeFileSync(join(root, ".env"), "LINEAR_API_KEY=x\n", "utf8");
+  rewritePorts(root, { preview: "cloudflare-workers" });
+
+  const asked = run("update", root).todo.find((t) => t.includes("新しく要る"));
+  assert.notEqual(asked, undefined, "増えた資格情報を頼んでいない");
+  assert.ok(asked.includes("CLOUDFLARE"), asked);
+  // **既に持っているものまで取りに行かせない。**
+  assert.equal(asked.includes("LINEAR_API_KEY"), false, asked);
+  assert.equal(asked.includes("GH_TOKEN"), false, asked);
+
+  assert.equal(run("update", root).todo.some((t) => t.includes("新しく要る")), false);
+});
+
+test("前の構成で置いたものが残ったら、消さずに知らせる", () => {
+  const root = project();
+  run("init", root, answering({ sandbox: "devcontainer" }));
+  assert.ok(existsSync(join(root, ".devcontainer", "init-firewall.sh")));
+  rewritePorts(root, { sandbox: NONE });
+
+  const r = run("update", root);
+  const said = r.notes.join("\n");
+  assert.ok(said.includes(".devcontainer/init-firewall.sh"), said);
+  assert.ok(existsSync(join(root, ".devcontainer", "init-firewall.sh")), "人の判断を経ずに消している");
+
+  // 知らせるのは一度だけ。指紋から外れたものは、もう置いたものではない。
+  assert.equal(run("update", root).notes.some((n) => n.includes("init-firewall.sh")), false);
+});
+
+test("前の構成の記録が無ければ、確かめていないと言う", () => {
+  const root = project();
+  run("init", root);
+  const path = join(root, "autodrive", "manifest.json");
+  const raw = JSON.parse(readFileSync(path, "utf8"));
+  delete raw.ports;
+  writeFileSync(path, JSON.stringify(raw), "utf8");
+
+  const r = run("update", root);
+  assert.ok(r.notes.some((n) => n.includes("確かめていない")), r.notes.join(" / "));
+});
