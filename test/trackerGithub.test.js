@@ -145,6 +145,27 @@ test("一覧から、提出を落とす", async () => {
   );
 });
 
+// **一覧を1ページで切らない**（AUT-254）。提出も同じページに数えられるため、
+// 作業単位が100件に満たなくても、古いものが落ちうる。
+test("一覧は、2ページ目以降も読む。ページの終わりは提出を落とす前の件数で決める", async () => {
+  // 1ページ目は満杯だが、ほとんどが提出。落とした後の件数で見ると、ここで止まる。
+  const first = Array.from({ length: 100 }, (_, i) =>
+    i === 0 ? issue({ number: 500 }) : { ...issue({ number: 1000 + i }), pull_request: { url: "x" } },
+  );
+  const { sent, fetchStub } = serving([{ payload: first }, { payload: [issue({ number: 1 })] }]);
+
+  const list = await withFetch(fetchStub, () => tracker().list());
+
+  assert.deepEqual(list.map((v) => v.id), ["AIEP-500", "AIEP-1"]);
+  assert.match(sent[1].url, /page=2/);
+});
+
+test("読み切れなければ、欠けた一覧を返さずに落ちる", async () => {
+  const full = () => ({ payload: Array.from({ length: 100 }, (_, i) => issue({ number: i + 1 })) });
+  const { fetchStub } = serving(Array.from({ length: 300 }, full));
+  await assert.rejects(() => withFetch(fetchStub, () => tracker().list()), /欠けたまま返さない/);
+});
+
 // ------------------------------------------------------------ 状態を進める
 
 test("完了へ進めると、完了として閉じる", async () => {
