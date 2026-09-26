@@ -76,6 +76,11 @@ export function numberOf(prefix, id) {
   return Number(m[1]);
 }
 
+/** 一覧の1ページ。**GitHub が1回で返せる上限。** */
+const LIST_PAGE = 100;
+/** 読むページの上限。**無限に回らないための歯止めであって、件数の想定ではない。** */
+const LIST_MAX_PAGES = 200;
+
 export class GithubIssuesTracker {
   #token;
   #slug;
@@ -176,10 +181,32 @@ export class GithubIssuesTracker {
     return raw.filter((r) => r.pull_request === undefined).map((r) => this.#toView(r));
   }
 
-  async list(limit = 100) {
-    // **100件を超えては読まない。** 1ページに収まる上限であり、超える分は
-    // 追わない。追うなら件数が読める形にする必要がある。
-    return this.#openIssues(Math.min(limit, 100));
+  /**
+   * すべての作業単位を読む。**1ページで切らない。**
+   *
+   * 以前は100件の1ページだけを読んでいた。しかも提出（PR）を数えたあとで落とす
+   * ため、Issue と PR の合計が100を超えると、古い作業単位が一覧から落ちる。Linear
+   * の側で同じ型が実際に起き、判定が実在する作業単位を「無い」と言った（AUT-254）。
+   *
+   * **ページの終わりは、返ってきた件数で決める。** 提出を落とす前の件数で見る。
+   * 落とした後で見ると、提出の多いページで読むのをやめてしまう。
+   *
+   * **上限に達したら、切らずに落ちる。** 黙って欠けると、同じ誤りを繰り返す。
+   */
+  async list() {
+    const out = [];
+    for (let page = 1; page <= LIST_MAX_PAGES; page++) {
+      const raw = await this.#call(
+        "GET",
+        `repos/${this.#slug}/issues?state=all&per_page=${LIST_PAGE}&sort=created&direction=desc&page=${page}`,
+      );
+      out.push(...raw.filter((r) => r.pull_request === undefined).map((r) => this.#toView(r)));
+      if (raw.length < LIST_PAGE) return out;
+    }
+    throw new Error(
+      `作業単位と提出が ${LIST_PAGE * LIST_MAX_PAGES} 件を超えた。**一覧を欠けたまま返さない。**` +
+        "上限（LIST_MAX_PAGES）を見直すこと",
+    );
   }
 
   async create(input) {

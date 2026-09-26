@@ -132,3 +132,36 @@ test("本文を直すとき、状態を触らない", async () => {
     stub.restore();
   }
 });
+
+// **一覧を1ページで切らない**（AUT-254）。250件を超えた日に、いちばん古い
+// AUT-1〜3 が落ち、判定が実在する作業単位を「無い」と言った。
+test("一覧は、2ページ目以降も読む", async () => {
+  const pages = [
+    { nodes: [{ ...ISSUE, identifier: "AUT-300" }], pageInfo: { hasNextPage: true, endCursor: "c1" } },
+    { nodes: [{ ...ISSUE, identifier: "AUT-1" }], pageInfo: { hasNextPage: false, endCursor: "c2" } },
+  ];
+  const stub = stubFetch((body) => {
+    if (body.query.includes("teams {")) return { teams: { nodes: [{ id: "t", key: "AUT" }] } };
+    return { team: { issues: pages.shift() } };
+  });
+  try {
+    const list = await new LinearTracker("t", "AUT").list();
+    assert.deepEqual(list.map((v) => v.id), ["AUT-300", "AUT-1"]);
+    // 続きは、前のページの終わりから読む。
+    assert.equal(stub.sent.at(-1).variables.after, "c1");
+  } finally {
+    stub.restore();
+  }
+});
+
+test("読み切れなければ、欠けた一覧を返さずに落ちる", async () => {
+  const stub = stubFetch((body) => {
+    if (body.query.includes("teams {")) return { teams: { nodes: [{ id: "t", key: "AUT" }] } };
+    return { team: { issues: { nodes: [ISSUE], pageInfo: { hasNextPage: true, endCursor: "c" } } } };
+  });
+  try {
+    await assert.rejects(() => new LinearTracker("t", "AUT").list(), /欠けたまま返さない/);
+  } finally {
+    stub.restore();
+  }
+});
