@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { init, mergeHook, vendor } from "../src/vendored/internal/init.js";
 import { delegateFor } from "../src/vendored/internal/cli.js";
+import { defaults } from "../src/vendored/internal/config.js";
 import { tempDir } from "./helpers/tmp.js";
 
 // **本物の参照実装を指す。** テンプレートをファイルから読むようになったため、偽の場所では
@@ -76,6 +77,27 @@ test("人にしかできないことだけを出す", () => {
   // **API を呼べば済むものを、人に振らない。**
   for (const ai of ["AUTODRIVE_CI_TOKEN を登録", "gh repo create", "置き場所を作り"]) {
     assert.equal(said.includes(ai), false, `AIにできることを人に振っている: ${ai}`);
+  }
+});
+
+// **押す画面が無いものを頼まない**（AUT-249）。GitHub Issues は提出の本文で閉じる。
+test("Tracker の連携は、設定する画面がある実装にだけ頼む", () => {
+  const withTracker = (tracker, language = "ja") => {
+    const config = defaults();
+    config.language = language;
+    config.ports.tracker = tracker;
+    if (tracker === "github-issues") config.tracker.prefix = "AIEP";
+    return init(project(), KIT, config).todo.join("\n");
+  };
+
+  const linear = withTracker("linear");
+  assert.ok(linear.includes("linear と github を連携させ"), linear);
+
+  for (const language of ["ja", "en"]) {
+    const said = withTracker("github-issues", language);
+    assert.equal(said.includes("github-issues"), false, `押す画面が無いものを頼んでいる: ${said}`);
+    // 案内そのものは出ている。消えたのが連携の項目だけであることを確かめる。
+    assert.ok(said.includes("Claude Code"), said);
   }
 });
 
