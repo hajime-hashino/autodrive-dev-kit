@@ -832,5 +832,19 @@
     "from": "export const CLOSED_BY_REPO = new Set([\"github-issues\"]);",
     "to": "export const CLOSED_BY_REPO = new Set([]);",
     "why": "押す画面が無いものを頼み、人が何をすればよいか分からないまま止まる"
+  },
+  {
+    "name": "AUT-254 Linear の一覧を1ページで切る",
+    "file": "src/vendored/internal/adapters/trackerLinear.js",
+    "from": "      if (!issues.pageInfo?.hasNextPage) return out;",
+    "to": "      return out;",
+    "why": "250件を超えると古い作業単位が落ち、判定が実在するものを無いと言う"
+  },
+  {
+    "name": "AUT-254 GitHub の一覧を、提出を落とした後の件数で止める",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "      if (raw.length < LIST_PAGE) return out;",
+    "to": "      if (out.length < LIST_PAGE) return out;",
+    "why": "提出の多いページで読むのをやめ、古い作業単位が落ちる"
   }
 ]
