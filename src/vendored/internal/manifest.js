@@ -60,10 +60,40 @@ export function readManifest(path) {
   }
 }
 
-export function writeManifest(path, writes) {
+/**
+ * 書く。**置いたときのポートも残す。**
+ *
+ * 次の入れ替えが、ポートが変わったかを知るため。`autodrive.json` だけでは、
+ * 書き換えられたあとの値しか読めない（AUT-248）。
+ *
+ * @param {string} path
+ * @param {Array<{ path: string, body: string }>} writes
+ * @param {Record<string, string> | null} [ports]
+ */
+export function writeManifest(path, writes, ports = null) {
   const files = {};
   for (const w of writes) files[w.path] = fingerprint(w.body);
-  writeFileSync(path, `${JSON.stringify({ version: 1, files }, null, 2)}\n`, "utf8");
+  const body = ports === null ? { version: 1, files } : { version: 1, ports, files };
+  writeFileSync(path, `${JSON.stringify(body, null, 2)}\n`, "utf8");
+}
+
+/**
+ * 前に置いたときのポートを読む。
+ *
+ * **無ければ null。** この記録より前に置かれたものには無い。変わっていないことと
+ * 区別できないため、呼び出し側は「確かめていない」として扱う。
+ *
+ * @param {string} path
+ * @returns {Record<string, string> | null}
+ */
+export function readPlacedPorts(path) {
+  if (!existsSync(path)) return null;
+  try {
+    const ports = JSON.parse(readFileSync(path, "utf8"))?.ports;
+    return ports !== null && typeof ports === "object" && !Array.isArray(ports) ? ports : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
