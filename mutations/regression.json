@@ -32,7 +32,7 @@
   {
     "name": "AUT-116 指紋を残さない",
     "file": "src/vendored/internal/init.js",
-    "from": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes);",
+    "from": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes, config?.ports ?? null);",
     "to": "  void 0;"
   },
   {
@@ -790,6 +790,41 @@
     "file": "src/vendored/internal/trackerCli.js",
     "from": "          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
     "to": "          \"\","
+  },
+  {
+    "name": "AUT-248 置いたときのポートを残さない",
+    "file": "src/vendored/internal/init.js",
+    "from": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes, config?.ports ?? null);",
+    "to": "  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes, null);",
+    "why": "ポートを変えても、変わったことに気づけない"
+  },
+  {
+    "name": "AUT-248 接頭辞が無くても置く",
+    "file": "src/vendored/internal/setup.js",
+    "from": "    if (missing !== null) return refuse(missing);",
+    "to": "    ",
+    "why": "決まっていない値のまま置き、着手のときに初めて止まる"
+  },
+  {
+    "name": "AUT-248 Tracker を変えても、失うものを言わない",
+    "file": "src/vendored/internal/setup.js",
+    "from": "  if (was !== undefined && was !== config.ports.tracker) {",
+    "to": "  if (false) {",
+    "why": "それまでの作業単位が移らないことに、困ってから気づく"
+  },
+  {
+    "name": "AUT-248 既に持っている資格情報まで頼む",
+    "file": "src/vendored/internal/setup.js",
+    "from": "    .filter((c) => !had.has(c.name))",
+    "to": "    .filter((c) => c !== null)",
+    "why": "持っているものまで取りに行かせる"
+  },
+  {
+    "name": "AUT-248 置かなくなったものを黙って残す",
+    "file": "src/vendored/internal/init.js",
+    "from": "  if (left.length > 0) {",
+    "to": "  if (false) {",
+    "why": "前の構成のものが、誰のものか分からないまま残る"
   },
   {
     "name": "AUT-249 GitHub Issues にも連携の設定を頼む",

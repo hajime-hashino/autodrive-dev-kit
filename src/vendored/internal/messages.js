@@ -53,6 +53,18 @@ const MESSAGES = {
     "decided.onlyOne": "（選択肢が1つ）",
     "decided.seen": "（見て分かった: {because}）",
     "decided.recorded": "（記録されたもの）",
+    "decided.changed": "（変えた。前は {from}）",
+    "note.trackerChanged":
+      "作業単位の置き場を {from} から {to} へ変えた。**それまでの作業単位は移っていない。**\n" +
+      "記録（telemetry/）とブランチ名は、前の作業単位IDのまま残る。" +
+      "{from} で着手中のものは、{from} の側で閉じること",
+    "note.portsUnchecked":
+      "前に置いたときの構成の記録が無いため、ポートが変わったかは確かめていない。次の入れ替えからは確かめる",
+    "note.leftBehind":
+      "前の構成で置いたが、いまの構成では置かないもの（ポートを変えたため）。**消していない。**\n" +
+      "要らなければ消すこと。**同じ場所に、このプロジェクトのものとして置いたファイルも残っている" +
+      "ことがある**（.devcontainer/devcontainer.json など）。一式で判断すること:\n{paths}",
+    "todo.newCredentials": ".env に足す（ポートを変えたため新しく要る）: {names}。何に使うかは .env.example にある",
 
     // --- 聞くこと ---
     "ask.tracker": "作業単位（やること）を、どこで管理しますか？",
@@ -151,6 +163,18 @@ const MESSAGES = {
     "decided.onlyOne": " (only one option)",
     "decided.seen": " (found: {because})",
     "decided.recorded": " (from the recorded configuration)",
+    "decided.changed": " (changed; was {from})",
+    "note.trackerChanged":
+      "Moved work items from {from} to {to}. **Existing work items were not moved.**\n" +
+      "Records (telemetry/) and branch names keep the old work item IDs. " +
+      "Close anything still started in {from} over there",
+    "note.portsUnchecked":
+      "No record of the previous configuration, so port changes were not checked. The next update will check",
+    "note.leftBehind":
+      "Placed for the previous configuration but no longer placed (a port changed). **Not deleted.**\n" +
+      "Remove them if they are no longer needed. **Files placed as the project's own may remain " +
+      "alongside them** (such as .devcontainer/devcontainer.json). Decide on the set as a whole:\n{paths}",
+    "todo.newCredentials": "Add to .env (newly needed after the port change): {names}. .env.example says what each is for",
 
     "ask.tracker": "Where do you track work items?",
     "ask.tracker.why":

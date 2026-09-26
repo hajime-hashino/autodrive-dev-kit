@@ -310,6 +310,22 @@ export function insideSandbox() {
 const PROJECT_OWNED_SANDBOX = ["devcontainer.json", "devcontainer-lock.json"];
 
 /**
+ * 前に置いたが、今回は置かないもの。**まだ残っているものだけ。**
+ *
+ * @param {string} root
+ * @param {Record<string, string> | null} previous 前に置いたときの指紋
+ * @param {Array<{ path: string }>} writes 今回置くもの
+ * @returns {string[]}
+ */
+export function leftBehind(root, previous, writes) {
+  if (previous === null) return [];
+  const now = new Set(writes.map((w) => w.path));
+  return Object.keys(previous)
+    .filter((p) => !now.has(p) && existsSync(join(root, p)))
+    .sort();
+}
+
+/**
  * 統合されたときに、Repo の側が作業単位を閉じる Tracker の実装。
  *
  * **人が連携を設定しなくてよい。** 閉じる合図は提出の本文に書かれ、書くのはAIである。
@@ -465,7 +481,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
 
   // 置く。**指紋も残す。** 残さないと、次に確かめられない。
   for (const w of plan.writes) write(join(root, w.path), w.body);
-  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes);
+  writeManifest(manifestPath(root, VENDOR_DIR), plan.writes, config?.ports ?? null);
 
   // 記録の仕掛け。**利用側の設定へ併合する。**
   const settingsPath = join(root, ".claude", "settings.json");
@@ -564,6 +580,19 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
 
   // **確かめられなかったことは黙らない。** 黙ると、確かめた顔になる。
   const notes = unchecked.length > 0 ? [describeUnchecked(unchecked)] : [];
+
+  // **置かなくなったものを、黙って残さない。** ポートを変えると、前の構成で置いた
+  // ものが管理下から外れる（sandbox を devcontainer から外すと `.devcontainer/` が
+  // 残る）。指紋からも消えるため、次からは誰のものか分からなくなる（AUT-248）。
+  //
+  // **消しはしない。** 播種したもの（`devcontainer.json` など）が手で直されている
+  // ことがある。管理下のものだけ消すと、半端な一式が残る。
+  const left = leftBehind(root, previous, plan.writes);
+  if (left.length > 0) {
+    notes.push(
+      say(config?.language ?? "ja", "note.leftBehind", { paths: left.map((p) => `  ${p}`).join("\n") }),
+    );
+  }
 
   // **持ち主がこちらでないものは、書き換えずに言う。** 黙っていると静かに古くなる。
   if (sandboxPlaced) notes.push(...driftNotes(root, kitRoot));

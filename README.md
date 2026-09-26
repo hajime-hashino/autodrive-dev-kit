@@ -190,6 +190,8 @@ The last four are not created by `init`. **They hold project-specific content, s
 
 The setup, and the path a single change takes. **Every element is a port and can be swapped.** What the diagram shows is the default setup.
 
+To change a port after setup, tell the AI. It rewrites `autodrive.json` and applies it with `update`. Before changing, it tells you what is lost (for the Tracker, existing work items do not move).
+
 ![How it fits together: the human, the sandbox, the record, and the run, with the path a change takes](docs/environment.svg)
 
 *The diagram is labelled in Japanese. Ask the AI and it will read it back in your language.*
