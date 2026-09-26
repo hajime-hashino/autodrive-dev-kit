@@ -14,7 +14,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { TEMPLATES_DIR, init } from "./init.js";
+import { TEMPLATES_DIR, VENDOR_DIR, init } from "./init.js";
+import { manifestPath, readPlacedPorts } from "./manifest.js";
+import { credentialsFor } from "./credentials.js";
 import { LANGUAGES, say } from "./messages.js";
 
 import {
@@ -206,6 +208,64 @@ export function askPrefix(interviewer, language, repoName) {
   return { prefix: null, how: say(language, "decided.undecided") };
 }
 
+/**
+ * 接頭辞が要るのに無ければ、何を決めればよいかを返す。
+ *
+ * **案は出すが、書かない。** 接頭辞はブランチ名と記録のファイル名になる。
+ * 決めるのは人である（`askPrefix` と同じ）。
+ *
+ * @param {import("./config.js").Config} config
+ * @param {string} root
+ * @returns {string | null}
+ */
+export function missingPrefix(config, root) {
+  if (config.ports.tracker !== "github-issues" || config.tracker.prefix !== null) return null;
+  const suggested = suggestPrefix(basename(resolve(root)));
+  return (
+    `${CONFIG_FILE} の tracker が github-issues なのに、tracker.prefix が無い。**置かずに止めた。**\n\n` +
+    "作業単位IDの頭に付く、英大文字で始まる2〜4文字を決めること（例: AIEP → AIEP-123）。\n" +
+    "ブランチ名と記録のファイル名になる。**後から変えると、それまでの記録が追えなくなる。**\n\n" +
+    (suggested === null ? "" : `案: ${suggested}（リポジトリ名から作った。決定ではない）\n\n`) +
+    `決まったら ${CONFIG_FILE} に書いて、もう一度実行すること。\n\n` +
+    `  "tracker": { "prefix": "${suggested ?? "AIEP"}" }`
+  );
+}
+
+/**
+ * ポートが変わったことで、人が知っておくべきこと。
+ *
+ * **失うものと、やり直すものを、変えた時点で言う。** 言わなければ、気づくのは
+ * 困ったときになる（AUT-248）。
+ *
+ * **前の記録が無ければ、確かめていないと言う。** 黙ると、変わっていないように見える。
+ *
+ * @param {import("./config.js").Config} config
+ * @param {Record<string, string> | null} before
+ * @returns {{ notes: string[], todo: string[] }}
+ */
+export function portChanges(config, before) {
+  const t = (key, values) => say(config.language, key, values);
+  if (before === null) return { notes: [t("note.portsUnchecked")], todo: [] };
+
+  const notes = [];
+  const todo = [];
+  const was = before.tracker;
+  if (was !== undefined && was !== config.ports.tracker) {
+    notes.push(t("note.trackerChanged", { from: was, to: config.ports.tracker }));
+  }
+
+  // **発行はAIにはできない。** 増えた資格情報だけを頼む。全部並べると、既に
+  // 持っているものまで取りに行かせる。
+  const previous = { ...config, ports: { ...config.ports, ...before } };
+  const had = new Set(credentialsFor(previous).map((c) => c.name));
+  const added = credentialsFor(config)
+    .filter((c) => !had.has(c.name))
+    .map((c) => c.name);
+  if (added.length > 0) todo.push(t("todo.newCredentials", { names: added.join(", ") }));
+
+  return { notes, todo };
+}
+
 function gitRemote(root) {
   try {
     return execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
@@ -276,6 +336,8 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
   // 構成を決める --------------------------------------------------------------
   let config;
   let decisions;
+  // **前に置いたときのポート。** 入れ替えで上書きされる前に読む。
+  const placedPorts = mode === "update" ? readPlacedPorts(manifestPath(root, VENDOR_DIR)) : null;
 
   if (mode === "update") {
     const read = readConfig(root);
@@ -284,9 +346,21 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
       return refuse(`${read.error}\n\n直してから、もう一度実行すること。`);
     }
     config = read.config;
-    decisions = PORT_NAMES.map(
-      (p) => `${p}: ${config.ports[p]}${say(config.language, "decided.recorded")}`,
-    );
+
+    // **決まっていない値を残したまま置かない。** 入れ替えは聞かない（AIが端末無しで
+    // 打つ）。ポートを変えて接頭辞が要るようになっても、ここでは聞けない。
+    // 置いてしまうと、着手のときに初めて止まる（AUT-248）。
+    const missing = missingPrefix(config, root);
+    if (missing !== null) return refuse(missing);
+
+    decisions = PORT_NAMES.map((p) => {
+      const before = placedPorts?.[p];
+      const how =
+        before !== undefined && before !== config.ports[p]
+          ? say(config.language, "decided.changed", { from: before })
+          : say(config.language, "decided.recorded");
+      return `${p}: ${config.ports[p]}${how}`;
+    });
   } else if (mode === "apply") {
     const { config: guessed, because } = infer(root, gitRemote(root));
     // **見て分かったものだけを推奨にする。** 見て分からなかったものまで渡すと、
@@ -325,6 +399,9 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
     result.placed.push({ path: CONFIG_FILE, placement: "skipped" });
     // 入れ替えは、既に動いているプロジェクトに対して打つ。始め方の案内は要らない。
     result.todo = result.todo.filter((t) => !t.includes("はじめる"));
+    const changed = portChanges(config, placedPorts);
+    result.notes = [...(result.notes ?? []), ...changed.notes];
+    result.todo = [...changed.todo, ...result.todo];
   } else {
     writeConfig(root, config);
     result.placed.push({ path: CONFIG_FILE, placement: "seeded" });

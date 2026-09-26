@@ -102,7 +102,8 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
         tracker: null,
         error:
           "autodrive.json に tracker.prefix が無い。**作業単位IDの頭に付く2〜4文字を決めること**" +
-          "（例: AIEP → AIEP-123）。`apply` で聞き直せる",
+          "（例: AIEP → AIEP-123）。**決めるのは人である。** 決まったら autodrive.json の " +
+          "tracker.prefix に書く（`apply` は構成が既にあると止まるため、聞き直しには使えない）",
         implementation,
       };
     }
