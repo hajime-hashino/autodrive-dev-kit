@@ -310,6 +310,13 @@ export function insideSandbox() {
 const PROJECT_OWNED_SANDBOX = ["devcontainer.json", "devcontainer-lock.json"];
 
 /**
+ * 統合されたときに、Repo の側が作業単位を閉じる Tracker の実装。
+ *
+ * **人が連携を設定しなくてよい。** 閉じる合図は提出の本文に書かれ、書くのはAIである。
+ */
+export const CLOSED_BY_REPO = new Set(["github-issues"]);
+
+/**
  * プロジェクトが持つサンドボックスのファイルを置く。
  *
  * **最初の一度だけ置き、以後は触らない。** 既にあれば、テンプレートが変わって
@@ -530,7 +537,11 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   //
   // **実装名で書く。** 人が実際に開く画面の名前だからである（AUT-163）。構成に
   // 記録された実装を差し込むため、差し替えても案内が古くならない。
-  if (config !== null && config !== undefined) {
+  //
+  // **Repo が自分で閉じる実装には出さない。** GitHub Issues は提出の本文の
+  // `Closes #<番号>` で閉じ、それを書くのはAIである（docs/autodrive.md）。押す画面が
+  // 無いものを頼むと、人は何をすればよいか分からないまま止まる（AUT-249）。
+  if (config !== null && config !== undefined && !CLOSED_BY_REPO.has(config.ports.tracker)) {
     todo.push(
       say(config.language ?? "ja", "todo.trackerLink", {
         tracker: config.ports.tracker,
