@@ -825,5 +825,12 @@
     "from": "  if (left.length > 0) {",
     "to": "  if (false) {",
     "why": "前の構成のものが、誰のものか分からないまま残る"
+  },
+  {
+    "name": "AUT-249 GitHub Issues にも連携の設定を頼む",
+    "file": "src/vendored/internal/init.js",
+    "from": "export const CLOSED_BY_REPO = new Set([\"github-issues\"]);",
+    "to": "export const CLOSED_BY_REPO = new Set([]);",
+    "why": "押す画面が無いものを頼み、人が何をすればよいか分からないまま止まる"
   }
 ]
