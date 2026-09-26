@@ -55,6 +55,11 @@ function toView(raw) {
 
 const ISSUE_FIELDS = "id identifier title url description state { type } labels { nodes { id name } }";
 
+/** 一覧の1ページ。**Linear が1回で返せる上限。** */
+const LIST_PAGE = 250;
+/** 読むページの上限。**無限に回らないための歯止めであって、件数の想定ではない。** */
+const LIST_MAX_PAGES = 200;
+
 export class LinearTracker {
            #token;
            #teamKey;
@@ -144,13 +149,34 @@ export class LinearTracker {
     return nodes.find((n) => n.state === "todo" || n.state === "backlog") ?? null;
   }
 
-  async list(limit = 250) {
+  /**
+   * すべての作業単位を読む。**1ページで切らない。**
+   *
+   * 以前は `first:250` の1ページだけを読んでいた。250件を超えた日に、いちばん古い
+   * AUT-1〜3 が一覧から落ち、判定が「記録が存在しない作業単位を指している」で
+   * 落ちた（AUT-254）。**欠けた一覧は、実在するものを実在しないと言う。**
+   *
+   * **上限に達したら、切らずに落ちる。** 黙って欠けると、同じ誤りを繰り返す。
+   */
+  async list() {
     const teamId = await this.#team();
-    const data = await this.#call(
-      `query($id:String!,$n:Int!){ team(id:$id){ issues(first:$n){ nodes { ${ISSUE_FIELDS} } } } }`,
-      { id: teamId, n: limit },
+    const out = [];
+    let after = null;
+    for (let page = 0; page < LIST_MAX_PAGES; page++) {
+      const data = await this.#call(
+        `query($id:String!,$after:String){ team(id:$id){ issues(first:${LIST_PAGE}, after:$after){ ` +
+          `nodes { ${ISSUE_FIELDS} } pageInfo { hasNextPage endCursor } } } }`,
+        { id: teamId, after },
+      );
+      const issues = data.team.issues;
+      out.push(...issues.nodes.map(toView));
+      if (!issues.pageInfo?.hasNextPage) return out;
+      after = issues.pageInfo.endCursor;
+    }
+    throw new Error(
+      `作業単位が ${LIST_PAGE * LIST_MAX_PAGES} 件を超えた。**一覧を欠けたまま返さない。**` +
+        "上限（LIST_MAX_PAGES）を見直すこと",
     );
-    return (data.team.issues.nodes).map(toView);
   }
 
   async create(input) {
