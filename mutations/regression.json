@@ -790,5 +790,12 @@
     "file": "src/vendored/internal/trackerCli.js",
     "from": "          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
     "to": "          \"\","
+  },
+  {
+    "name": "AUT-249 GitHub Issues にも連携の設定を頼む",
+    "file": "src/vendored/internal/init.js",
+    "from": "export const CLOSED_BY_REPO = new Set([\"github-issues\"]);",
+    "to": "export const CLOSED_BY_REPO = new Set([]);",
+    "why": "押す画面が無いものを頼み、人が何をすればよいか分からないまま止まる"
   }
 ]
