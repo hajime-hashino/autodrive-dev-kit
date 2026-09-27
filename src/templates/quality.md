@@ -93,7 +93,7 @@
 
 `autodrive.json` の `sandbox` に選んだものが、何を引き受けているかを書く。
 この道具が中身を知っているのは devcontainer だけで、それ以外は名前を控えるに
-とどまる（autodrive-dev-kit の [ADR 0012](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0012-sandbox-is-declared-not-built.md)）。どこまで守られているかを知っているのは、選んだ側である。
+とどまる。どこまで守られているかを知っているのは、選んだ側である。
 
 | 項目 | 記入 |
 |---|---|
