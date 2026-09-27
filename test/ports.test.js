@@ -196,6 +196,25 @@ test("定義に無い状態へは進めない", async () => {
   assert.equal(res.code, 2);
 });
 
+// **ID を省けば、着手中の作業単位へ書く**（AUT-258）。止まるたびに書くものなので、
+// ID を引かせると書かれなくなる。
+test("作業ログは、ID を省くと着手中の作業単位へ書く", async () => {
+  const r = withWorkItem("AUT-31", "kit");
+  const notes = [];
+  const t = { ...fakeTracker(), async note(id, text) { notes.push([id, text]); } };
+  const res = await trackerRun(["作業ログを追記する", "--text", "問い: A か B か / 答え: B"], r, t);
+  assert.equal(res.code, 0, res.output);
+  assert.deepEqual(notes, [["AUT-31", "問い: A か B か / 答え: B"]]);
+});
+
+test("着手中の作業単位が無ければ、どこにも書かずに止まる", async () => {
+  const notes = [];
+  const t = { ...fakeTracker(), async note(id) { notes.push(id); } };
+  const res = await trackerRun(["作業ログを追記する", "--text", "x"], root(), t);
+  assert.equal(res.code, 2);
+  assert.deepEqual(notes, []);
+});
+
 test("起票には題と本文が要る", async () => {
   const r = root();
   assert.equal((await trackerRun(["作業単位を起票する", "--title", "t"], r, fakeTracker())).code, 2);
