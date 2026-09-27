@@ -176,10 +176,11 @@ These appear as the project needs them.
 | `CLAUDE.md` | init | project | Project-specific rules |
 | `.gitignore` | init | project | Keeps credentials and working state out |
 | `notes/README.md` | init | project | **Yours to use.** Contents are not tracked |
+| `docs/adr/README.md` | init | project | Index of design decisions and how to write them. **The AI reads it at the start of every work item** |
 | `.claude/settings.json` | init | project | **Appends** the recording hook. Existing entries are kept |
 | `telemetry/<work item id>.jsonl` | when work starts | project | Stops, rework, token spend |
 | `test/` | when you implement | project | Tests |
-| `docs/adr/` | when a design decision comes up | project | Design decisions |
+| `docs/adr/NNNN-*.md` | when a design decision comes up | project | Design decisions. **Written by the AI** |
 | `docs/boundary-changes.md` | when the delegation table moves | project | History of delegation changes |
 
 Files owned by autodrive-dev-kit are overwritten by `update`. Files owned by the project are left alone if they already exist.

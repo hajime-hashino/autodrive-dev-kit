@@ -59,8 +59,42 @@ test("土台を置く", () => {
 test("固有のものは生成しない", () => {
   const root = project();
   init(root, KIT);
-  for (const p of ["docs/adr", "docs/boundary-changes.md", "test"]) {
+  for (const p of ["docs/boundary-changes.md", "test"]) {
     assert.equal(existsSync(join(root, p)), false, `${p} を作ってしまっている`);
+  }
+  // **ADR は索引だけ。** 判断そのものは、そのプロジェクトが書く。
+  assert.deepEqual(readdirSync(join(root, "docs", "adr")), ["README.md"], "ADR そのものを作ってしまっている");
+});
+
+// **索引が無いと、どこへ書くのかも、着手のたびに読むことも伝わらない。** 配った先で
+// ADR が1件も書かれていなかった（AUT-255）。
+test("ADR の索引を置き、既にあれば触らない", () => {
+  const root = project();
+  const r = init(root, KIT);
+  assert.equal(placementOf(r, "docs/adr/README.md"), "seeded");
+  assert.ok(readFileSync(join(root, "docs", "adr", "README.md"), "utf8").includes("着手したら"));
+
+  writeFileSync(join(root, "docs", "adr", "README.md"), "# うちの索引\n", "utf8");
+  const again = init(root, KIT);
+  assert.equal(placementOf(again, "docs/adr/README.md"), "skipped");
+  assert.equal(readFileSync(join(root, "docs", "adr", "README.md"), "utf8"), "# うちの索引\n");
+
+  // 規約から索引へ辿れる。**置き場所を知らないと、書かれない。**
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+  assert.ok(rules.includes("](adr/README.md)"), "規約から索引を指していない");
+});
+
+// **配った先に無いものを、番号だけで指さない。** 「ADR 0012」は、配った先では
+// 自分のリポジトリにあるものと読める（AUT-255）。
+test("配布物は、autodrive-dev-kit の ADR を番号だけで指さない", () => {
+  const root = project();
+  init(root, KIT);
+  for (const p of ["docs/autodrive.md", "docs/autodrive-reference.md", "docs/quality.md"]) {
+    const body = readFileSync(join(root, p), "utf8");
+    for (const m of body.matchAll(/ADR \d{4}/g)) {
+      const around = body.slice(Math.max(0, m.index - 30), m.index + 120);
+      assert.ok(around.includes("autodrive-dev-kit/blob/main/docs/adr/"), `${p}: ${around}`);
+    }
   }
 });
 

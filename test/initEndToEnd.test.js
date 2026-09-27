@@ -15,7 +15,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -144,9 +144,11 @@ test("記録が無い状態でも、判定は落ちずに何が足りないか�
 // **固有のものは生成しない**（BOOTSTRAP 段階5）。テンプレートを置くと中身が無いまま残る。
 test("固有のものは生成しない", () => {
   const root = initialized();
-  for (const p of ["docs/adr", "docs/boundary-changes.md", "test"]) {
+  for (const p of ["docs/boundary-changes.md", "test"]) {
     assert.equal(existsSync(join(root, p)), false, `${p} を作ってしまっている`);
   }
+  // **ADR は索引だけ**（AUT-255）。判断そのものは、そのプロジェクトが書く。
+  assert.deepEqual(readdirSync(join(root, "docs", "adr")), ["README.md"], "ADR そのものを作ってしまっている");
 });
 
 // autodrive-dev-kit の中に、そのプロジェクトに要らないものを持ち込まない。

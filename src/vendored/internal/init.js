@@ -510,6 +510,11 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **README だけ置く。** 中身は追跡しないが、置き場所と、置いてはいけないものは
   // クローンした先にも残る必要がある。
   seeded(root, "notes/README.md", template(kitRoot, "notes/README.md"), placed);
+  // **設計判断の置き場所は、索引だけ置く。** ADR そのものはプロジェクトの判断で
+  // あり、空のテンプレートを置くと中身が無いまま残る。索引が無いと、どこへ書くのか
+  // も、着手のたびに読むことも伝わらない。実際に、配った先で1件も書かれていな
+  // かった（AUT-255）。**既にあるプロジェクトには、次の入れ替えで届く。**
+  seeded(root, "docs/adr/README.md", template(kitRoot, "adr/README.md"), placed);
 
   // **既にある規約を上書きしない。** ただし、繋がっていなければそう言う。
   const claude = join(root, "CLAUDE.md");

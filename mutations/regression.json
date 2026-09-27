@@ -846,5 +846,12 @@
     "from": "      if (raw.length < LIST_PAGE) return out;",
     "to": "      if (out.length < LIST_PAGE) return out;",
     "why": "提出の多いページで読むのをやめ、古い作業単位が落ちる"
+  },
+  {
+    "name": "AUT-255 ADR の索引を置かない",
+    "file": "src/vendored/internal/init.js",
+    "from": "  seeded(root, \"docs/adr/README.md\", template(kitRoot, \"adr/README.md\"), placed);",
+    "to": "  ",
+    "why": "どこへ書くのかも、着手のたびに読むことも伝わらず、配った先で ADR が書かれない"
   }
 ]
