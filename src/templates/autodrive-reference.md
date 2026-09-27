@@ -147,7 +147,7 @@
 ### トークン消費が `telemetry/` に無い
 
 **正しい。** フックが書くのは提出の後なので、リポジトリへ載せようとすると別の作業単位の
-提出に混ざる。したがってブランチには載せず、外へ送る形にしてある（ADR 0008）。
+提出に混ざる。したがってブランチには載せず、外へ送る形にしてある（autodrive-dev-kit の [ADR 0008](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0008-token-usage-off-branch.md)）。
 
 `telemetry/` に残るのは、`telemetry` コマンドで書いた記録だけである。
 
@@ -247,7 +247,7 @@ squash と rebase は既定ブランチ上の ID を作り直す。**履歴が�
 
 **ここは `sandbox` に `devcontainer` を選んだプロジェクトの話である。** 別のものを
 選んだなら `.devcontainer/` は置かれず、隔離の判定も走らない。用意するのはそちらで
-あり、何が守られているかは `docs/quality.md` に書く（ADR 0012）。
+あり、何が守られているかは `docs/quality.md` に書く（autodrive-dev-kit の [ADR 0012](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0012-sandbox-is-declared-not-built.md)）。
 
 `.devcontainer/devcontainer.json` は**このプロジェクトのものである。** 機能を足す、
 ポートを転送する、環境変数を置く——**そのファイルへ直接書くこと。** 構成に設定項目は
