@@ -853,5 +853,12 @@
     "from": "  seeded(root, \"docs/adr/README.md\", template(kitRoot, \"adr/README.md\"), placed);",
     "to": "  ",
     "why": "どこへ書くのかも、着手のたびに読むことも伝わらず、配った先で ADR が書かれない"
+  },
+  {
+    "name": "AUT-258 作業ログで ID を省けなくする",
+    "file": "src/vendored/internal/trackerCli.js",
+    "from": "    const target = id ?? resolveWorkItem(root).item?.workItemId;",
+    "to": "    const target = id;",
+    "why": "止まるたびに ID を引かせると、問いと答えが書かれなくなる"
   }
 ]

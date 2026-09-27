@@ -14,14 +14,14 @@ import { dirname, join } from "node:path";
 import { createTracker } from "./ports/trackerFactory.js";
 import { REVISABLE_STATES, isRevisable, isWorkItemState } from "./ports/tracker.js";
 
-import { STATE_DIR, defaultRoot } from "./workItem.js";
+import { STATE_DIR, defaultRoot, resolveWorkItem } from "./workItem.js";
 
 const USAGE = `作業単位を扱う
 
   tracker 作業単位を取得する [<ID>]
   tracker 作業単位を起票する --title <題> --body <本文>
   tracker ステータスを進める <ID> --to <状態> [--repo <対象リポジトリ>]
-  tracker 作業ログを追記する <ID> --text <内容>
+  tracker 作業ログを追記する [<ID>] --text <内容>   ID を省くと、いま着手中の作業単位へ
   tracker 本文を直す <ID> --body <本文>
 
   状態: backlog / todo / started / done / canceled
@@ -121,13 +121,20 @@ export async function run(
     return { output: `起票した: ${item.id}\n${item.url}`, code: 0 };
   }
 
-  if (id === undefined) return { output: "作業単位のIDが要る", code: 2 };
-
+  // **作業ログは、ID を省けば着手中の作業単位へ書く。** 止まって人が答えるたびに
+  // 書くものであり、毎回 ID を引かせると書かれなくなる（AUT-258）。記録と同じ
+  // 解決の仕方をとるので、書いた先がテレメトリとずれない。
   if (operation === "note") {
     if ((values.text ?? "").trim() === "") return { output: "--text は必須", code: 2 };
-    await tracker.note(id, values.text);
-    return { output: `追記した: ${id}`, code: 0 };
+    const target = id ?? resolveWorkItem(root).item?.workItemId;
+    if (target === undefined) {
+      return { output: "着手中の作業単位が無い。ID を渡すこと（先に begin で着手する）", code: 2 };
+    }
+    await tracker.note(target, values.text);
+    return { output: `追記した: ${target}`, code: 0 };
   }
+
+  if (id === undefined) return { output: "作業単位のIDが要る", code: 2 };
 
   // **本文を直せるのは着手前に限る**（定義§16）。
   //
