@@ -357,3 +357,17 @@ test("参照実装そのものに、ライセンスと著作権表示がある",
   assert.match(readFileSync(join(KIT, "NOTICE"), "utf8"), new RegExp(pkg.author ?? "^$"),
     "NOTICE と package.json の author が食い違っている");
 });
+
+// **規約が指す節は、置いたテンプレートに実在する**（AUT-257）。名前がずれると、
+// 立ち上げで決めたことの置き場所が無く、前の版で始めたプロジェクトでは毎回聞き直す。
+test("付ける文書を決める手順が、what-why.md の節を指している", () => {
+  const root = project();
+  init(root, KIT);
+  const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
+  const whatWhy = readFileSync(join(root, "docs", "what-why.md"), "utf8");
+  assert.ok(rules.includes("「付ける文書」"), "規約が置き場所を指していない");
+  assert.ok(whatWhy.includes("\n## 付ける文書\n"), "what-why.md に節が無い");
+  for (const doc of ["利用者向けの手引き", "操作手順書"]) {
+    assert.ok(whatWhy.includes(doc), `${doc} の行が無い`);
+  }
+});

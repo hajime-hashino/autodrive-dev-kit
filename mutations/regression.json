@@ -860,5 +860,12 @@
     "from": "    const target = id ?? resolveWorkItem(root).item?.workItemId;",
     "to": "    const target = id;",
     "why": "止まるたびに ID を引かせると、問いと答えが書かれなくなる"
+  },
+  {
+    "name": "AUT-257 付ける文書の節の名前をずらす",
+    "file": "src/templates/what-why.md",
+    "from": "## 付ける文書",
+    "to": "## 文書",
+    "why": "立ち上げで決めた文書の置き場所が無くなり、毎回聞き直す"
   }
 ]
