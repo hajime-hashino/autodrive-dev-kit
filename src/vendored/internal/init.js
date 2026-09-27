@@ -35,6 +35,7 @@ import {
   findEdits,
   linesLost,
   manifestPath,
+  readPlacedLines,
   readManifest,
   writeManifest,
 } from "./manifest.js";
@@ -470,7 +471,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **autodrive-dev-kit を入れ替える前でもある。** 先に入れ替えると、止めたときに
   // autodrive-dev-kit だけ新しく、管理下のファイルが古い状態が残る。
   const previous = readManifest(manifestPath(root, VENDOR_DIR));
-  const { edited, unchecked } = findEdits(root, plan.writes, previous);
+  const { edited, unchecked } = findEdits(root, plan.writes, previous, readPlacedLines(manifestPath(root, VENDOR_DIR)));
   if (edited.length > 0) {
     return { placed: [], todo: [], notes: [], version: null, code: 1, message: describeEdits(edited) };
   }

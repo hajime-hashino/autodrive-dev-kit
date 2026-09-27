@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { credentialsFor, envExample } from "../src/vendored/internal/credentials.js";
-import { NONE, defaults } from "../src/vendored/internal/config.js";
+import { NONE, PORT_CHOICES, PORT_NAMES, defaults } from "../src/vendored/internal/config.js";
 import { setup } from "../src/vendored/internal/setup.js";
 import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
@@ -372,4 +372,22 @@ test("Linear を使う構成に、Issues の権限を足さない", () => {
   const permissions = (token?.needs ?? []).map((n) => n.permission);
 
   assert.equal(permissions.includes("Issues"), false, `要らない権限を求めている: ${permissions.join(", ")}`);
+});
+
+// **写して .env を作るファイルである。値の行以外は、すべてコメントでなければならない。**
+// 注記が合流して改行を含むと、2行目が値の行として書き出されていた（#115）。1つの
+// 構成で見ても、合流する組み合わせを外すと通るため、**選べる構成をすべて試す。**
+test("どの構成でも、テンプレートの行はコメント・空行・値の行のいずれか", () => {
+  const combos = PORT_NAMES.reduce(
+    (acc, port) => acc.flatMap((ports) => PORT_CHOICES[port].map((v) => ({ ...ports, [port]: v }))),
+    [{}],
+  );
+  assert.ok(combos.length > 1);
+  for (const ports of combos) {
+    const config = { ...defaults(), ports, tracker: { prefix: "AIEP" } };
+    const bad = envExample(config)
+      .split("\n")
+      .filter((l) => l.trim() !== "" && !l.startsWith("#") && !/^[A-Z][A-Z0-9_]*=$/.test(l));
+    assert.deepEqual(bad, [], JSON.stringify(ports));
+  }
 });

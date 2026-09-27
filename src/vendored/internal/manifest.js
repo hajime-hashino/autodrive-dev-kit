@@ -72,9 +72,48 @@ export function readManifest(path) {
  */
 export function writeManifest(path, writes, ports = null) {
   const files = {};
-  for (const w of writes) files[w.path] = fingerprint(w.body);
-  const body = ports === null ? { version: 1, files } : { version: 1, ports, files };
+  // **行の指紋も残す。** 手で変えられて止まったとき、どの行を人が足したのかを
+  // 言うため。ファイルの指紋だけでは「変わった」までしか分からず、新しい版と
+  // 比べると kit が変えた行まで人の変更に見える（#115）。
+  const lines = {};
+  for (const w of writes) {
+    files[w.path] = fingerprint(w.body);
+    lines[w.path] = lineFingerprints(w.body);
+  }
+  const body = ports === null ? { version: 1, files, lines } : { version: 1, ports, files, lines };
   writeFileSync(path, `${JSON.stringify(body, null, 2)}\n`, "utf8");
+}
+
+/**
+ * 行ごとの短い指紋。**中身は残さない。** 並び順も数も見ない（`linesLost` と同じ）。
+ *
+ * @param {string} body
+ * @returns {string[]}
+ */
+export function lineFingerprints(body) {
+  const set = new Set();
+  for (const line of body.split("\n")) {
+    const key = line.trim();
+    if (key !== "") set.add(fingerprint(key).slice(0, 12));
+  }
+  return [...set].sort();
+}
+
+/**
+ * 前に置いたときの、行の指紋を読む。**無ければ null。** この記録より前に置かれた
+ * ものには無い。
+ *
+ * @param {string} path
+ * @returns {Record<string, string[]> | null}
+ */
+export function readPlacedLines(path) {
+  if (!existsSync(path)) return null;
+  try {
+    const lines = JSON.parse(readFileSync(path, "utf8"))?.lines;
+    return lines !== null && typeof lines === "object" && !Array.isArray(lines) ? lines : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -108,9 +147,10 @@ export function readPlacedPorts(path) {
  * @param {string} root
  * @param {Array<{ path: string, body: string }>} writes これから置くもの
  * @param {Record<string, string> | null} manifest 前に置いたときの指紋
- * @returns {{ edited: Array<{ path: string, lost: string[] }>, unchecked: string[] }}
+ * @param {Record<string, string[]> | null} [placedLines] 前に置いたときの、行の指紋
+ * @returns {{ edited: Array<{ path: string, lost: string[], exact: boolean }>, unchecked: string[] }}
  */
-export function findEdits(root, writes, manifest) {
+export function findEdits(root, writes, manifest, placedLines = null) {
   const edited = [];
   const unchecked = [];
 
@@ -139,7 +179,16 @@ export function findEdits(root, writes, manifest) {
     // 指紋どおりなら、変わったのは参照実装の側である。上書きしてよい。
     if (fingerprint(current) === known) continue;
 
-    edited.push({ path: w.path, lost: linesLost(current, w.body) });
+    // **前に置いた中身と比べられるなら、人が足した行だけを出す。** 新しい版と比べると、
+    // kit が文言を変えた行まで「消える」に入り、人は全部を自分の変更だと読む（#115）。
+    const placed = placedLines?.[w.path];
+    if (Array.isArray(placed)) {
+      const known = new Set(placed);
+      const lost = linesLost(current, w.body).filter((l) => !known.has(fingerprint(l).slice(0, 12)));
+      edited.push({ path: w.path, lost, exact: true });
+    } else {
+      edited.push({ path: w.path, lost: linesLost(current, w.body), exact: false });
+    }
   }
   return { edited, unchecked };
 }
@@ -182,6 +231,12 @@ export function describeEdits(edited, limit = 8) {
 
   for (const e of edited) {
     lines.push(`  ${e.path}`);
+    // **比べた相手を言う。** 前に置いた中身が分からなければ、kit が変えた行も混ざる。
+    if (e.exact === false) {
+      lines.push("      （前に置いた中身が分からないため、autodrive-dev-kit が文言を変えた行も含む）");
+    } else if (e.lost.length === 0) {
+      lines.push("      （足した行は無い。消したか、並べ替えただけ）");
+    }
     for (const l of e.lost.slice(0, limit)) lines.push(`      ${l}`);
     if (e.lost.length > limit) lines.push(`      … 他 ${e.lost.length - limit} 行`);
     lines.push("");
