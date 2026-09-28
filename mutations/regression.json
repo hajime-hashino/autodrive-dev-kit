@@ -888,5 +888,12 @@
     "from": "      const lost = linesLost(current, w.body).filter((l) => !known.has(fingerprint(l).slice(0, 12)));",
     "to": "      const lost = linesLost(current, w.body);",
     "why": "人が自分の変更だと読み、戻す判断を誤る"
+  },
+  {
+    "name": "AUT-260 運用者向けガイドを、読み手の決まらない1ファイルへ戻す",
+    "file": "src/templates/what-why.md",
+    "from": "| 運用者向けガイド | 本番に出して運用するインフラ担当者 | | `docs/guides/operator/` | |",
+    "to": "| 操作手順書（よく出る操作） | | | `docs/operations.md` | |",
+    "why": "開発する人の手順か、本番を運用する人の手順かが読めない"
   }
 ]
