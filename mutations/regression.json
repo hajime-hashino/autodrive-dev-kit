@@ -874,5 +874,19 @@
     "from": "開発環境・開発プロセスの品質は、次の点で確認している。",
     "to": "作る場の話。",
     "why": "品質の文書として読めず、プロセスの穴がプロダクトに効くことが伝わらない"
+  },
+  {
+    "name": "#115 注記の2行目以降に # を付けない",
+    "file": "src/vendored/internal/credentials.js",
+    "from": "    if (c.note !== undefined) lines.push(...c.note.split(\"\\n\").map((l) => `# ${l.trim()}`), \"#\");",
+    "to": "    if (c.note !== undefined) lines.push(`# ${c.note}`, \"#\");",
+    "why": "合流した注記の2行目が値の行になり、写して作った .env が壊れる"
+  },
+  {
+    "name": "#115 前に置いた中身と比べず、kit が変えた行も手で変えたと並べる",
+    "file": "src/vendored/internal/manifest.js",
+    "from": "      const lost = linesLost(current, w.body).filter((l) => !known.has(fingerprint(l).slice(0, 12)));",
+    "to": "      const lost = linesLost(current, w.body);",
+    "why": "人が自分の変更だと読み、戻す判断を誤る"
   }
 ]

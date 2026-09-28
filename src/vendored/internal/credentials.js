@@ -260,7 +260,7 @@ export function credentialsFor(config) {
       if (!already.why.includes(c.why)) already.why = `${already.why}。${c.why}`;
       // **注記は足す。** 分けたい人への案内が消える。
       if (c.note !== undefined && !(already.note ?? "").includes(c.note)) {
-        already.note = already.note === undefined ? c.note : `${already.note}\n    ${c.note}`;
+        already.note = already.note === undefined ? c.note : `${already.note}\n${c.note}`;
       }
     }
   }
@@ -321,7 +321,11 @@ export function envExample(config) {
     }
     // **求めていない権限について、求めていない理由を書く。** 書かないと、足りないと
     // 思った人が自分で足す。足せば、渡す必要のない権限が渡る。
-    if (c.note !== undefined) lines.push(`# ${c.note}`, "#");
+    //
+    // **複数行でも、すべての行をコメントにする。** 注記は合流すると改行を含む（GH_TOKEN を
+    // Repo と Tracker の両方が求める構成）。先頭の行にしか `#` を付けないと、残りが
+    // 値の行として読まれ、写して作った `.env` が壊れる（#115）。
+    if (c.note !== undefined) lines.push(...c.note.split("\n").map((l) => `# ${l.trim()}`), "#");
     lines.push(`# 失ったとき: ${c.lost}`, `${c.name}=`);
   }
   return `${lines.join("\n")}\n`;

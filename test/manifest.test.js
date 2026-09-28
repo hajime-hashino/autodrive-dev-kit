@@ -19,8 +19,10 @@ import {
   describeUnchecked,
   findEdits,
   fingerprint,
+  lineFingerprints,
   linesLost,
   readManifest,
+  readPlacedLines,
   writeManifest,
 } from "../src/vendored/internal/manifest.js";
 import { tempDir } from "./helpers/tmp.js";
@@ -246,4 +248,58 @@ test("指紋は追跡される場所に置く", () => {
   place(root);
   assert.ok(existsSync(join(root, "autodrive", "manifest.json")), "autodrive-dev-kit の中に無い");
   assert.equal(existsSync(join(root, ".autodrive", "manifest.json")), false);
+});
+
+// ------------------------------------------------------------ 誰が変えた行か
+
+// **kit が文言を変えた行を、人の変更として並べない**（#115）。報告では、並んだ6行の
+// うち人が足したのは1行だけだった。人は全部を自分の変更だと読み、判断を誤る。
+test("前に置いた中身と比べて、人が足した行だけを出す", () => {
+  const root = project();
+  const before = "# 前の版の説明\nGH_TOKEN=\n";
+  const next = "# 新しい版の説明\nGH_TOKEN=\n";
+  writeFileSync(join(root, "a.env"), "# 前の版の説明\n# 自分で足した\nGH_TOKEN=\n", "utf8");
+
+  const { edited } = findEdits(
+    root,
+    [{ path: "a.env", body: next }],
+    { "a.env": fingerprint(before) },
+    { "a.env": lineFingerprints(before) },
+  );
+  assert.deepEqual(edited, [{ path: "a.env", lost: ["# 自分で足した"], exact: true }]);
+});
+
+test("前に置いた中身が分からなければ、kit が変えた行も含むと断る", () => {
+  const root = project();
+  writeFileSync(join(root, "a.env"), "# 前の版の説明\n# 自分で足した\n", "utf8");
+  const { edited } = findEdits(root, [{ path: "a.env", body: "# 新しい版の説明\n" }], { "a.env": "x" });
+  assert.equal(edited[0].exact, false);
+  assert.ok(describeEdits(edited).includes("autodrive-dev-kit が文言を変えた行も含む"));
+  assert.equal(describeEdits([{ ...edited[0], exact: true }]).includes("文言を変えた行も含む"), false);
+});
+
+test("置いたら、行の指紋も残す。中身そのものは残さない", () => {
+  const root = project();
+  place(root);
+  const path = join(root, "autodrive", "manifest.json");
+  const lines = readPlacedLines(path);
+  assert.ok(Array.isArray(lines?.[".env.example"]) && lines[".env.example"].length > 0);
+  assert.equal(readFileSync(path, "utf8").includes("GH_TOKEN"), false, "中身が指紋ファイルに入っている");
+});
+
+test("手で足して止まったとき、実物の入れ替えでも足した行だけが出る", () => {
+  const root = project();
+  place(root);
+  const env = join(root, ".env.example");
+  // kit の側の文言が変わったことにする: 前に置いた行の指紋から1行を外す
+  const path = join(root, "autodrive", "manifest.json");
+  const raw = JSON.parse(readFileSync(path, "utf8"));
+  writeFileSync(env, `${readFileSync(env, "utf8")}# 自分で足した\n`, "utf8");
+  raw.files[".env.example"] = "変わった";
+  writeFileSync(path, JSON.stringify(raw), "utf8");
+
+  const r = place(root);
+  assert.equal(r.code, 1);
+  assert.ok(r.message.includes("# 自分で足した"), r.message);
+  assert.equal(r.message.includes("文言を変えた行も含む"), false, r.message);
 });
