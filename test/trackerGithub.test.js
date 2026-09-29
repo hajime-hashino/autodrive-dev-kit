@@ -70,11 +70,11 @@ test("番号に接頭辞を付けて、作業単位IDにする", () => {
 // **黙って数字だけを拾わない。** 別の対象の識別子が、番号さえ合えば通ってしまう。
 // **通ると、関係の無い Issue を進めることになる。**
 test("別の接頭辞の作業単位IDは、受け取らない", () => {
-  assert.throws(() => numberOf("AIEP", "CAS-123"), /形が違う/);
-  assert.throws(() => numberOf("AIEP", "123"), /形が違う/);
-  assert.throws(() => numberOf("AIEP", "#123"), /形が違う/);
+  assert.throws(() => numberOf("AIEP", "CAS-123"), /wrong shape/);
+  assert.throws(() => numberOf("AIEP", "123"), /wrong shape/);
+  assert.throws(() => numberOf("AIEP", "#123"), /wrong shape/);
   // **何を渡せばよいかまで言う。**
-  assert.throws(() => numberOf("AIEP", "x"), /AIEP-<番号>/);
+  assert.throws(() => numberOf("AIEP", "x"), /AIEP-<number>/);
 });
 
 // ------------------------------------------------------------ 状態の読み取り
@@ -163,7 +163,7 @@ test("一覧は、2ページ目以降も読む。ページの終わりは提出�
 test("読み切れなければ、欠けた一覧を返さずに落ちる", async () => {
   const full = () => ({ payload: Array.from({ length: 100 }, (_, i) => issue({ number: i + 1 })) });
   const { fetchStub } = serving(Array.from({ length: 300 }, full));
-  await assert.rejects(() => withFetch(fetchStub, () => tracker().list()), /欠けたまま返さない/);
+  await assert.rejects(() => withFetch(fetchStub, () => tracker().list()), /A list with gaps is not returned/);
 });
 
 // ------------------------------------------------------------ 状態を進める
@@ -264,7 +264,7 @@ test("権限が足りなければ、資格情報を確かめよと言う", async
 
   await assert.rejects(
     withFetch(fetchStub, () => tracker().get("AIEP-123")),
-    /issues への書き込み/,
+    /Write access to issues/,
   );
 });
 
@@ -273,7 +273,7 @@ test("対象が無ければ、無いと言う", async () => {
 
   await assert.rejects(
     withFetch(fetchStub, () => tracker().get("AIEP-999")),
-    /対象が無いか、読む権限が無い/,
+    /the target does not exist, or there is no permission to read it/,
   );
 });
 
@@ -320,7 +320,7 @@ test("別の接頭辞では、本文を直さない", async () => {
 
   await assert.rejects(
     withFetch(fetchStub, () => tracker().revise("CAS-123", "x")),
-    /形が違う/,
+    /wrong shape/,
   );
   assert.deepEqual(sent, [], "要求を送っている");
 });

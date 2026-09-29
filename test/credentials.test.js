@@ -101,7 +101,7 @@ test("それぞれ、何に使うかと失ったときが書いてある", () =>
     assert.ok(c.why.trim().length > 0, `${c.name} に用途が無い`);
     assert.ok(c.lost.trim().length > 0, `${c.name} に失ったときが無い`);
     assert.ok(text.includes(c.why), `${c.name} の用途がテンプレートに無い`);
-    assert.ok(text.includes(`失ったとき: ${c.lost}`), `${c.name} の失ったときがテンプレートに無い`);
+    assert.ok(text.includes(`If lost: ${c.lost}`), `${c.name} の失ったときがテンプレートに無い`);
   }
 });
 
@@ -261,24 +261,24 @@ test("アプリ自身の資格情報が、テンプレートに出る", () => {
 // **どこまでが autodrive-dev-kit の都合で、どこからが作っているものの都合かを分ける。**
 test("アプリ自身のものは、autodrive-dev-kit のものと混ざらない", () => {
   const text = envExample(withApp([APP_KEY]));
-  assert.ok(text.includes("このプロジェクト自身のもの"), "見出しが無い");
+  assert.ok(text.includes("Below here belongs to this project itself"), "見出しが無い");
   // 見出しより後に出ること。前に出ると、autodrive-dev-kit のものとして読まれる。
   assert.ok(
-    text.indexOf("ANTHROPIC_API_KEY=") > text.indexOf("このプロジェクト自身のもの"),
+    text.indexOf("ANTHROPIC_API_KEY=") > text.indexOf("Below here belongs to this project itself"),
     "見出しより前に出ている",
   );
-  assert.ok(text.indexOf("GH_TOKEN=") < text.indexOf("このプロジェクト自身のもの"));
+  assert.ok(text.indexOf("GH_TOKEN=") < text.indexOf("Below here belongs to this project itself"));
 });
 
 // **直接書くなと言うこと。** 言わないと書かれ、入れ替えで黙って消える。
 test("テンプレートへ直接書いても消えることを、テンプレート自身が言う", () => {
   const text = envExample(withApp([APP_KEY]));
   assert.ok(text.includes("app.credentials"), "どこに書けばよいかが出ていない");
-  assert.ok(text.includes("消える"), "直接書いたものが消えることを言っていない");
+  assert.ok(text.includes("gets erased"), "直接書いたものが消えることを言っていない");
 });
 
 test("1つも無ければ、見出しも出さない", () => {
-  assert.equal(envExample(defaults()).includes("このプロジェクト自身のもの"), false);
+  assert.equal(envExample(defaults()).includes("Below here belongs to this project itself"), false);
 });
 
 test("autodrive-dev-kit の資格情報と同じ名前は、二重に出さない", () => {
@@ -298,7 +298,7 @@ test("読取専用の鍵に、書ける鍵で兼ねない理由が書いてあ�
   const ci = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
   assert.notEqual(ci.note, undefined, "**兼ねない理由が無い。** 無いと片方で兼ねたくなる");
   assert.match(ci.note, /GH_TOKEN/, "どちらと兼ねてはいけないのかが書いていない");
-  assert.match(ci.note, /判定/, "分けている理由（判定する側が書き換えられる）が書いていない");
+  assert.match(ci.note, /checks/, "分けている理由（判定する側が書き換えられる）が書いていない");
 
   const text = envExample(defaults());
   assert.ok(text.includes(ci.note), "テンプレートに載っていない。人が読む場所に無ければ届かない");
@@ -348,8 +348,8 @@ test("合流しても、同じ権限は1回しか出ない", () => {
 test("合流した鍵は、両方の用途を書いている", () => {
   const token = credentialsFor(usingGithubIssues()).find((c) => c.name === "GH_TOKEN");
 
-  assert.ok(token?.why.includes("提出"), token?.why);
-  assert.ok(token?.why.includes("作業単位"), token?.why);
+  assert.ok(token?.why.includes("Submissions"), token?.why);
+  assert.ok(token?.why.includes("work items"), token?.why);
   // **分けたい人への案内も残ること。**
   assert.ok(token?.note?.includes("AUTODRIVE_TRACKER_TOKEN"), token?.note);
 });
@@ -360,7 +360,7 @@ test("判定用の鍵は、いまも別である", () => {
   assert.ok(names.includes("AUTODRIVE_CI_TOKEN"), names.join(", "));
 
   const ci = credentialsFor(usingGithubIssues()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
-  assert.ok(ci?.note?.includes("GH_TOKEN で兼ねないこと"), ci?.note);
+  assert.ok(ci?.note?.includes("Do not share GH_TOKEN"), ci?.note);
   // **Issues の権限は、こちらへ付かない。** 読むだけの鍵である。
   const permissions = (ci?.needs ?? []).map((n) => n.permission);
   assert.equal(permissions.includes("Issues"), false, permissions.join(", "));

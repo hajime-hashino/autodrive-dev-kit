@@ -30,21 +30,21 @@ import { describeOthers, detect, strandedFiles } from "./strandedTelemetry.js";
 import { defaultRoot, rememberBranch } from "./workItem.js";
 import { writeMarker } from "./trackerCli.js";
 
-const USAGE = `作業単位に着手する
+const USAGE = `Start work on a work item
 
-  begin <作業単位ID> --repo <対象リポジトリ> [--branch <ブランチ名>]
+  begin <work item ID> --repo <target repository> [--branch <branch name>]
 
-次をまとめて行う。1〜3のどれかが成り立たなければ、進めずに止める。
+Does the following together. If any of 1–3 does not hold, it stops without proceeding.
 
-  1. 作業単位を取得し、対象リポジトリを確かめる
-  2. 作業空間を用意する（既定ブランチを最新にし、ブランチを作る）
-  3. 状態を started へ進め、対象リポジトリを記し、記録の紐づけ先を設置する
-  4. 提出のあとに書かれ、取り残された記録を拾う
-  5. 統合済みなのに着手中のままの作業単位を閉じる
+  1. Get the work item, and check the target repository
+  2. Prepare the workspace (bring the default branch up to date and create a branch)
+  3. Advance the status to started, note the target repository, and place the link for records
+  4. Pick up records that were written after the submission and left behind
+  5. Close work items still started though integrated
 
-ブランチ名を省略すると、作業単位のIDから作る。
-資格情報は環境変数 LINEAR_API_KEY から読む。4 には Repo の資格情報も要る
-（GH_TOKEN / AUTODRIVE_CI_TOKEN）。無ければ 4 は飛ばす。着手は成立する。`;
+If the branch name is omitted, it is made from the work item ID.
+Credentials are read from the environment variable LINEAR_API_KEY. 4 also needs Repo credentials
+(GH_TOKEN / AUTODRIVE_CI_TOKEN). Without them, 4 is skipped. Starting still succeeds.`;
 
 /** @typedef {{ (repoPath: string, args: string[]): string }} Git */
 /** 既定の git。失敗は例外にせず、呼び出し側が文言を組み立てられるようにする。 */
@@ -93,10 +93,10 @@ export function resume({ root, repoPath, repo, branch, item, current, git }) {
     placeState(root, repoPath, repo, branch, item.id);
     return {
       output: [
-        `${item.id} は既にこのブランチで進行中（${branch}）。`,
+        `${item.id} is already in progress on this branch (${branch}).`,
         item.url,
         "",
-        "記録の紐づけ先を置き直した。",
+        "Re-placed the link for records.",
       ].join("\n"),
       code: 0,
     };
@@ -111,31 +111,31 @@ export function resume({ root, repoPath, repo, branch, item, current, git }) {
   })();
   if (dirty !== "") {
     return fail([
-      `${repo} に未コミットの変更がある。**このまま戻すと、${branch} へ持ち越される。**`,
+      `${repo} has uncommitted changes. **Returning now would carry them over to ${branch}.**`,
       "",
       ...dirty.split("\n").map((l) => `  ${l.trim()}`),
       "",
-      "いまの作業のものなら、次のどちらかを行うこと。",
-      `  - コミットする: git -C ${repo} add -A && git -C ${repo} commit`,
-      `  - 退避する: git -C ${repo} stash`,
+      "If they belong to the current work, do one of the following.",
+      `  - Commit: git -C ${repo} add -A && git -C ${repo} commit`,
+      `  - Stash: git -C ${repo} stash`,
     ]);
   }
 
   try {
     git(repoPath, ["checkout", branch]);
   } catch (error) {
-    return fail([`${branch} へ戻れない: ${message(error)}`]);
+    return fail([`Cannot return to ${branch}: ${message(error)}`]);
   }
 
   placeState(root, repoPath, repo, branch, item.id);
   return {
     output: [
-      `${item.id} を再開した: ${item.title}`,
+      `Resumed ${item.id}: ${item.title}`,
       item.url,
       "",
-      `対象リポジトリ  ${repo}`,
-      `ブランチ              ${branch}（${current} から戻った）`,
-      `記録の紐づけ先  ${repo} の ${item.id}`,
+      `Target repository  ${repo}`,
+      `Branch             ${branch} (returned from ${current})`,
+      `Records linked to ${item.id} in ${repo}`,
     ].join("\n"),
     code: 0,
   };
@@ -240,13 +240,13 @@ export async function run(
   });
 
   const id = positionals[0];
-  if (id === undefined) return { output: "作業単位のIDが要る\n\n" + USAGE, code: 2 };
+  if (id === undefined) return { output: "A work item ID is required\n\n" + USAGE, code: 2 };
   const repo = (values.repo ?? "").trim();
   if (repo === "") {
     return {
       output: [
-        "--repo が要る（記録の書き込み先になる）",
-        "1つの作業単位が変更を書き込むリポジトリは1つに限る。作業単位の本文に対象が書かれている。",
+        "--repo is required (it is where records are written)",
+        "A work item writes changes to only one repository. The target is written in the work item's body.",
       ].join("\n"),
       code: 2,
     };
@@ -262,22 +262,22 @@ export async function run(
     item = await tracker.get(id);
   } catch (error) {
     if (!/not found|見つから/i.test(message(error))) {
-      return fail([`Tracker を読めない: ${message(error)}`, "資格情報と通信を確かめること。"]);
+      return fail([`Cannot read the Tracker: ${message(error)}`, "Check the credentials and the connection."]);
     }
     item = null;
   }
   if (item === null) {
     return fail([
-      `作業単位 ${id} が見つからない。`,
-      "起票してから着手すること。起票は `tracker 作業単位を起票する` で行う。",
+      `Work item ${id} not found.`,
+      "File it before starting. Filing is done with `tracker 作業単位を起票する`.",
     ]);
   }
 
   const repoPath = repo === basename(root) ? root : join(root, repo);
   if (!existsSync(join(repoPath, ".git"))) {
     return fail([
-      `対象リポジトリ ${repo} がワークディレクトリに無い（${repoPath}）。`,
-      "名前が正しいか、ワークディレクトリに取得されているかを確かめること。",
+      `Target repository ${repo} is not in the working directory (${repoPath}).`,
+      "Check that the name is correct and that it has been fetched into the working directory.",
     ]);
   }
 
@@ -287,18 +287,18 @@ export async function run(
     current = git(repoPath, ["branch", "--show-current"]).trim();
   } catch (error) {
     return fail([
-      `${repo} の状態を読めない: ${message(error)}`,
-      "作業ツリーが壊れていないかを確かめること。",
+      `Cannot read the state of ${repo}: ${message(error)}`,
+      "Check that the working tree is not broken.",
     ]);
   }
 
   const defaultBranch = defaultBranchOf(repoPath, git);
   if (defaultBranch === null) {
     return fail([
-      `${repo} の既定ブランチを特定できない。`,
-      "`git clone` は origin/HEAD を置くが、`git init` から作った作業ツリーには無い。",
+      `Cannot identify the default branch of ${repo}.`,
+      "`git clone` sets origin/HEAD, but a working tree created with `git init` does not have it.",
       "",
-      "次を実行してから、もう一度着手すること。",
+      "Run the following, then start again.",
       `  git -C ${repo} remote set-head origin -a`,
     ]);
   }
@@ -323,10 +323,10 @@ export async function run(
   // 変更は既定ブランチへ届かない（AUT-38）。
   if (current !== defaultBranch) {
     return fail([
-      `${repo} はいま ${current} にいる（既定ブランチは ${defaultBranch}）。`,
-      "前の作業のブランチの上から始めると、その提出が閉じている場合に変更が届かない。",
+      `${repo} is currently on ${current} (the default branch is ${defaultBranch}).`,
+      "Starting on top of the previous work's branch means the changes never arrive if that submission is closed.",
       "",
-      "次のどちらかを行うこと。",
+      "Do one of the following.",
       // **先に既定ブランチを進める。** 進めずに切り替えると、統合済みの記録と
       // 手元の記録が食い違い、未コミットの追記があると切り替えられない。
       //
@@ -335,8 +335,8 @@ export async function run(
       //
       // 進めておけば、記録ファイルはブランチと同じ中身になり、**追記はそのまま次のブランチへ
       // 持ち越されて、次の提出に乗る。**
-      `  - 前の作業が統合済みなら: git -C ${repo} fetch origin ${defaultBranch}:${defaultBranch} && git -C ${repo} checkout ${defaultBranch}`,
-      "  - まだ提出していないなら: 先にその作業を提出してから着手する",
+      `  - If the previous work is integrated: git -C ${repo} fetch origin ${defaultBranch}:${defaultBranch} && git -C ${repo} checkout ${defaultBranch}`,
+      "  - If it is not submitted yet: submit that work first, then start",
     ]);
   }
 
@@ -344,17 +344,17 @@ export async function run(
     git(repoPath, ["pull", "--ff-only", "origin", defaultBranch]);
   } catch (error) {
     return fail([
-      `${repo} の ${defaultBranch} を最新にできない: ${message(error)}`,
-      "既定ブランチに手元だけのコミットが残っている可能性がある。",
+      `Cannot bring ${defaultBranch} of ${repo} up to date: ${message(error)}`,
+      "There may be local-only commits left on the default branch.",
       `  git -C ${repo} log --oneline origin/${defaultBranch}..${defaultBranch}`,
-      "出てきたコミットは、ブランチへ移して提出すること。",
+      "Move the commits that appear to a branch and submit them.",
     ]);
   }
 
   try {
     git(repoPath, ["checkout", "-b", branch]);
   } catch (error) {
-    return fail([`ブランチ ${branch} を作れない: ${message(error)}`]);
+    return fail([`Cannot create branch ${branch}: ${message(error)}`]);
   }
 
   // 3. マーカー -------------------------------------------------------------
@@ -373,7 +373,7 @@ export async function run(
 
   // 手元に残っている変更は、そのまま新しいブランチへ移る。消さないが、黙らない。
   const dirty = git(repoPath, ["status", "--short"]).trim();
-  const carried = dirty === "" ? [] : ["", "手元の変更をブランチへ持ってきた:", ...dirty.split("\n").map((l) => `  ${l}`)];
+  const carried = dirty === "" ? [] : ["", "Brought local changes over to the branch:", ...dirty.split("\n").map((l) => `  ${l}`)];
 
   // **他のリポジトリの取り残しは、言うだけにする。** 1つの作業単位が書き込む
   // リポジトリは1つに限るため、ここでは拾えない。黙ると、そのリポジトリで次の作業が
@@ -403,12 +403,12 @@ export async function run(
 
   return {
     output: [
-      `${item.id} に着手した: ${item.title}`,
+      `Started ${item.id}: ${item.title}`,
       item.url,
       "",
-      `対象リポジトリ  ${repo}`,
-      `ブランチ              ${branch}（${defaultBranch} から）`,
-      `記録の紐づけ先  ${repo} の ${item.id}`,
+      `Target repository  ${repo}`,
+      `Branch             ${branch} (from ${defaultBranch})`,
+      `Records linked to ${item.id} in ${repo}`,
       ...stranded,
       ...carried,
       ...others,
@@ -424,7 +424,7 @@ if (invokedDirectly) {
   // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
   const { tracker, error } = createTracker(root);
   if (tracker === null && argv.length > 0) {
-    console.error(error ?? "Tracker を組み立てられない");
+    console.error(error ?? "Cannot build the Tracker");
     process.exit(2);
   }
   try {

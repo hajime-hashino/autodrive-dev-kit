@@ -112,7 +112,7 @@ test("節を1つも読み取れなければ、何も言わない", () => {
 test("引いているつもりと、いまそこにあるものを、両方出す", () => {
   const text = describe([{ n: 18, expected: "未確定事項", actual: "プロダクトの品質" }]).join("\n");
 
-  assert.ok(text.includes("定義§18"), text);
+  assert.ok(text.includes("definition §18"), text);
   assert.ok(text.includes("未確定事項"), text);
   assert.ok(text.includes("プロダクトの品質"), text);
   // **写しの更新まで言う。** 言わないと、次に動いたときも同じ見落としが起きる。
@@ -121,7 +121,7 @@ test("引いているつもりと、いまそこにあるものを、両方出�
 
 test("節が無い場合も、そう出す", () => {
   const text = describe([{ n: 16, expected: "ポート", actual: null }]).join("\n");
-  assert.ok(text.includes("その番号の節が無い"), text);
+  assert.ok(text.includes("no section with that number"), text);
 });
 
 test("食い違いが無ければ、何も言わない", () => {
@@ -148,7 +148,7 @@ test("`invariants` を通しても、節の食い違いが出力に出る", asyn
   const { run } = await import("../src/vendored/internal/main.js");
   const { output, code } = await run(["--root", root, "--scope", "cross"]);
 
-  assert.ok(output.includes("定義の節が動いている"), output.slice(-600));
+  assert.ok(output.includes("Sections of the definition have moved"), output.slice(-600));
   assert.ok(output.includes("Product quality"), "いまそこにあるものを出していない");
   assert.equal(code, 1, "出しているのに落ちていない");
 });

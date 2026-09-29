@@ -12,16 +12,16 @@ import { parseArgs } from "node:util";
 import { discoverRepos } from "./repos.js";
 import { evidence, render } from "./quality.js";
 
-const USAGE = `品質の証跡を出す
+const USAGE = `Produce the quality evidence
 
-  quality [--root <場所>] [--scope cross|self] [--format text|json]
+  quality [--root <path>] [--scope cross|self] [--format text|json]
 
-  --root    判定の起点。既定はカレントディレクトリ
-  --scope   cross（既定）は直下のリポジトリも見る。self はここだけ
-  --format  text（既定）または json
+  --root    Where it starts. Defaults to the current directory
+  --scope   cross (default) also looks at the repositories directly under it. self looks only here
+  --format  text (default) or json
 
-**点は付けない。** 何をどこまで確かめたかと、誰も見ていないのはどこかを出す。
-良いか悪いかは読んだ人が決める。`;
+**No score is given.** It shows what was checked and how far, and where nobody is looking.
+Whether that is good or bad is for the reader to decide.`;
 
 export function run(argv) {
   let values;
@@ -42,18 +42,18 @@ export function run(argv) {
 
   if (values.help) return { output: USAGE, code: 0 };
   if (values.scope !== "cross" && values.scope !== "self") {
-    return { output: `--scope は cross か self（受け取った値: ${values.scope}）`, code: 2 };
+    return { output: `--scope must be cross or self (received: ${values.scope})`, code: 2 };
   }
   if (values.format !== "text" && values.format !== "json") {
-    return { output: `--format は text か json（受け取った値: ${values.format}）`, code: 2 };
+    return { output: `--format must be text or json (received: ${values.format})`, code: 2 };
   }
 
   const repos = discoverRepos(resolve(values.root), values.scope);
   if (repos.length === 0) {
     return {
       output:
-        `${resolve(values.root)} にリポジトリが見つからない。\n` +
-        "記録は git の履歴の上で成り立っている。起点を `--root` で指すこと。",
+        `No repository found at ${resolve(values.root)}.\n` +
+        "Records rest on the git history. Point at the starting point with `--root`.",
       code: 2,
     };
   }
@@ -69,8 +69,8 @@ export function run(argv) {
   if (broken.length > 0) {
     lines.push(
       "",
-      `## 読めなかった記録（${broken.length} 件）`,
-      "**この分は、上のどの数にも入っていない。**",
+      `## Records that could not be read (${broken.length})`,
+      "**These are not included in any of the numbers above.**",
       ...broken.slice(0, 10).map((b) => `  ${b}`),
     );
   }

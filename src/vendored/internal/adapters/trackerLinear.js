@@ -79,9 +79,9 @@ export class LinearTracker {
     });
     const payload = (await res.json());
     if (payload.errors !== undefined && payload.errors.length > 0) {
-      throw new Error(`Tracker への要求が失敗した: ${payload.errors.map((e) => e.message).join(" / ")}`);
+      throw new Error(`The request to the Tracker failed: ${payload.errors.map((e) => e.message).join(" / ")}`);
     }
-    if (!res.ok) throw new Error(`Tracker への要求が失敗した: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`The request to the Tracker failed: HTTP ${res.status}`);
     return payload.data;
   }
 
@@ -100,8 +100,8 @@ export class LinearTracker {
       const keys = teams.map((t) => t.key).join(", ");
       throw new Error(
         this.#teamKey === undefined
-          ? `対象を1つに定められない。AUTODRIVE_TRACKER_TEAM で指定すること（候補: ${keys}）`
-          : `指定された対象が見つからない: ${this.#teamKey}（候補: ${keys}）`,
+          ? `Cannot narrow the target down to one. Specify it with AUTODRIVE_TRACKER_TEAM (candidates: ${keys})`
+          : `The specified target was not found: ${this.#teamKey} (candidates: ${keys})`,
       );
     }
     this.#teamId = found.id;
@@ -130,7 +130,7 @@ export class LinearTracker {
     const found = data.team.states.nodes
       .filter((s) => s.type === STATE_TYPE[to])
       .sort((a, b) => a.position - b.position)[0];
-    if (found === undefined) throw new Error(`対応する状態が実装側に無い: ${to}`);
+    if (found === undefined) throw new Error(`The implementation has no corresponding state: ${to}`);
     return found.id;
   }
 
@@ -174,8 +174,8 @@ export class LinearTracker {
       after = issues.pageInfo.endCursor;
     }
     throw new Error(
-      `作業単位が ${LIST_PAGE * LIST_MAX_PAGES} 件を超えた。**一覧を欠けたまま返さない。**` +
-        "上限（LIST_MAX_PAGES）を見直すこと",
+      `Work items exceeded ${LIST_PAGE * LIST_MAX_PAGES}. **A list with gaps is not returned.** ` +
+        "Review the limit (LIST_MAX_PAGES)",
     );
   }
 

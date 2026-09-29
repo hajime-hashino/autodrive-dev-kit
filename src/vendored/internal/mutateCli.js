@@ -61,17 +61,17 @@ export function sweepLeftovers(since, dir = tmpdir()) {
 export function run(argv, root = KIT) {
   const path = argv[0];
   if (path === undefined) {
-    return { output: "変異の一覧を渡すこと: mutateCli.js <path.json>", code: 2 };
+    return { output: "Pass a list of mutations: mutateCli.js <path.json>", code: 2 };
   }
   let mutations;
   try {
     mutations = JSON.parse(readFileSync(resolve(root, path), "utf8"));
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
-    return { output: `変異の一覧を読めない: ${why}`, code: 2 };
+    return { output: `Cannot read the list of mutations: ${why}`, code: 2 };
   }
   if (!Array.isArray(mutations) || mutations.length === 0) {
-    return { output: "変異が1つも書かれていない", code: 2 };
+    return { output: "No mutations are written", code: 2 };
   }
 
   const startedAt = Date.now();
@@ -79,7 +79,7 @@ export function run(argv, root = KIT) {
   // **黙って掃かない。** 何を消したかは出す。消えたことに後から気づく形にしない。
   const swept = sweepLeftovers(startedAt);
   const lines = describe(result);
-  if (swept > 0) lines.push("", `判定が残した作業用の置き場を ${swept} 個掃いた。`);
+  if (swept > 0) lines.push("", `Swept ${swept} working directories the checks left behind.`);
   return { output: lines.join("\n"), code: allCaught(result) ? 0 : 1 };
 }
 

@@ -84,7 +84,7 @@ export function isNewer(base, head) {
 /** 一覧を、読める長さに畳んで並べる。 */
 function listed(paths, limit = 10) {
   const head = paths.slice(0, limit).map((p) => `  ${p}`);
-  return paths.length > limit ? [...head, `  … 他 ${paths.length - limit} 件`] : head;
+  return paths.length > limit ? [...head, `  … ${paths.length - limit} more`] : head;
 }
 
 /**
@@ -105,47 +105,47 @@ export function checkBump(facts) {
     return {
       ok: false,
       message: [
-        "変わったファイルを読めない。",
-        "既定ブランチの履歴が要る。浅いチェックアウトでは比べられない（fetch-depth: 0）。",
+        "Cannot read the changed files.",
+        "The default branch's history is needed. A shallow checkout cannot compare (fetch-depth: 0).",
       ].join("\n"),
     };
   }
   if (head === null) {
-    return { ok: false, message: "VERSION を読めない。ファイルが消えていないかを確かめること。" };
+    return { ok: false, message: "Cannot read VERSION. Check that the file has not been deleted." };
   }
   if (parseVersion(head) === null) {
     return {
       ok: false,
       message: [
-        `VERSION が読めない形をしている: ${head}`,
-        "`1.2.3` の形で書くこと。タグは `v<VERSION>` で打たれるため、崩れていると名前にならない。",
+        `VERSION is in an unreadable shape: ${head}`,
+        "Write it as `1.2.3`. Tags are cut as `v<VERSION>`, so a broken shape does not make a name.",
       ].join("\n"),
     };
   }
 
   const touched = distributedChanges(changed);
   if (touched.length === 0) {
-    return { ok: true, message: `配られる中身は変わっていない。バージョンは ${head} のまま。` };
+    return { ok: true, message: `What is distributed has not changed. The version stays at ${head}.` };
   }
 
   // 比べる相手が無いのは、既定ブランチにまだ VERSION が無い場合。**新しく置いた
   // ときであり、上げ忘れではない。**
-  if (base === null) return { ok: true, message: `バージョンを ${head} で置いた。` };
+  if (base === null) return { ok: true, message: `Placed the version at ${head}.` };
 
   if (base === head) {
     return {
       ok: false,
       message: [
-        `配られる中身が変わっているのに、VERSION が ${head} のまま動いていない。`,
+        `What is distributed has changed, but VERSION has not moved from ${head}.`,
         "",
-        "**記録の `kit_version` が同じ値のままになり、後から比べられない。** 定義§6が",
-        "この属性を必須にしているのは記録を比べるためである。統合されてもタグが打たれない。",
+        "**`kit_version` in the records stays the same value and cannot be compared later.** Definition §6",
+        "makes this attribute required so that records can be compared. No tag is cut even when integrated.",
         "",
-        "次を行うこと。",
-        "  1. VERSION の末尾の数字を1つ上げる",
-        "  2. package.json の version を同じ値にする",
+        "Do the following.",
+        "  1. Raise the last number of VERSION by one",
+        "  2. Set version in package.json to the same value",
         "",
-        "配られない場所だけを触ったつもりなら、下の一覧を見ること。",
+        "If you meant to touch only places that are not distributed, look at the list below.",
         ...listed(touched),
       ].join("\n"),
     };
@@ -155,14 +155,14 @@ export function checkBump(facts) {
     return {
       ok: false,
       message: [
-        `VERSION が下がっている（${base} → ${head}）。`,
-        "既に打たれたタグと同じ名前が、後から出てくることになる。",
-        `${base} より後の値にすること。`,
+        `VERSION went down (${base} → ${head}).`,
+        "A name identical to an already-cut tag would appear later.",
+        `Make it a value after ${base}.`,
       ].join("\n"),
     };
   }
 
-  return { ok: true, message: `バージョンを上げている（${base} → ${head}）。` };
+  return { ok: true, message: `The version is raised (${base} → ${head}).` };
 }
 
 // ---------------------------------------------------------------- git から読む
@@ -205,12 +205,12 @@ export function inspect(base, head, git = runGit) {
   });
 }
 
-const USAGE = `バージョンを上げ忘れていないかを見る
+const USAGE = `Check that the version was not forgotten
 
-  node src/vendored/internal/releaseVersion.js --base <地点> --head <地点>
+  node src/vendored/internal/releaseVersion.js --base <ref> --head <ref>
 
-配られる中身が変わっているのに VERSION が動いていなければ、落とす。
-提出のたびに CI から打たれる。**人が打つものではない。**`;
+Fails if what is distributed has changed but VERSION has not moved.
+Run by CI on every submission. **Not something a human runs.**`;
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {

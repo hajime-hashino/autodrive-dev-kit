@@ -42,12 +42,12 @@
 /** @typedef {{ host: string, why: string }} Destination */
 /** どの構成でも要るもの。**AIが動かなければ何も始まらない。** */
 const ALWAYS = [
-  { host: "api.anthropic.com", why: "推論" },
-  { host: "console.anthropic.com", why: "認証" },
-  { host: "statsig.anthropic.com", why: "機能フラグ（CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC で止まる）" },
-  { host: "registry.npmjs.org", why: "依存の取得" },
-  { host: "deb.debian.org", why: "コンテナ内のパッケージ" },
-  { host: "security.debian.org", why: "同上" },
+  { host: "api.anthropic.com", why: "Inference" },
+  { host: "console.anthropic.com", why: "Authentication" },
+  { host: "statsig.anthropic.com", why: "Feature flags (stopped by CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC)" },
+  { host: "registry.npmjs.org", why: "Fetching dependencies" },
+  { host: "deb.debian.org", why: "Packages inside the container" },
+  { host: "security.debian.org", why: "Same as above" },
 ];
 
 /**
@@ -58,9 +58,9 @@ const ALWAYS = [
 const FOR_IMPLEMENTATION = {
   github: [
     { host: "github.com", why: "clone / push" },
-    { host: "api.github.com", why: "提出、実行結果の取得" },
-    { host: "codeload.github.com", why: "アーカイブの取得" },
-    { host: "objects.githubusercontent.com", why: "大きなオブジェクト" },
+    { host: "api.github.com", why: "Submissions, fetching run results" },
+    { host: "codeload.github.com", why: "Fetching archives" },
+    { host: "objects.githubusercontent.com", why: "Large objects" },
     // **無いと CI の失敗を自分で追えない。** 人に貼ってもらうか手元で再現するか
     // しかなく、そのぶん人の手間になる。
     //
@@ -68,19 +68,19 @@ const FOR_IMPLEMENTATION = {
     // `/actions/jobs/{id}/logs` は Azure の blob へ転送され、そのホスト名は
     // 実行ごとに変わる（実測で `productionresultssa0/5/6/12/13/18/19`）。
     // **ワイルドカードは書けないので、一覧では届かない**（AUT-161）。
-    { host: "results-receiver.actions.githubusercontent.com", why: "実行結果のログ本文" },
-    { host: "ghcr.io", why: "devcontainer feature の取得" },
-    { host: "pkg-containers.githubusercontent.com", why: "同上" },
+    { host: "results-receiver.actions.githubusercontent.com", why: "Log bodies of run results" },
+    { host: "ghcr.io", why: "Fetching devcontainer features" },
+    { host: "pkg-containers.githubusercontent.com", why: "Same as above" },
   ],
-  linear: [{ host: "api.linear.app", why: "作業単位の取得・起票・状態の更新" }],
+  linear: [{ host: "api.linear.app", why: "Getting, filing, and updating the status of work items" }],
   // **Repo に GitHub を使っていなくても要る。** 作業単位だけ GitHub に置く構成が
   // ありうる。重複は落とされるので、両方に書いても一覧は増えない。
-  "github-issues": [{ host: "api.github.com", why: "作業単位の取得・起票・状態の更新" }],
+  "github-issues": [{ host: "api.github.com", why: "Getting, filing, and updating the status of work items" }],
   "cloudflare-workers": [
-    { host: "api.cloudflare.com", why: "配布先の状態の確認" },
+    { host: "api.cloudflare.com", why: "Checking the state of the deployment target" },
     // **記憶で答えないために要る。** 読み取り専用の公式文書であり、資格情報は
     // 関わらない。記憶で書いて外した実例がある。
-    { host: "developers.cloudflare.com", why: "仕様の確認" },
+    { host: "developers.cloudflare.com", why: "Checking the specification" },
   ],
 };
 
@@ -118,28 +118,28 @@ export function destinationsFor(config) {
  */
 export function allowedDomains(config) {
   const lines = [
-    "# 外向き通信を許可する宛先。",
+    "# Destinations allowed for outbound traffic.",
     "#",
-    "# **ここに無い宛先の多くは塞がる。ただし全部ではない。**",
+    "# **Most destinations not listed here are blocked. But not all.**",
     "#",
-    "# 規則は名前解決した IP に対して置かれる。したがって、**許可した宛先と同じ IP を",
-    "# 共有する宛先へは、ここに無くても出られる。** 同じ CDN やホスティングの背後に",
-    "# あるものが該当する。実際に測った例:",
+    "# Rules are placed against resolved IPs. Therefore **destinations that share an IP",
+    "# with an allowed destination can be reached even if they are not listed here.** Things",
+    "# behind the same CDN or hosting fall into this. Actually measured examples:",
     "#",
-    "#   objects.githubusercontent.com   一覧にある   出られる",
-    "#   raw.githubusercontent.com       一覧に無い   **出られる**（同じ IP）",
-    "#   example.com                     一覧に無い   塞がる（別の IP）",
+    "#   objects.githubusercontent.com   listed       reachable",
+    "#   raw.githubusercontent.com       not listed   **reachable** (same IP)",
+    "#   example.com                     not listed   blocked (different IP)",
     "#",
-    "# **これを、データが外へ出ないことの保証として扱わないこと。** 出られる先を",
-    "# 減らす仕掛けであって、閉じる仕掛けではない。**本当に守っているのは、手元に",
-    "# 資格情報を置かないことと、固定条件で止まることである。**",
+    "# **Do not treat this as a guarantee that data does not leave.** It is a mechanism that",
+    "# reduces where traffic can go, not one that closes it off. **What actually protects is not",
+    "# keeping credentials locally, and stopping at fixed conditions.**",
     "#",
-    "# 追加するときは、なぜ要るのかを併記すること。書けないなら要らない可能性が高い。",
+    "# When adding one, write why it is needed alongside. If you cannot, it is likely not needed.",
     "#",
-    "# **ワイルドカードは書けない。** 同じ理由による。サブドメインごとに1行が要る。",
+    "# **Wildcards cannot be written.** For the same reason. Each subdomain needs its own line.",
     "#",
-    "# **この一覧は構成（autodrive.json）から作られている。** 使わないポートの宛先は",
-    "# 入っていない。構成を変えたら `autodrive-dev-kit update` を打ち直すこと。",
+    "# **This list is built from the configuration (autodrive.json).** Destinations for ports not in use",
+    "# are not included. If you change the configuration, run `autodrive-dev-kit update` again.",
     "",
   ];
 
@@ -152,7 +152,7 @@ export function allowedDomains(config) {
     // いる穴なのか、作っているもののために開いている穴なのかが読み取れない。
     if (d.ofApp === true && !started) {
       started = true;
-      lines.push("", "# ここから下は、このプロジェクト自身の宛先。");
+      lines.push("", "# Below here are this project's own destinations.");
     }
     lines.push(`${d.host.padEnd(width)}  # ${d.why}`);
   }
@@ -161,13 +161,13 @@ export function allowedDomains(config) {
   // 書けと言った場所が、書いたものを消していた（AUT-115）。
   lines.push(
     "",
-    "# 配布先や、このアプリが叩く先を足すときは、**このファイルを直接編集しないこと。**",
-    "# ここは構成から作られており、`update` のたびに書き直される。",
+    "# When adding the deployment target or destinations this app calls, **do not edit this file directly.**",
+    "# It is built from the configuration and rewritten on every `update`.",
     "#",
-    "# autodrive.json の app.destinations に足して、`autodrive-dev-kit update` を打つこと。",
-    "#   { \"host\": \"example.workers.dev\", \"why\": \"配布先の疎通確認\" }",
+    "# Add them to app.destinations in autodrive.json, and run `autodrive-dev-kit update`.",
+    "#   { \"host\": \"example.workers.dev\", \"why\": \"connectivity check of the deployment target\" }",
     "#",
-    "# **宛先ごとに1行が要る。** 手が要るが、そこが判断の機会になる。",
+    "# **Each destination needs its own line.** It takes effort, but that is where the judgment happens.",
   );
   return `${lines.join("\n")}\n`;
 }

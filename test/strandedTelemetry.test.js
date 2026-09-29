@@ -86,9 +86,9 @@ test("取り残しがあっても、コミットしない", () => {
   assert.equal(git.calls.some((a) => a[0] === "commit"), false, "拾ってコミットしている");
   assert.equal(git.calls.some((a) => a[0] === "add"), false, "add している");
   // **黙らない。** 残っていることと、どうすればよいかを言う。
-  assert.match(out, /取り残された記録がある/, "黙っている");
+  assert.match(out, /There are records left behind/, "黙っている");
   assert.match(out, /telemetry\/AUT-155\.jsonl/, "何が残っているのかが無い");
-  assert.match(out, /そちらのブランチへ載せること/, "どうすればよいかが無い");
+  assert.match(out, /put them on that branch/, "どうすればよいかが無い");
 });
 
 test("取り残しが無ければ、何も言わない", () => {
@@ -98,7 +98,7 @@ test("取り残しが無ければ、何も言わない", () => {
 
 test("状態を読めなくても、止めずに言う", () => {
   const git = fakeGit({}, ["status"]);
-  assert.match(detect("/repo", git).join("\n"), /調べられなかった/, "黙っている");
+  assert.match(detect("/repo", git).join("\n"), /Could not check/, "黙っている");
 });
 
 // ------------------------------------------------------------ 他のリポジトリ
@@ -111,7 +111,7 @@ test("他のリポジトリの取り残しを、あると言う", () => {
   assert.match(out, /autodrive-dev-work/);
   assert.match(out, /telemetry\/AUT-148\.jsonl/);
   // **拾わない理由まで言う。** 言わないと、拾い忘れに見える。
-  assert.match(out, /1つの作業単位が/, "なぜ拾えないのかが無い");
+  assert.match(out, /writes to only one repository/, "なぜ拾えないのかが無い");
   assert.equal(/agent-playground/.test(out), false, "取り残しの無いものを並べている");
 });
 

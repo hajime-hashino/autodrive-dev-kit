@@ -31,22 +31,22 @@ const RUN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  */
 const KIT_ROOT = resolve(RUN_ROOT, "..", "..");
 
-const USAGE = `AIに開発を任せて回すための autodrive-dev-kit
+const USAGE = `autodrive-dev-kit: hand development to an AI and keep it running
 
-  autodrive-dev-kit init                    新しく始める。構成を聞いて、土台を置く
-  autodrive-dev-kit apply                   既にあるものへ入れる。構成を推測して確かめる
+  autodrive-dev-kit init                    Start new. Asks about the setup and places the foundation
+  autodrive-dev-kit apply                   Add to an existing project. Infers the setup and confirms it
 
-AIが使うもの（人は打たなくてよい）
+Used by the AI (humans do not need to run these)
 
-  autodrive-dev-kit update                  新しいバージョンへ入れ替える。構成は聞かない
-  autodrive-dev-kit begin <ID> --repo <先>  着手する
-  autodrive-dev-kit tracker <操作> ...      作業単位を扱う
-  autodrive-dev-kit telemetry <操作> ...    記録する
-  autodrive-dev-kit sandbox <操作> ...      出口を確かめる
-  autodrive-dev-kit invariants [--root <場所>]  不変条件の状態を判定する
-  autodrive-dev-kit quality [--root <場所>]     品質の証跡を出す
+  autodrive-dev-kit update                  Replace with a newer version. Does not ask about the setup
+  autodrive-dev-kit begin <ID> --repo <target>  Start work
+  autodrive-dev-kit tracker <operation> ...     Handle work items
+  autodrive-dev-kit telemetry <operation> ...   Record
+  autodrive-dev-kit sandbox <operation> ...     Check the egress
+  autodrive-dev-kit invariants [--root <path>]  Judge the state of the invariants
+  autodrive-dev-kit quality [--root <path>]     Produce the quality evidence
 
-使い方の全体は README を参照。`;
+See the README for full usage.`;
 
 /** 下位の入口。**引数はそのまま渡す。** ここで解釈すると二重に持つことになる。 */
 const DELEGATES = {
@@ -124,7 +124,7 @@ if (invokedDirectly) {
 
   const delegate = delegateFor(command);
   if (delegate === null) {
-    console.error(`知らない操作: ${command}\n\n${USAGE}`);
+    console.error(`Unknown operation: ${command}\n\n${USAGE}`);
     process.exit(2);
   }
 

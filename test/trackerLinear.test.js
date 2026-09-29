@@ -88,7 +88,7 @@ test("対応する型の状態が無ければ、黙って別の状態へ進め�
   try {
     await assert.rejects(
       () => new LinearTracker("t", "AUT").advance("x", "done"),
-      /対応する状態が実装側に無い/,
+      /no corresponding state/,
     );
   } finally {
     stub.restore();
@@ -160,7 +160,7 @@ test("読み切れなければ、欠けた一覧を返さずに落ちる", async
     return { team: { issues: { nodes: [ISSUE], pageInfo: { hasNextPage: true, endCursor: "c" } } } };
   });
   try {
-    await assert.rejects(() => new LinearTracker("t", "AUT").list(), /欠けたまま返さない/);
+    await assert.rejects(() => new LinearTracker("t", "AUT").list(), /A list with gaps is not returned/);
   } finally {
     stub.restore();
   }

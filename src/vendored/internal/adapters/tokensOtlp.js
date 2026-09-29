@@ -160,12 +160,12 @@ export async function send(payload, target, { fetchImpl = fetch, timeoutMs = 500
       body: JSON.stringify(payload),
       signal: abort.signal,
     });
-    if (!res.ok) return { ok: false, note: `送り先が ${res.status} を返した` };
-    return { ok: true, note: "送った" };
+    if (!res.ok) return { ok: false, note: `The destination returned ${res.status}` };
+    return { ok: true, note: "sent" };
   } catch (e) {
     // **理由を残す。** 落ちた理由が分からないと、設定の誤りと通信の失敗を
     // 見分けられない。
-    return { ok: false, note: `送れなかった: ${e instanceof Error ? e.message : String(e)}` };
+    return { ok: false, note: `Could not send: ${e instanceof Error ? e.message : String(e)}` };
   } finally {
     clearTimeout(timer);
   }

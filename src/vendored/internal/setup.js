@@ -222,11 +222,11 @@ export function missingPrefix(config, root) {
   if (config.ports.tracker !== "github-issues" || config.tracker.prefix !== null) return null;
   const suggested = suggestPrefix(basename(resolve(root)));
   return (
-    `${CONFIG_FILE} の tracker が github-issues なのに、tracker.prefix が無い。**置かずに止めた。**\n\n` +
-    "作業単位IDの頭に付く、英大文字で始まる2〜4文字を決めること（例: AIEP → AIEP-123）。\n" +
-    "ブランチ名と記録のファイル名になる。**後から変えると、それまでの記録が追えなくなる。**\n\n" +
-    (suggested === null ? "" : `案: ${suggested}（リポジトリ名から作った。決定ではない）\n\n`) +
-    `決まったら ${CONFIG_FILE} に書いて、もう一度実行すること。\n\n` +
+    `tracker in ${CONFIG_FILE} is github-issues, but there is no tracker.prefix. **Stopped without placing anything.**\n\n` +
+    "Decide the 2–4 characters starting with an uppercase letter that lead each work item ID (e.g. AIEP → AIEP-123).\n" +
+    "It becomes the branch name and the record file name. **Changing it later breaks the trail of earlier records.**\n\n" +
+    (suggested === null ? "" : `Suggestion: ${suggested} (made from the repository name. Not a decision)\n\n`) +
+    `Once decided, write it in ${CONFIG_FILE} and run again.\n\n` +
     `  "tracker": { "prefix": "${suggested ?? "AIEP"}" }`
   );
 }
@@ -298,13 +298,13 @@ export const FROM_SOURCE = "npx github:hajime-hashino/autodrive-dev-kit";
 function cannotGenerate(kitRoot) {
   if (existsSync(join(kitRoot, TEMPLATES_DIR))) return null;
   return refuse(
-    "ここからは置けない。**プロジェクトの中のコピーには、テンプレートが入っていない。**\n\n" +
-      "コピーが持っているのは実行するものだけで、ファイルを作る元は持っていない。\n" +
-      "意図してそうしている（ADR 0004）。プロジェクトがファイルを生成することはない。\n\n" +
-      "更新するときは、kit を外から取ってきて打つこと。\n\n" +
+    "Cannot place files from here. **The copy inside the project does not include the templates.**\n\n" +
+      "The copy holds only what runs, not the sources files are made from.\n" +
+      "This is intentional (ADR 0004). The project never generates files.\n\n" +
+      "To update, fetch the kit from outside and run it.\n\n" +
       `  ${FROM_SOURCE} update\n\n` +
-      "**人が打つものではない。** 作業単位にして、ブランチの上で打つこと\n" +
-      "（docs/autodrive.md「autodrive-dev-kit を更新する」）。",
+      "**This is not something a human runs.** Make it a work item and run it on a branch\n" +
+      "(\"Updating autodrive-dev-kit\" in docs/autodrive-reference.md).",
   );
 }
 
@@ -320,16 +320,16 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
 
   if (mode === "update" && !present) {
     return refuse(
-      `${CONFIG_FILE} が無い。**このプロジェクトは、まだ土台を置いていない。**\n\n` +
-        "  新しく始めるなら:            autodrive-dev-kit init\n" +
-        "  既にあるものへ入れるなら:    autodrive-dev-kit apply",
+      `There is no ${CONFIG_FILE}. **This project does not have the foundation placed yet.**\n\n` +
+        "  To start new:                     autodrive-dev-kit init\n" +
+        "  To add it to an existing project: autodrive-dev-kit apply",
     );
   }
   if (mode !== "update" && present) {
     return refuse(
-      `${CONFIG_FILE} が既にある。**上書きすると、決めた内容が消える。**\n\n` +
-        "  autodrive-dev-kit を新しいバージョンへ入れ替えるなら:  autodrive-dev-kit update\n" +
-        `  構成を決め直すなら:              ${CONFIG_FILE} を消してから もう一度`,
+      `${CONFIG_FILE} already exists. **Overwriting it erases what was decided.**\n\n` +
+        "  To move autodrive-dev-kit to a newer version:  autodrive-dev-kit update\n" +
+        `  To decide the configuration again:             delete ${CONFIG_FILE}, then run again`,
     );
   }
 
@@ -343,7 +343,7 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
     const read = readConfig(root);
     if (read.error !== null) {
       // **壊れた構成を既定で埋めない。** 決めた内容が黙って別のものに入れ替わる。
-      return refuse(`${read.error}\n\n直してから、もう一度実行すること。`);
+      return refuse(`${read.error}\n\nFix it, then run again.`);
     }
     config = read.config;
 
@@ -386,7 +386,7 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
   if (mode !== "update" && config.ports.tracker === "github-issues" && config.tracker.prefix === null) {
     const { prefix, how } = askPrefix(interviewer, config.language, basename(resolve(root)));
     config.tracker.prefix = prefix;
-    decisions.push(`tracker.prefix: ${prefix ?? "**決まっていない**"}${how}`);
+    decisions.push(`tracker.prefix: ${prefix ?? "**not decided**"}${how}`);
   }
 
   // 置く ----------------------------------------------------------------------
@@ -398,7 +398,10 @@ export function setup(mode , root , kitRoot , interviewer , inside = undefined) 
   if (mode === "update") {
     result.placed.push({ path: CONFIG_FILE, placement: "skipped" });
     // 入れ替えは、既に動いているプロジェクトに対して打つ。始め方の案内は要らない。
-    result.todo = result.todo.filter((t) => !t.includes("はじめる"));
+    // **文言そのもので外す。** 日本語の「はじめる」で探していたため、言語が en の
+    // プロジェクトでは、入れ替えのたびに始め方の案内が出ていた（AUT-264）。
+    const start = say(config.language, "todo.start");
+    result.todo = result.todo.filter((t) => t !== start);
     const changed = portChanges(config, placedPorts);
     result.notes = [...(result.notes ?? []), ...changed.notes];
     result.todo = [...changed.todo, ...result.todo];

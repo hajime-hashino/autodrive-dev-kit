@@ -128,7 +128,7 @@ test("特定できなければ、直し方を出して止まる", async () => {
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("既定ブランチを特定できない"), output);
+  assert.ok(output.includes("Cannot identify the default branch"), output);
   assert.ok(output.includes("remote set-head"), `直し方を出していない: ${output}`);
 });
 
@@ -155,7 +155,7 @@ test("手元に残っている変更は、消さずに知らせる", async () =>
 
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
-  assert.ok(output.includes("手元の変更をブランチへ持ってきた"), output);
+  assert.ok(output.includes("Brought local changes over to the branch"), output);
   assert.ok(output.includes("telemetry/AUT-1.jsonl"), output);
 });
 
@@ -171,7 +171,7 @@ test("取り残された記録があっても、コミットしない", async ()
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
   assert.equal(git.calls.some((a) => a[0] === "commit"), false, `拾ってコミットしている: ${output}`);
-  assert.ok(output.includes("取り残された記録がある"), output);
+  assert.ok(output.includes("There are records left behind"), output);
   assert.ok(output.includes("telemetry/AUT-98.jsonl"), output);
 });
 
@@ -182,7 +182,7 @@ test("取り残しが無ければ、何も言わない", async () => {
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
   assert.equal(git.calls.some((a) => a[0] === "commit"), false, "拾うものが無いのにコミットした");
-  assert.equal(output.includes("取り残された記録"), false, output);
+  assert.equal(output.includes("records left behind"), false, output);
 });
 
 // **他のリポジトリの取り残しは拾えないが、黙らない。** 測った時点で4つとも残って
@@ -193,11 +193,11 @@ test("他のリポジトリの取り残しを、知らせる", async () => {
 
   const { output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
 
-  assert.ok(output.includes("他のリポジトリに、取り残された記録がある"), output);
+  assert.ok(output.includes("Other repositories have records left behind"), output);
   assert.ok(output.includes("autodrive-dev-work"), output);
   // **対象リポジトリを、他のリポジトリとして二重に出さない。**
   assert.equal(
-    output.split("他のリポジトリに")[1].includes("agent-playground"),
+    output.split("Other repositories have records left behind")[1].includes("agent-playground"),
     false,
     `対象リポジトリを他のリポジトリとして並べている: ${output}`,
   );
@@ -216,7 +216,7 @@ test("起票されていなければ着手しない", async () => {
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("起票してから着手する"), output);
+  assert.ok(output.includes("File it before starting"), output);
   assert.equal(git.calls.length, 0, "止まるべきところで git を触っている");
   assert.equal(existsSync(join(root, ".autodrive", "current-work-item.json")), false);
 });
@@ -232,7 +232,7 @@ test("Tracker が例外で知らせてきても、案内は同じにする", asy
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("起票してから着手する"), output);
+  assert.ok(output.includes("File it before starting"), output);
   assert.equal(git.calls.length, 0);
 });
 
@@ -244,8 +244,8 @@ test("Tracker を読めない場合は、見つからない場合と区別する
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, fakeGit());
 
   assert.equal(code, 1);
-  assert.ok(output.includes("Tracker を読めない"), output);
-  assert.ok(!output.includes("起票してから"), `見つからない場合と同じ言葉になっている: ${output}`);
+  assert.ok(output.includes("Cannot read the Tracker"), output);
+  assert.ok(!output.includes("File it before"), `見つからない場合と同じ言葉になっている: ${output}`);
 });
 
 test("対象リポジトリがワークディレクトリに無ければ着手しない", async () => {
@@ -255,7 +255,7 @@ test("対象リポジトリがワークディレクトリに無ければ着手�
   const { code, output } = await run(["AUT-99", "--repo", "存在しない"], root, fakeTracker(), git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("ワークディレクトリに無い"), output);
+  assert.ok(output.includes("is not in the working directory"), output);
   assert.equal(git.calls.length, 0);
 });
 
@@ -294,7 +294,7 @@ test("既定ブランチを最新にできなければ着手しない", async ()
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("手元だけのコミット"), output);
+  assert.ok(output.includes("local-only commits"), output);
   assert.deepEqual(tracker.advanced, []);
 });
 
@@ -306,10 +306,10 @@ test("ブランチを作れなければ、状態もマーカーも動かさな�
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.ok(output.includes("作れない"), `作れなかったことを言っていない: ${output}`);
+  assert.ok(output.includes("Cannot create"), `作れなかったことを言っていない: ${output}`);
   // **「--branch で別名を渡せ」は、もう出さない。** 同じ名前のブランチが既にあれば
   // 再開するため、この案内に従うと1つの作業単位に2本のブランチができる（AUT-206）。
-  assert.equal(output.includes("--branch で別の名前"), false, `再開ではなく別名を勧めている: ${output}`);
+  assert.equal(output.includes("--branch で別の名前") || output.includes("different name with --branch"), false, `再開ではなく別名を勧めている: ${output}`);
   assert.deepEqual(tracker.advanced, []);
   assert.equal(existsSync(join(root, ".autodrive", "current-work-item.json")), false);
 });
@@ -480,8 +480,8 @@ test("同じ名前のブランチが既にあれば、作らずに戻る", async
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 0, output);
-  assert.match(output, /再開した/, `再開だと言っていない: ${output}`);
-  assert.match(output, /aut-50 から戻った/, "どこから戻ったかを言っていない");
+  assert.match(output, /Resumed/, `再開だと言っていない: ${output}`);
+  assert.match(output, /returned from aut-50/, "どこから戻ったかを言っていない");
 
   // **作らない。** 既にあるものを作ろうとすれば落ちる。
   assert.equal(
@@ -507,7 +507,7 @@ test("別のブランチに居ても、再開は通る", async () => {
   });
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
   assert.equal(code, 0, output);
-  assert.equal(output.includes("前の作業のブランチの上から"), false, "作る側の制約で止めている");
+  assert.equal(output.includes("on top of the previous work's branch"), false, "作る側の制約で止めている");
 });
 
 // **未コミットのまま戻さない。** 戻る先には既に別の変更がある。混ざると読めなくなる。
@@ -523,7 +523,7 @@ test("未コミットの変更があれば、戻さずに止める", async () =>
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 1);
-  assert.match(output, /持ち越される/, "何が起きるかを言っていない");
+  assert.match(output, /carry them over/, "何が起きるかを言っていない");
   assert.match(output, /src\/app\.ts/, "どれが残っているかを出していない");
   // **どうすればよいかまで出す**（停止の作法）。
   assert.match(output, /stash|commit/, "次にすることを出していない");
@@ -539,6 +539,6 @@ test("既にそのブランチに居るなら、紐づけ先だけ置き直す",
   });
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
   assert.equal(code, 0, output);
-  assert.match(output, /既にこのブランチで進行中/, output);
+  assert.match(output, /already in progress on this branch/, output);
   assert.equal(marker(root).work_item_id, "AUT-99");
 });

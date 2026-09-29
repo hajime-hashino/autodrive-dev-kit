@@ -51,11 +51,11 @@ export function probe(host, { port = 443, timeoutMs = 4000 } = {}) {
     };
     socket.setTimeout(timeoutMs);
     socket.once("connect", () => finish(true, null));
-    socket.once("timeout", () => finish(false, "つながらない（時間切れ）"));
+    socket.once("timeout", () => finish(false, "cannot connect (timed out)"));
     // **名前が引けない場合と、塞がれている場合を分ける。** 直し方が違う。
     // **Node のエラーは `code` を持つ。** `Error` だけでは引けない（AUT-226）。
     socket.once("error", (/** @type {NodeJS.ErrnoException} */ e) =>
-      finish(false, e.code === "ENOTFOUND" || e.code === "EAI_AGAIN" ? "名前が引けない" : "つながらない"),
+      finish(false, e.code === "ENOTFOUND" || e.code === "EAI_AGAIN" ? "name does not resolve" : "cannot connect"),
     );
   });
 }
@@ -75,24 +75,24 @@ export async function checkAll(hosts, probeImpl = probe) {
 export function report(results) {
   const blocked = results.filter((r) => !r.reachable);
   if (blocked.length === 0) {
-    return { lines: [`許可した宛先 ${results.length} 件すべてへ出られる`], code: 0 };
+    return { lines: [`All ${results.length} allowed destinations are reachable`], code: 0 };
   }
 
   return {
     lines: [
-      `**許可した宛先のうち ${blocked.length} 件へ出られない**（全 ${results.length} 件）`,
+      `**${blocked.length} of the allowed destinations are unreachable** (of ${results.length})`,
       ...blocked.map((r) => `  ${r.host}: ${r.reason}`),
       "",
-      "**多くは、宛先の IP が入れ替わったことによる。** 規則は起動時に解決した IP に",
-      "対して置かれるため、入れ替わると許可一覧に書いてあっても出られない。",
+      "**Most are due to the destination swapping its IPs.** Rules are placed against the IPs resolved at start,",
+      "so once they swap, it is unreachable even though it is on the allowlist.",
       "",
-      "置き直すと、多くは直る:",
+      "Re-placing fixes most of them:",
       "  sudo bash .devcontainer/init-firewall.sh",
       "",
-      "**置き直しても出られない宛先がある。** 規則を置いてから使うまでの間に、また",
-      "入れ替わるものがある（実測で約2分。`developers.google.com`、AUT-161）。",
-      "**IP を固定する形では追いつかないので、その宛先は諦める。**",
-      "名前が引けない場合は別で、一覧の綴りか、宛先の側が落ちている。",
+      "**Some destinations are unreachable even after re-placing.** Some swap again between placing",
+      "the rules and using them (about 2 minutes measured. `developers.google.com`, AUT-161).",
+      "**A form that pins IPs cannot keep up, so give up on that destination.**",
+      "If the name does not resolve, that is different: either the list is misspelled or the destination is down.",
     ],
     code: 1,
   };

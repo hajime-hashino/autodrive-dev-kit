@@ -68,7 +68,7 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
   if (implementation === "linear") {
     const token = env.LINEAR_API_KEY;
     if (token === undefined || token === "") {
-      return { tracker: null, error: "Tracker の資格情報が無い（LINEAR_API_KEY 未設定）", implementation };
+      return { tracker: null, error: "No Tracker credentials (LINEAR_API_KEY not set)", implementation };
     }
     return {
       tracker: new LinearTracker(token, env.AUTODRIVE_TRACKER_TEAM),
@@ -91,8 +91,8 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
       return {
         tracker: null,
         error:
-          "Tracker の資格情報が無い（AUTODRIVE_TRACKER_TOKEN も GH_TOKEN も未設定）。" +
-          "**GH_TOKEN があれば足りる**（Issues の読み書きが要る）",
+          "No Tracker credentials (neither AUTODRIVE_TRACKER_TOKEN nor GH_TOKEN is set). " +
+          "**GH_TOKEN is enough** (it needs read and write access to Issues)",
         implementation,
       };
     }
@@ -101,9 +101,9 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
       return {
         tracker: null,
         error:
-          "autodrive.json に tracker.prefix が無い。**作業単位IDの頭に付く2〜4文字を決めること**" +
-          "（例: AIEP → AIEP-123）。**決めるのは人である。** 決まったら autodrive.json の " +
-          "tracker.prefix に書く（`apply` は構成が既にあると止まるため、聞き直しには使えない）",
+          "autodrive.json has no tracker.prefix. **Decide the 2–4 characters that lead each work item ID**" +
+          " (e.g. AIEP → AIEP-123). **It is the human who decides.** Once decided, write it in " +
+          "tracker.prefix in autodrive.json (`apply` stops if a configuration already exists, so it cannot be used to ask again)",
         implementation,
       };
     }
@@ -111,7 +111,7 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
     if (where === null) {
       return {
         tracker: null,
-        error: "作業単位の置き場を読めない。**origin のリモートが GitHub を指していること**",
+        error: "Cannot read where work items are kept. **The origin remote must point at GitHub**",
         implementation,
       };
     }
@@ -120,7 +120,7 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
 
   return {
     tracker: null,
-    error: `Tracker の実装が分からない: ${implementation}（autodrive.json の ports.tracker）`,
+    error: `Unknown Tracker implementation: ${implementation} (ports.tracker in autodrive.json)`,
     implementation,
   };
 }

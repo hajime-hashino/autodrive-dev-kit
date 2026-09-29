@@ -179,7 +179,7 @@ test("送れなければカーソルを進めず、次に送り直す", async ()
   const failing = capturing({ ok: false });
   const first = await record({ transcript_path: transcript, session_id: "s1" }, root, new Date(), CONFIGURED, failing.deps);
   assert.equal(first.sent, 0);
-  assert.ok(first.note.includes("送り直す"), `送り直すことを言っていない: ${first.note}`);
+  assert.ok(first.note.includes("resend"), `送り直すことを言っていない: ${first.note}`);
 
   const ok = capturing();
   const second = await record({ transcript_path: transcript, session_id: "s1" }, root, new Date(), CONFIGURED, ok.deps);

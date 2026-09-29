@@ -131,20 +131,20 @@ const CREDENTIAL_NAME = /^[A-Z][A-Z0-9_]*$/;
 function readAppCredentials(raw) {
   if (raw === undefined || raw === null) return { credentials: [], error: null };
   if (!Array.isArray(raw)) {
-    return { credentials: [], error: `${CONFIG_FILE} の app.credentials が配列ではない` };
+    return { credentials: [], error: `app.credentials in ${CONFIG_FILE} is not an array` };
   }
 
   const credentials = [];
   for (const [i, entry] of raw.entries()) {
     const at = `app.credentials[${i}]`;
     if (typeof entry !== "object" || entry === null) {
-      return { credentials: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
+      return { credentials: [], error: `${at} in ${CONFIG_FILE} is not an entry` };
     }
     const { name, why, lost } = entry;
     if (typeof name !== "string" || !CREDENTIAL_NAME.test(name)) {
       return {
         credentials: [],
-        error: `${CONFIG_FILE} の ${at}.name が環境変数の名前になっていない（英大文字・数字・_）`,
+        error: `${at}.name in ${CONFIG_FILE} is not an environment variable name (uppercase letters, digits, _)`,
       };
     }
     for (const [key, value] of [["why", why], ["lost", lost]]) {
@@ -152,10 +152,10 @@ function readAppCredentials(raw) {
         return {
           credentials: [],
           error:
-            `${CONFIG_FILE} の ${at}.${key} が空である（${name}）。` +
+            `${at}.${key} in ${CONFIG_FILE} is empty (${name}). ` +
             (key === "why"
-              ? "何に使うのかを書くこと。書かないと、人は何を取りに行けばよいか分からない"
-              : "失ったらどうなるかを書くこと。書かないと、扱いの重さを判断できない"),
+              ? "Write what it is used for. Without it, a human does not know what to go and get"
+              : "Write what happens if it is lost. Without it, how seriously to treat it cannot be judged"),
         };
       }
     }
@@ -189,32 +189,32 @@ const HOST_NAME = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])
 function readAppDestinations(raw) {
   if (raw === undefined || raw === null) return { destinations: [], error: null };
   if (!Array.isArray(raw)) {
-    return { destinations: [], error: `${CONFIG_FILE} の app.destinations が配列ではない` };
+    return { destinations: [], error: `app.destinations in ${CONFIG_FILE} is not an array` };
   }
 
   const destinations = [];
   for (const [i, entry] of raw.entries()) {
     const at = `app.destinations[${i}]`;
     if (typeof entry !== "object" || entry === null) {
-      return { destinations: [], error: `${CONFIG_FILE} の ${at} が項目になっていない` };
+      return { destinations: [], error: `${at} in ${CONFIG_FILE} is not an entry` };
     }
     const { host, why } = entry;
     if (typeof host !== "string" || !HOST_NAME.test(host)) {
       return {
         destinations: [],
         error:
-          `${CONFIG_FILE} の ${at}.host が宛先の形になっていない` +
+          `${at}.host in ${CONFIG_FILE} is not in the shape of a destination` +
           (typeof host === "string" && host.includes("*")
-            ? `（${host}）。**ワイルドカードは書けない。** 規則は名前解決した IP に対して置かれる。宛先ごとに1行が要る`
-            : "（小文字の英数字とハイフン、ドット区切り）"),
+            ? ` (${host}). **Wildcards cannot be written.** Rules are placed against resolved IPs. Each destination needs its own line`
+            : " (lowercase letters, digits and hyphens, separated by dots)"),
       };
     }
     if (typeof why !== "string" || why.trim() === "") {
       return {
         destinations: [],
         error:
-          `${CONFIG_FILE} の ${at}.why が空である（${host}）。` +
-          "なぜ要るのかを書くこと。**書けないなら要らない可能性が高い。**",
+          `${at}.why in ${CONFIG_FILE} is empty (${host}). ` +
+          "Write why it is needed. **If you cannot, it is likely not needed.**",
       };
     }
     destinations.push({ host, why: why.trim() });
@@ -257,8 +257,8 @@ export function defaults() {
  */
 const RETIRED = {
   "app.devcontainer_features":
-    "`.devcontainer/devcontainer.json` はプロジェクトのものになった（AUT-157）。" +
-    "**足したい機能は、そのファイルへ直接書くこと。** 既に置かれている分はそのまま動いている。",
+    "`.devcontainer/devcontainer.json` now belongs to the project (AUT-157). " +
+    "**Write features you want to add directly in that file.** Those already placed keep working as they are.",
 };
 
 /**
@@ -311,13 +311,13 @@ export function readConfig(root) {
   try {
     parsed = JSON.parse(readFileSync(path, "utf8"));
   } catch (e) {
-    return { config: null, error: `${CONFIG_FILE} を読めない: ${e instanceof Error ? e.message : String(e)}` };
+    return { config: null, error: `Cannot read ${CONFIG_FILE}: ${e instanceof Error ? e.message : String(e)}` };
   }
 
   const raw = parsed;
-  if (raw.version !== 1) return { config: null, error: `${CONFIG_FILE} の version が 1 ではない` };
+  if (raw.version !== 1) return { config: null, error: `version in ${CONFIG_FILE} is not 1` };
   if (typeof raw.ports !== "object" || raw.ports === null) {
-    return { config: null, error: `${CONFIG_FILE} に ports が無い` };
+    return { config: null, error: `${CONFIG_FILE} has no ports` };
   }
 
   // **知らないポートを捨てない。** 新しいバージョンが足したものを、古いバージョンが読んで書き戻すと
@@ -335,8 +335,8 @@ export function readConfig(root) {
     return {
       config: null,
       error:
-        `${CONFIG_FILE} の tracker.prefix が形になっていない（${JSON.stringify(rawPrefix)}）。` +
-        "**英大文字で始まる2〜4文字。** 作業単位IDの頭に付き、ブランチ名と記録のファイル名になる",
+        `tracker.prefix in ${CONFIG_FILE} is not in the expected shape (${JSON.stringify(rawPrefix)}). ` +
+        "**2–4 characters starting with an uppercase letter.** It leads each work item ID, and becomes the branch name and the record file name",
     };
   }
   const prefix = typeof rawPrefix === "string" ? rawPrefix : null;
@@ -388,18 +388,18 @@ export function infer(root , gitRemote) {
   const here = (...p) => existsSync(join(root, ...p));
 
   if (gitRemote !== null && gitRemote.includes("github.com")) {
-    because.repo = "git のリモートが github.com を指している";
+    because.repo = "the git remote points at github.com";
   }
 
   if (here(".github", "workflows")) {
-    because.runner = ".github/workflows/ がある";
+    because.runner = ".github/workflows/ exists";
   }
 /** @typedef {{ config: Config, because: Partial<Record<PortName, string>> }} Inference */
   if (here(".devcontainer")) {
-    because.sandbox = ".devcontainer/ がある";
+    because.sandbox = ".devcontainer/ exists";
   } else {
     config.ports.sandbox = NONE;
-    because.sandbox = ".devcontainer/ が無い";
+    because.sandbox = "there is no .devcontainer/";
   }
 
   // **テンプレートを見て決めない。** 置かれるのはこの後であり、いま見えているのは
@@ -407,7 +407,7 @@ export function infer(root , gitRemote) {
   for (const name of ["wrangler.jsonc", "wrangler.toml", "wrangler.json"]) {
     if (here(name)) {
       config.ports.preview = "cloudflare-workers";
-      because.preview = `${name} がある`;
+      because.preview = `${name} exists`;
       break;
     }
   }

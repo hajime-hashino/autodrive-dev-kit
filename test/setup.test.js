@@ -12,7 +12,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { QUESTIONS, askPrefix, setup } from "../src/vendored/internal/setup.js";
+import { LANGUAGE_QUESTION, QUESTIONS, askPrefix, setup } from "../src/vendored/internal/setup.js";
+import { say } from "../src/vendored/internal/messages.js";
 
 import { CONFIG_FILE, NONE, PORT_NAMES, UNKNOWN, defaults, infer, readConfig, suggestPrefix } from "../src/vendored/internal/config.js";
 import {
@@ -314,6 +315,18 @@ test("済んでいる手続きを、もう一度頼まない", () => {
   assert.equal(again.todo.some((t) => t.includes("はじめる")), false, again.todo.join(" / "));
 });
 
+// **言語が en でも、始め方の案内を入れ替えで出さない**（AUT-264）。日本語の語で
+// 探していたため、en のプロジェクトでは毎回出ていた。
+test("言語が en でも、入れ替えで始め方を案内しない", () => {
+  const root = project();
+  const first = run("init", root, answering({ [LANGUAGE_QUESTION.ask]: "en" }));
+  const start = say("en", "todo.start");
+  assert.equal(first.todo.includes(start), true, first.todo.join(" / "));
+
+  const again = run("update", root);
+  assert.equal(again.todo.includes(start), false, again.todo.join(" / "));
+});
+
 // **実行する場所で案内が変わってよいのは、1つだけである。** 他が変われば、
 // 手元では通って CI で落ちる。実際にそうなった（AUT-100）。
 test("実行する場所で変わるのは、開き直せと言うかどうかだけ", () => {
@@ -610,7 +623,7 @@ test("ワイルドカードは、進めずに止まる", () => {
   const result = run("update", root);
 
   assert.equal(result.code, 1);
-  assert.ok(result.message.includes("ワイルドカード"), `理由を出していない: ${result.message}`);
+  assert.ok(result.message.includes("Wildcards"), `理由を出していない: ${result.message}`);
 });
 
 test("宛先の形になっていなければ、進めずに止まる", () => {
@@ -648,7 +661,7 @@ test("テンプレートが変わっていたら、書き換えずに差分を�
   assert.equal(result.code, 0, result.message ?? "");
   const notes = result.notes.join("\n");
   assert.ok(notes.includes("devcontainer.json"), notes);
-  assert.ok(notes.includes("書き換えていない"), notes);
+  assert.ok(notes.includes("It was not rewritten"), notes);
   assert.ok(notes.includes("remoteUser"), `離れている行を出していない: ${notes}`);
   // **言うだけで、書き換えないこと。**
   assert.equal(readFileSync(path, "utf8").includes('"remoteUser"'), false, "上書きした");
@@ -660,7 +673,7 @@ test("テンプレートと同じなら、何も言わない", () => {
   run("init", root);
 
   const notes = run("update", root).notes.join("\n");
-  assert.equal(notes.includes("書き換えていない"), false, notes);
+  assert.equal(notes.includes("It was not rewritten"), false, notes);
 });
 
 // **lock は比べない。** CLI が書き換えるのが正常であり、離れているのが既定になる。
@@ -690,7 +703,7 @@ test("使わなくなった項目が残っていたら、そう言う", () => {
   assert.equal(result.code, 0, result.message ?? "");
   const notes = result.notes.join("\n");
   assert.ok(notes.includes("app.devcontainer_features"), notes);
-  assert.ok(notes.includes("もう読んでいない"), notes);
+  assert.ok(notes.includes("is no longer read"), notes);
   // **消さないこと。** 構成はプロジェクトのものである（ADR 0005）。
   const raw = JSON.parse(readFileSync(join(root, CONFIG_FILE), "utf8"));
   assert.ok(raw.app.devcontainer_features !== undefined, "構成から消している");
@@ -702,7 +715,7 @@ test("使わなくなった項目が空なら、言わない", () => {
   run("init", root);
   writeRawConfig(root, { screen: "yes", devcontainer_features: [] });
 
-  assert.equal(run("update", root).notes.join("\n").includes("もう読んでいない"), false);
+  assert.equal(run("update", root).notes.join("\n").includes("is no longer read"), false);
 });
 
 // -------------------------------------------------- 作業単位IDの接頭辞（AUT-234）
@@ -804,7 +817,7 @@ test("案も作れず聞けなければ、決まっていないと書く", () =>
 
   assert.equal(configOf(root)?.tracker.prefix, null, "読めない値を入れている");
   const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
-  assert.ok(line?.includes("決まっていない"), line);
+  assert.ok(line?.includes("not decided"), line);
 });
 
 test("Linear を選んだときは、接頭辞を作らない", () => {
@@ -931,7 +944,7 @@ test("github-issues へ変えて接頭辞が無ければ、置かずに止まり
   const r = run("update", root);
   assert.equal(r.code, 1);
   assert.ok(r.message?.includes("tracker.prefix"), r.message ?? "");
-  assert.ok(r.message?.includes("案: AIEP"), r.message ?? "");
+  assert.ok(r.message?.includes("Suggestion: AIEP"), r.message ?? "");
   // **止まるなら、何も置かない。** 半端に入れ替わると、どの構成で動いているか読めない。
   assert.equal(readFileSync(join(root, "autodrive", "manifest.json"), "utf8"), manifest);
 

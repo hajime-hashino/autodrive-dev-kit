@@ -24,7 +24,7 @@
 
 export function createRepoApi(token) {
   const get = async (path) => {
-    if (!token) return { status: 0, body: { message: "トークンが無い" } };
+    if (!token) return { status: 0, body: { message: "no token" } };
     try {
       const res = await fetch(`https://api.github.com/${path}`, {
         headers: {

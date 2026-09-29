@@ -88,8 +88,8 @@ export function describeOthers(entries) {
   if (found.length === 0) return [];
   return [
     "",
-    "**他のリポジトリに、取り残された記録がある。** ここでは拾えない（1つの作業単位が",
-    "書き込むリポジトリは1つに限るため）。そのリポジトリで次に着手したときに乗る。",
+    "**Other repositories have records left behind.** They cannot be picked up here (a work item",
+    "writes to only one repository). They ride along the next time work starts in that repository.",
     ...found.flatMap((e) => [`  ${e.name}`, ...e.files.map((f) => `    ${f}`)]),
   ];
 }
@@ -127,7 +127,7 @@ export function detect(repoPath, git) {
   try {
     status = git(repoPath, ["status", "--porcelain", "-uall"]);
   } catch (error) {
-    return ["", `取り残された記録を調べられなかった: ${message(error)}`];
+    return ["", `Could not check for records left behind: ${message(error)}`];
   }
 
   const files = strandedFiles(status);
@@ -135,10 +135,10 @@ export function detect(repoPath, git) {
 
   return [
     "",
-    "**取り残された記録がある。** ここでは拾わない（別の作業単位の提出に混ざるため）。",
+    "**There are records left behind.** They are not picked up here (they would mix into another work item's submission).",
     ...files.map((f) => `  ${f}`),
-    "どの作業単位のものかを確かめること。いま着手したものなら、この作業の変更と",
-    "一緒に提出してよい。別の作業単位のものなら、**そちらのブランチへ載せること。**",
+    "Check which work item they belong to. If it is the one just started, they may be submitted together with",
+    "this work's changes. If they belong to another work item, **put them on that branch.**",
   ];
 }
 

@@ -74,7 +74,7 @@ export class Result {
   }
 
   get state() {
-    if (this.#state === null) throw new Error(`${this.key}: 判定が終わっていない`);
+    if (this.#state === null) throw new Error(`${this.key}: judging has not finished`);
     return this.#state;
   }
 

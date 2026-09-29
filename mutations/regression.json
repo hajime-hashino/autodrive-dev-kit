@@ -14,7 +14,7 @@
   {
     "name": "AUT-165 提出を読めなかったことを黙る",
     "file": "src/vendored/internal/checks.js",
-    "from": "      r.observe(`${repo.name}: 提出を読めず、取り残しを確かめられない`);",
+    "from": "      r.observe(`${repo.name}: cannot read submissions, so leftovers cannot be confirmed`);",
     "to": "      "
   },
   {
@@ -69,7 +69,7 @@
   {
     "name": "AUT-135 観測が日本語だと断らない",
     "file": "src/vendored/internal/report.js",
-    "from": "  if (language !== \"ja\" && hasDetail) lines.push(t(\"report.evidence.ja\"));",
+    "from": "  if (language === \"ja\" && hasDetail) lines.push(t(\"report.evidence.en\"));",
     "to": "  void hasDetail;"
   },
   {
@@ -87,7 +87,7 @@
   {
     "name": "AUT-137 コアダンプを見逃す",
     "file": "src/vendored/internal/tracked.js",
-    "from": "{ test: (n) => /^core(\\.\\d+)?$/.test(n), why: \"コアダンプ。実行時のメモリがそのまま入る\" },",
+    "from": "{ test: (n) => /^core(\\.\\d+)?$/.test(n), why: \"Core dump. Contains the runtime memory as-is\" },",
     "to": ""
   },
   {
@@ -100,8 +100,8 @@
   {
     "name": "AUT-139 鍵を分けている理由を書かない",
     "file": "src/vendored/internal/credentials.js",
-    "from": "      note:\n        \"**GH_TOKEN で兼ねないこと。**",
-    "to": "      unusedNote:\n        \"**GH_TOKEN で兼ねないこと。**",
+    "from": "      note:\n        \"**Do not share GH_TOKEN for this.**",
+    "to": "      unusedNote:\n        \"**Do not share GH_TOKEN for this.**",
     "why": "理由が雛形に出ないと、同じ GitHub の鍵を片方で兼ねたくなる"
   },
   {
@@ -424,21 +424,21 @@
   {
     "name": "AUT-211 証跡に点を付ける",
     "file": "src/vendored/internal/quality.js",
-    "from": "  const out = [\"品質の証跡\", \"\"];",
-    "to": "  const out = [\"品質の証跡\", `評価: ${data.escaped.total === 0 ? \"良好\" : \"要改善\"}`, \"\"];",
+    "from": "  const out = [\"Quality evidence\", \"\"];",
+    "to": "  const out = [\"Quality evidence\", `Rating: ${data.escaped.total === 0 ? \"good\" : \"needs improvement\"}`, \"\"];",
     "why": "測れない基準を指標に置くと、達成したことにできてしまう（定義§1）"
   },
   {
     "name": "AUT-211 0件を、黙って0と出す",
     "file": "src/vendored/internal/quality.js",
-    "from": "  return hasAnyRecord\n    ? `記録が1件も無い。",
-    "to": "  return false\n    ? `記録が1件も無い。",
+    "from": "  return hasAnyRecord\n    ? `Not a single record.",
+    "to": "  return false\n    ? `Not a single record.",
     "why": "起きなかったのか記録していないのかが区別できない。0件が「問題なし」と読まれる"
   },
   {
     "name": "AUT-211 見ていない範囲を落とす",
     "file": "src/vendored/internal/quality.js",
-    "from": "        `      **見ていない: ${s.notLooked}**`,\n",
+    "from": "        `      **Not looked at: ${s.notLooked}**`,\n",
     "to": "",
     "why": "見た範囲だけが残り、全部見たと読まれる（定義§8）"
   },
@@ -452,7 +452,7 @@
   {
     "name": "AUT-211 言っていないことを、言わない",
     "file": "src/vendored/internal/quality.js",
-    "from": "    \"  - **プロダクトの品質が良いことを示していない。** 何を確かめたかを示しているだけである\",\n",
+    "from": "    \"  - **It does not show that the product's quality is good.** It only shows what was checked\",\n",
     "to": "",
     "why": "出せる範囲を超えて読まれ、証跡自体が誤りになる"
   },
@@ -473,15 +473,15 @@
   {
     "name": "AUT-211 読みどころから、次にすることを落とす",
     "file": "src/vendored/internal/quality.js",
-    "from": "`     **次にすること:** ${n.next}`, \"\"",
+    "from": "`     **Next:** ${n.next}`, \"\"",
     "to": "\"\"",
     "why": "観察だけでは、読んだ人が何をすればよいか分からない"
   },
   {
     "name": "AUT-211 本番で見つかった分を、割合で言う",
     "file": "src/vendored/internal/quality.js",
-    "from": "`検出漏れ ${data.escaped.total} 件のうち ${prod.n} 件が本番で見つかっている。`",
-    "to": "`検出漏れの ${Math.round((prod.n / data.escaped.total) * 100)}% が本番で見つかっている。`",
+    "from": "`Of ${data.escaped.total} missed detections, ${prod.n} were found in production.`",
+    "to": "`${Math.round((prod.n / data.escaped.total) * 100)}% of missed detections were found in production.`",
     "why": "分母が消えると、数の大小がそのまま評価に読まれる"
   },
   {
@@ -522,8 +522,8 @@
   {
     "name": "AUT-206 再開時に、紐づけ先を置き直さない",
     "file": "src/vendored/internal/beginCli.js",
-    "from": "  placeState(root, repoPath, repo, branch, item.id);\n  return {\n    output: [\n      `${item.id} を再開した",
-    "to": "  return {\n    output: [\n      `${item.id} を再開した",
+    "from": "  placeState(root, repoPath, repo, branch, item.id);\n  return {\n    output: [\n      `Resumed ${item.id}",
+    "to": "  return {\n    output: [\n      `Resumed ${item.id}",
     "why": "戻ったあとに書いた記録が、前に居た作業単位へ向かう（AUT-221 と同じ形）"
   },
   {
@@ -550,7 +550,7 @@
   {
     "name": "AUT-207 指す先が無くても、有効にする",
     "file": "src/vendored/internal/checks.js",
-    "from": "      r.notImplemented(\"記録の自動化が実在しないものを指しているため、有効の条件を満たさない\");\n",
+    "from": "      r.notImplemented(\"Recording automation points at something that does not exist, so the condition for active is not met\");\n",
     "to": "",
     "why": "記録が続く保証が無いのに有効を名乗る"
   },
@@ -788,7 +788,7 @@
   {
     "name": "AUT-209 断るときに、訂正の行き先を出さない",
     "file": "src/vendored/internal/trackerCli.js",
-    "from": "          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
+    "from": "          `Put corrections in the work log: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
     "to": "          \"\","
   },
   {
@@ -909,5 +909,12 @@
     "from": " (called \"付ける文書\" in earlier versions)",
     "to": "",
     "why": "既に配った what-why.md は日本語のまま残る。決め終えたプロジェクトで、付ける文書を毎回聞き直す"
+  },
+  {
+    "name": "AUT-264 委譲範囲の変更履歴で、英語の根拠を読まない",
+    "file": "src/vendored/internal/checks.js",
+    "from": "if (!(section.includes(\"根拠\") || /\\bGround\\b/.test(section))) {",
+    "to": "if (!section.includes(\"根拠\")) {",
+    "why": "配布物の記入例は英語（Ground）。案内どおりに書いたプロジェクトで、外側ループが一周したことにならない"
   }
 ]

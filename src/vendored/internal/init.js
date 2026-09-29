@@ -214,7 +214,7 @@ export function vendor(root , kitRoot) {
     // （AUT-202）。欠けたまま動くより、ここで止まるほうがよい。
     for (const name of VENDORED_META) {
       const from = join(kitRoot, name);
-      if (!existsSync(from)) throw new Error(`複製に要るものが無い: ${name}`);
+      if (!existsSync(from)) throw new Error(`Something needed for the copy is missing: ${name}`);
       copyInto(from, join(staging, name));
     }
   } catch (error) {
@@ -230,7 +230,7 @@ export function vendor(root , kitRoot) {
   rmSync(previous, { recursive: true, force: true });
 
   const versionFile = join(dest, "VERSION");
-  return existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : "不明";
+  return existsSync(versionFile) ? readFileSync(versionFile, "utf8").trim() : "unknown";
 }
 
 /**
@@ -382,12 +382,12 @@ function driftNotes(root , kitRoot ) {
 
     notes.push(
       [
-        `\`.devcontainer/${file}\` は、このプロジェクトのものである。**書き換えていない。**`,
+        `\`.devcontainer/${file}\` belongs to this project. **It was not rewritten.**`,
         "",
-        "kit のテンプレート側に、こちらに無い行がある。取り込むかは見て決めること。",
+        "The kit's template has lines this one does not. Look and decide whether to take them in.",
         "",
         ...added.slice(0, 8).map((l) => `  ${l}`),
-        ...(added.length > 8 ? [`  … 他 ${added.length - 8} 行`] : []),
+        ...(added.length > 8 ? [`  … ${added.length - 8} more lines`] : []),
       ].join("\n"),
     );
   }
@@ -444,8 +444,8 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
       code: 1,
       notes: [],
       message:
-        "ここは git のリポジトリではない。\n" +
-        "先に `git init` してから、もう一度実行すること。記録も判定も履歴の上で成り立っている。",
+        "This is not a git repository.\n" +
+        "Run `git init` first, then run again. Both records and checks rest on the history.",
     };
   }
 
@@ -606,7 +606,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **読まなくなった項目が残っていたら、そう言う。** 書いてあるのに効かない状態は、
   // 書いた人から見て「効いているのに動かない」に見える。
   for (const r of retired(root)) {
-    notes.push(`\`${r.key}\` は、もう読んでいない。\n\n${r.why}`);
+    notes.push(`\`${r.key}\` is no longer read.\n\n${r.why}`);
   }
 
   return { placed, todo, notes, version, code: 0, message: null };
