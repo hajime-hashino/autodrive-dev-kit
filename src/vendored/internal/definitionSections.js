@@ -57,17 +57,17 @@ const DEFINITION_FILE = "README.md";
  * 前提にせず、食い違いを出すために持つ。
  */
 export const EXPECTED = {
-  1: "一文定義",
-  4: "最大化する変数",
-  5: "構造：二重ループ",
-  6: "テレメトリが記録するもの",
-  8: "委譲範囲の運用",
-  9: "固定条件と不変条件",
-  10: "役割",
-  14: "他の進め方との関係",
-  16: "差し替え可能な構成要素（ポート）",
-  17: "プロダクトの品質",
-  18: "未確定事項",
+  1: "One-sentence definition",
+  4: "The variable to maximize",
+  5: "Structure: two loops",
+  6: "What telemetry records",
+  8: "Operating the scope of delegation",
+  9: "Fixed conditions and invariants",
+  10: "Roles",
+  14: "Relation to other ways of working",
+  16: "Swappable components (ports)",
+  17: "Product quality",
+  18: "Open items",
 };
 
 /**
