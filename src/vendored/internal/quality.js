@@ -61,7 +61,7 @@ const UNFILLED = ["(example:", "(write here)", "（例：", "（ここに書く�
 function tally(rows, pick) {
   const counts = new Map();
   for (const r of rows) {
-    const key = String(pick(r) ?? "（記録に無い）").trim() || "（記録に無い）";
+    const key = String(pick(r) ?? "(not recorded)").trim() || "(not recorded)";
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
@@ -109,16 +109,16 @@ export function summarize({ events, quality }) {
     rework: { total: of(REWORK).length, byCause: tally(of(REWORK), (r) => r.cause) },
     // 人が見た範囲。**見なかった範囲を必ず添える**（定義§8）。
     sampled: samplings.map((s) => ({
-      area: s.area ?? "（記録に無い）",
-      looked: s.looked ?? "（記録に無い）",
-      notLooked: s.not_looked ?? "（記録に無い）",
+      area: s.area ?? "(not recorded)",
+      looked: s.looked ?? "(not recorded)",
+      notLooked: s.not_looked ?? "(not recorded)",
       fixed: s.fixed === true,
     })),
     boundaryChanges: of(BOUNDARY).map((b) => ({
       area: b.area,
       from: b.from,
       to: b.to,
-      basis: b.basis ?? "（記録に無い）",
+      basis: b.basis ?? "(not recorded)",
     })),
     stops: { total: of(STOP).length, byType: tally(of(STOP), (s) => s.stop_type) },
   };
@@ -144,66 +144,68 @@ export function findings(data) {
   const undecided = data.decided.filter((d) => !d.placed || d.unfilled.length > 0);
   if (undecided.length > 0) {
     add(
-      `${undecided.length} 件のリポジトリで、何を確かめるかが決まっていない（${QUALITY_FILE}）。`,
-      "**この報告のいちばん上が空のままになる。** 確かめていないのか、書いていないだけなのかを、読む人は区別できない。",
-      `各リポジトリの ${QUALITY_FILE} を埋めること。観点はリポジトリの性質で変わる。`,
+      `In ${undecided.length} repositories, what to check has not been decided (${QUALITY_FILE}).`,
+      "**The top of this report stays empty.** Readers cannot tell whether nothing was checked or it was just not written down.",
+      `Fill in ${QUALITY_FILE} in each repository. The aspects vary with the nature of the repository.`,
     );
   }
 
-  const prod = data.escaped.byStage.find((s) => s.name === "本番");
+  // **記録の値は、日本語と英語のどちらもありうる。** 見つかった工程は自由記述であり、
+  // 配布物を英語にしてから production と書かれるようになる（AUT-264）。
+  const prod = data.escaped.byStage.find((s) => s.name === "本番" || s.name.toLowerCase() === "production");
   if (prod !== undefined && data.escaped.total > 0) {
     add(
-      `検出漏れ ${data.escaped.total} 件のうち ${prod.n} 件が本番で見つかっている。`,
-      "**本番で見つかったということは、その手前のどこも捕まえていない。** 利用者が先に気づいている。",
-      "本番で見つかった分の原因の内訳を見て、どの段に検出を足すかを決めること。",
+      `Of ${data.escaped.total} missed detections, ${prod.n} were found in production.`,
+      "**Being found in production means nothing before it caught them.** Users noticed first.",
+      "Look at the breakdown of causes for those found in production, and decide which stage to add detection to.",
     );
   }
 
   // **自由記述の集計は、種類が増えると読めなくなる。**
   if (data.escaped.byStage.length >= 10) {
     add(
-      `見つかった工程が ${data.escaped.byStage.length} 種に散っている。`,
-      "**同じ工程が違う言葉で書かれていると、件数が分かれて傾向が見えない。** 集計に耐えない。",
-      "決まった語にするか、報告の側でまとめること。どちらにするかは人が決める。",
+      `The stages where they were found are scattered across ${data.escaped.byStage.length} kinds.`,
+      "**When the same stage is written in different words, the counts split and the trend cannot be seen.** It does not hold up to aggregation.",
+      "Either use fixed words, or group them on the report side. Which to do is the human's decision.",
     );
   }
 
   for (const [label, rows] of [
-    ["検出漏れの原因", data.escaped.byCause],
-    ["停止の種別", data.stops.byType],
+    ["cause of missed detection", data.escaped.byCause],
+    ["kind of stop", data.stops.byType],
   ]) {
-    const missing = rows.find((r) => r.name === "（記録に無い）");
+    const missing = rows.find((r) => r.name === "(not recorded)");
     if (missing !== undefined) {
       add(
-        `${label}が記録に無いものが ${missing.n} 件ある。`,
-        "**その分は、どの内訳にも入っていない。** 内訳の合計が全体と合わない。",
-        "記録の時点で付ける項目である。後から分類すると、分類した側の解釈が入る。",
+        `${missing.n} records have no ${label}.`,
+        "**Those are in no breakdown.** The sum of the breakdown does not match the total.",
+        "It is attached at the time of recording. Classifying later brings in the interpretation of whoever classified.",
       );
     }
   }
 
   if (data.sampled.length === 0 && data.scale.events > 0) {
     add(
-      "抜き取り確認の記録が1件も無い。",
-      "**気づけない領域を、誰も見ていないことになる**（定義§8）。自動で落ちない誤りは、人が見なければ残る。",
-      "気づけない領域を決めて、見た範囲と見なかった範囲を記録すること。",
+      "There is not a single spot check record.",
+      "**Nobody is looking at the undetectable areas** (definition §8). Errors that do not fail automatically remain unless a human looks.",
+      "Decide the undetectable areas, and record the range looked at and the range not looked at.",
     );
   }
 
   if (data.boundaryChanges.length === 0 && data.scale.events > 0) {
     add(
-      "任せる範囲を動かした記録が1件も無い。",
-      "**外側ループが回った証拠が無い。** 記録を読んで仕組みを直す側が、動いていない可能性がある。",
-      "記録を読み、委譲範囲を動かせる領域があるかを見ること。",
+      "There is not a single record of moving what is delegated.",
+      "**There is no evidence the outer loop has run.** The side that reads records and fixes the machinery may not be working.",
+      "Read the records and see whether there are areas where the scope of delegation can be moved.",
     );
   }
 
   const topRework = data.rework.byCause[0];
   if (topRework !== undefined && data.rework.total > 0) {
     add(
-      `手戻り ${data.rework.total} 件のうち、最も多い原因は「${topRework.name}」で ${topRework.n} 件。`,
-      "**原因の偏りは、どの工程の精度が低いかを指す**（定義§6）。",
-      "その工程に検出を足せるかを見ること。足せないなら、人が見る範囲として残す。",
+      `Of ${data.rework.total} rework records, the most common cause is "${topRework.name}" with ${topRework.n}.`,
+      "**A skew in causes points at which stage has low accuracy** (definition §6).",
+      "See whether detection can be added to that stage. If not, leave it as a range humans look at.",
     );
   }
 
@@ -213,13 +215,13 @@ export function findings(data) {
 /** 「無い」の言い方。**なぜ空なのかまで言う。** 空欄は「問題なし」と読まれる。 */
 function none(hasAnyRecord, what) {
   return hasAnyRecord
-    ? `記録が1件も無い。**この期間に${what}が起きなかったのか、記録していないのかは、これだけでは区別できない。**`
-    : `記録そのものが1件も無い。**${what}以前に、何も記録されていない。**`;
+    ? `Not a single record. **Whether no ${what} happened in this period or it was not recorded cannot be told from this alone.**`
+    : `There are no records at all. **Nothing is recorded, let alone ${what}.**`;
 }
 
 function listed(rows, limit = 12) {
-  const head = rows.slice(0, limit).map((r) => `    ${r.name}: ${r.n} 件`);
-  return rows.length > limit ? [...head, `    … 他 ${rows.length - limit} 種`] : head;
+  const head = rows.slice(0, limit).map((r) => `    ${r.name}: ${r.n}`);
+  return rows.length > limit ? [...head, `    … ${rows.length - limit} more kinds`] : head;
 }
 
 /**
@@ -229,108 +231,108 @@ function listed(rows, limit = 12) {
  */
 export function render(data) {
   const any = data.scale.events > 0;
-  const out = ["品質の証跡", ""];
+  const out = ["Quality evidence", ""];
 
   out.push(
-    "**これは品質の点数ではない。**「何を、どこまで確かめたか」と「誰も見ていないのはどこか」",
-    "を、記録から出したものである。**点は付けない。**",
+    "**This is not a quality score.** It is \"what was checked, and how far\" and \"where nobody is looking,\"",
+    "derived from the records. **No score is given.**",
     "",
-    "## 対象",
+    "## Scope",
     "",
-    "**何を確かめる観点かは、リポジトリごとに違う。** 性質が違えば見るものも違う。",
-    `各リポジトリの ${QUALITY_FILE} がそれを持つ。**この報告は、そこに書かれたものを読む。**`,
+    "**Which aspects to check differs per repository.** Different nature, different things to look at.",
+    `Each repository's ${QUALITY_FILE} holds that. **This report reads what is written there.**`,
     "",
-    "| リポジトリ | 記録 | 何を確かめるかが決まっているか |",
+    "| Repository | Records | Decided what to check? |",
     "|---|---|---|",
     ...data.scale.perRepo.map(
-      (r) => `| ${r.repo} | ${r.events} 件 | ${r.decided ? "決まっている" : "**決まっていない**"} |`,
+      (r) => `| ${r.repo} | ${r.events} | ${r.decided ? "Decided" : "**Not decided**"} |`,
     ),
     "",
-    `  合計: 記録 ${data.scale.events} 件 / 作業単位 ${data.scale.workItems} 件`,
+    `  Total: ${data.scale.events} records / ${data.scale.workItems} work items`,
     "",
   );
 
   // **並べるだけにしない。** 分析を人へ押し付けたことになる。
   const notes = findings(data);
-  out.push("## 読みどころ");
+  out.push("## What to read");
   if (notes.length === 0) {
-    out.push("  **記録から言えることが無い。** 記録そのものが足りていない可能性がある。");
+    out.push("  **Nothing can be said from the records.** The records themselves may be insufficient.");
   } else {
     for (const [i, n] of notes.entries()) {
-      out.push(`  ${i + 1}. ${n.observation}`, `     ${n.why}`, `     **次にすること:** ${n.next}`, "");
+      out.push(`  ${i + 1}. ${n.observation}`, `     ${n.why}`, `     **Next:** ${n.next}`, "");
     }
   }
   out.push(
-    "**ここに書いたのは、記録から導ける観察である。** どれを直すか、直さないかは人が決める。",
+    "**What is written here are observations derivable from the records.** Which to fix, and which not to, is the human's decision.",
     "",
   );
 
-  out.push("## 何を確かめると決めたか");
+  out.push("## What was decided to check");
   for (const d of data.decided) {
     if (!d.placed) {
-      out.push(`  ${d.repo}: **${QUALITY_FILE} が無い。何を確かめるかが決まっていない。**`);
+      out.push(`  ${d.repo}: **no ${QUALITY_FILE}. What to check has not been decided.**`);
       continue;
     }
     if (d.unfilled.length === 0) {
-      out.push(`  ${d.repo}: ${QUALITY_FILE} にある（未記入の欄は無い）`);
+      out.push(`  ${d.repo}: in ${QUALITY_FILE} (no unfilled fields)`);
       continue;
     }
-    out.push(`  ${d.repo}: **未記入の欄が ${d.unfilled.length} 行ある。**`);
+    out.push(`  ${d.repo}: **${d.unfilled.length} unfilled rows.**`);
     for (const u of d.unfilled.slice(0, 6)) out.push(`      ${QUALITY_FILE}:${u.at}  ${u.line}`);
-    if (d.unfilled.length > 6) out.push(`      … 他 ${d.unfilled.length - 6} 行`);
+    if (d.unfilled.length > 6) out.push(`      … ${d.unfilled.length - 6} more rows`);
   }
   out.push("");
 
-  out.push("## 実際に漏れた誤り");
+  out.push("## Errors that actually slipped through");
   if (data.escaped.total === 0) {
-    out.push(`  ${none(any, "検出漏れ")}`);
+    out.push(`  ${none(any, "missed detections")}`);
   } else {
-    out.push(`  ${data.escaped.total} 件。**見つかった工程が後ろであるほど、検出が遠い。**`);
-    out.push("  見つかった工程:", ...listed(data.escaped.byStage));
-    out.push("  原因:", ...listed(data.escaped.byCause));
+    out.push(`  ${data.escaped.total}. **The later the stage where they were found, the farther away detection is.**`);
+    out.push("  Stage where found:", ...listed(data.escaped.byStage));
+    out.push("  Cause:", ...listed(data.escaped.byCause));
   }
   out.push("");
 
-  out.push("## 手戻り");
-  if (data.rework.total === 0) out.push(`  ${none(any, "手戻り")}`);
-  else out.push(`  ${data.rework.total} 件`, "  原因:", ...listed(data.rework.byCause));
+  out.push("## Rework");
+  if (data.rework.total === 0) out.push(`  ${none(any, "rework")}`);
+  else out.push(`  ${data.rework.total}`, "  Cause:", ...listed(data.rework.byCause));
   out.push("");
 
-  out.push("## 人が見た範囲");
+  out.push("## What humans looked at");
   if (data.sampled.length === 0) {
-    out.push(`  ${none(any, "抜き取り確認")}`);
+    out.push(`  ${none(any, "spot checks")}`);
   } else {
     for (const s of data.sampled) {
       out.push(
-        `  ${s.area}${s.fixed ? "（修正が入った）" : "（修正は入らなかった）"}`,
-        `      見た: ${s.looked}`,
-        `      **見ていない: ${s.notLooked}**`,
+        `  ${s.area}${s.fixed ? " (corrected)" : " (no correction)"}`,
+        `      Looked at: ${s.looked}`,
+        `      **Not looked at: ${s.notLooked}**`,
       );
     }
   }
   out.push("");
 
-  out.push("## 任せる範囲を動かした根拠");
-  if (data.boundaryChanges.length === 0) out.push(`  ${none(any, "委譲範囲の変更")}`);
+  out.push("## Grounds for moving what is delegated");
+  if (data.boundaryChanges.length === 0) out.push(`  ${none(any, "delegation changes")}`);
   else {
     for (const b of data.boundaryChanges) {
-      out.push(`  ${b.area}: ${b.from} → ${b.to}`, `      根拠: ${b.basis}`);
+      out.push(`  ${b.area}: ${b.from} → ${b.to}`, `      Ground: ${b.basis}`);
     }
   }
   out.push("");
 
-  out.push("## 人を止めた回数");
-  if (data.stops.total === 0) out.push(`  ${none(any, "停止")}`);
-  else out.push(`  ${data.stops.total} 件`, ...listed(data.stops.byType));
+  out.push("## How often humans were stopped");
+  if (data.stops.total === 0) out.push(`  ${none(any, "stops")}`);
+  else out.push(`  ${data.stops.total}`, ...listed(data.stops.byType));
   out.push("");
 
   // **言えないことを言う。** 出せる範囲を超えて読まれると、この証跡自体が誤りになる。
   out.push(
-    "## この証跡が言っていないこと",
-    "  - **プロダクトの品質が良いことを示していない。** 何を確かめたかを示しているだけである",
-    "  - **確かめた手段が正しいことを示していない。** 通るテストは、何も見ていなくても通る",
-    `  - **${QUALITY_FILE} に書かれていない確認は、ここに出ない。** 書かれていないだけの`,
-    "    ものと、やっていないものは区別できない",
+    "## What this evidence does not say",
+    "  - **It does not show that the product's quality is good.** It only shows what was checked",
+    "  - **It does not show that the means of checking are correct.** A passing test passes even if it looks at nothing",
+    `  - **Checks not written in ${QUALITY_FILE} do not appear here.** What is merely not written`,
+    "    cannot be told apart from what is not done",
   );
   return out.join("\n");
 }

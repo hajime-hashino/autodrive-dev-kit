@@ -71,7 +71,7 @@ export const idOf = (prefix, number) => `${prefix}-${number}`;
 export function numberOf(prefix, id) {
   const m = new RegExp(`^${prefix}-(\\d+)$`).exec(String(id ?? "").trim());
   if (m === null) {
-    throw new Error(`作業単位IDの形が違う: ${id}（この対象は ${prefix}-<番号>）`);
+    throw new Error(`The work item ID has the wrong shape: ${id} (this target uses ${prefix}-<number>)`);
   }
   return Number(m[1]);
 }
@@ -136,11 +136,11 @@ export class GithubIssuesTracker {
       // 資格情報を取り直せばよいのか、対象が無いのかが読めない。
       const hint =
         res.status === 403 || res.status === 401
-          ? "（資格情報の権限を確かめること。issues への書き込みが要る）"
+          ? " (check the credentials' permissions. Write access to issues is needed)"
           : res.status === 404
-            ? "（対象が無いか、読む権限が無い）"
+            ? " (the target does not exist, or there is no permission to read it)"
             : "";
-      throw new Error(`Tracker への要求が失敗した: ${said}${hint}`);
+      throw new Error(`The request to the Tracker failed: ${said}${hint}`);
     }
     return payload;
   }
@@ -204,8 +204,8 @@ export class GithubIssuesTracker {
       if (raw.length < LIST_PAGE) return out;
     }
     throw new Error(
-      `作業単位と提出が ${LIST_PAGE * LIST_MAX_PAGES} 件を超えた。**一覧を欠けたまま返さない。**` +
-        "上限（LIST_MAX_PAGES）を見直すこと",
+      `Work items and submissions exceeded ${LIST_PAGE * LIST_MAX_PAGES}. **A list with gaps is not returned.** ` +
+        "Review the limit (LIST_MAX_PAGES)",
     );
   }
 

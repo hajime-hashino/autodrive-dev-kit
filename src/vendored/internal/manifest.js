@@ -225,7 +225,7 @@ export function linesLost(current, next) {
  */
 export function describeEdits(edited, limit = 8) {
   const lines = [
-    "管理下のファイルが手で変えられている。**このまま入れ替えると消える。**",
+    "Managed files were changed by hand. **Replacing them as-is would erase those changes.**",
     "",
   ];
 
@@ -233,22 +233,22 @@ export function describeEdits(edited, limit = 8) {
     lines.push(`  ${e.path}`);
     // **比べた相手を言う。** 前に置いた中身が分からなければ、kit が変えた行も混ざる。
     if (e.exact === false) {
-      lines.push("      （前に置いた中身が分からないため、autodrive-dev-kit が文言を変えた行も含む）");
+      lines.push("      (the previously placed contents are unknown, so this includes lines whose wording autodrive-dev-kit changed)");
     } else if (e.lost.length === 0) {
-      lines.push("      （足した行は無い。消したか、並べ替えただけ）");
+      lines.push("      (no lines were added. Only deleted or reordered)");
     }
     for (const l of e.lost.slice(0, limit)) lines.push(`      ${l}`);
-    if (e.lost.length > limit) lines.push(`      … 他 ${e.lost.length - limit} 行`);
+    if (e.lost.length > limit) lines.push(`      … ${e.lost.length - limit} more lines`);
     lines.push("");
   }
 
   lines.push(
-    "**何も書いていない。** 一部だけ新しい状態を作らないため。",
+    "**Nothing was written.** So as not to leave a partially updated state.",
     "",
-    "次のどちらかを行うこと。",
-    "  - このプロジェクトだけの事情なら: 構成（autodrive.json）で表せないかを見る。",
-    "    表せないなら、autodrive-dev-kit へ起票する。**予想していない拡張は、そこで受け取る。**",
-    "  - 変更が要らないなら: その行を戻してから、もう一度実行する。",
+    "Do one of the following.",
+    "  - If it is specific to this project: see whether the configuration (autodrive.json) can express it.",
+    "    If it cannot, file it with autodrive-dev-kit. **Extensions nobody anticipated are taken in there.**",
+    "  - If the change is not needed: revert those lines, then run again.",
   );
   return lines.join("\n");
 }
@@ -256,11 +256,11 @@ export function describeEdits(edited, limit = 8) {
 /** 確かめられなかったものを報告する。**黙ると、確かめた顔になる。** */
 export function describeUnchecked(unchecked) {
   return [
-    `手で変えられていないかを確かめられなかった（${unchecked.length}件）。**上書きした。**`,
+    `Could not confirm whether these were changed by hand (${unchecked.length}). **Overwrote them.**`,
     ...unchecked.map((p) => `  ${p}`),
     "",
-    "置いたときの指紋が無い。この仕掛けより前に置かれたためである。",
-    "**次からは確かめられる。**",
+    "There is no fingerprint from when they were placed, because they were placed before this mechanism existed.",
+    "**From next time, it can be confirmed.**",
   ].join("\n");
 }
 

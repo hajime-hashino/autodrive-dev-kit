@@ -229,7 +229,7 @@ test("統合済みなのに着手中の作業単位を観測として出すが�
   // **不変条件は定義§9のもの。Tracker 側の設定はその範囲外にある。**
   assert.equal(r.state, ACTIVE);
   assert.ok(
-    r.observations.some((o) => o.includes("統合済みなのに着手中") && o.includes("AUT-1")),
+    r.observations.some((o) => o.includes("still started though integrated") && o.includes("AUT-1")),
     r.observations.join("\n"),
   );
 });
@@ -248,7 +248,7 @@ test("統合されていない提出しか無ければ、取り残しとは言�
   );
 
   assert.equal(r.state, ACTIVE);
-  assert.ok(!r.observations.some((o) => o.includes("統合済みなのに着手中")), r.observations.join("\n"));
+  assert.ok(!r.observations.some((o) => o.includes("still started though integrated")), r.observations.join("\n"));
 });
 
 test("提出を読めなければ、読めなかったことを言う", async () => {
@@ -262,7 +262,7 @@ test("提出を読めなければ、読めなかったことを言う", async ()
     input({ events: [event()], tracker, api, repos: [repoWithHook("r")] }),
   );
 
-  assert.ok(r.observations.some((o) => o.includes("提出を読めず")), r.observations.join("\n"));
+  assert.ok(r.observations.some((o) => o.includes("cannot read submissions")), r.observations.join("\n"));
 });
 
 test("完了済みの作業単位を指したままのマーカーを観測として出す", async () => {
@@ -286,7 +286,7 @@ test("完了済みの作業単位を指したままのマーカーを観測と�
 
   assert.equal(r.state, ACTIVE);
   assert.ok(
-    r.observations.some((o) => o.includes("マーカーが完了済み") && o.includes("AUT-2")),
+    r.observations.some((o) => o.includes("marker points at a completed work item") && o.includes("AUT-2")),
     r.observations.join("\n"),
   );
 });
@@ -305,13 +305,13 @@ test("着手中の作業単位を指すマーカーは、何も言わない", as
     input({ events: [event()], tracker, repos: [repo] }),
   );
 
-  assert.ok(!r.observations.some((o) => o.includes("マーカーが完了済み")), r.observations.join("\n"));
+  assert.ok(!r.observations.some((o) => o.includes("marker points at a completed work item")), r.observations.join("\n"));
 });
 
 test("Tracker の資格情報が無ければ判定不能として失敗する", async () => {
   const r = await check("telemetry_recorded").run(input({ events: [event()], tracker: null }));
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("判定できない状態")));
+  assert.ok(r.observations.some((o) => o.includes("A state that cannot be judged")));
 });
 
 test("Tracker が読めなければ判定不能として失敗する", async () => {
@@ -327,7 +327,7 @@ test("self では有効かどうかを判定しない。記録が壊れていな
   const r = await check("telemetry_recorded").run(input({ events, scope: "self" }));
   assert.equal(r.state, NOT_IN_SCOPE);
   assert.equal(r.failing, false);
-  assert.ok(r.observations.some((o) => o.includes("cross でのみ判定する")));
+  assert.ok(r.observations.some((o) => o.includes("judged only in cross")));
 });
 
 test("self でも壊れた記録は見落とさない", async () => {
@@ -351,7 +351,7 @@ test("トークンが無ければ判定不能として失敗する", async () =>
     input({ api: fakeApi(() => ({ status: 0, body: {} }), false) }),
   );
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("判定できない状態")));
+  assert.ok(r.observations.some((o) => o.includes("A state that cannot be judged")));
 });
 
 test("応答が読めない対象があれば失敗する。通してはいけない", async () => {
@@ -381,7 +381,7 @@ test("403 Upgrade はプラン制限として観測し、代替があれば代�
     }),
   );
   assert.equal(r.state, SUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("ruleset を設定できないプラン")));
+  assert.ok(r.observations.some((o) => o.includes("cannot set rulesets on private repositories")));
 });
 
 test("403 でも Upgrade 以外は判定不能として扱う", async () => {
@@ -397,7 +397,7 @@ test("ruleset が0件なら保護されていないとして観測する", async
   ];
   const r = await check("ai_cannot_disable").run(input({ events }));
   assert.equal(r.state, SUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("ruleset が1件も無い")));
+  assert.ok(r.observations.some((o) => o.includes("no rulesets at all")));
 });
 
 // --------------------------------------------------------- 有効境界
@@ -423,7 +423,7 @@ test("boundaries.yaml があり履歴が無ければ、変更が残っていな�
   ];
   const r = await check("boundary_change_logged").run(input({ repos: [repo], events }));
   assert.equal(r.state, SUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("委譲範囲の変更履歴が無い")));
+  assert.ok(r.observations.some((o) => o.includes("no history of delegation changes")));
 });
 
 test("全変更コミットが履歴から参照されていれば有効", async () => {
@@ -505,10 +505,10 @@ test("帰属できなかった記録の件数と理由を出す", async () => {
     input({ events: [event(), unattributed(), unattributed()] }),
   );
   assert.ok(
-    r.observations.some((o) => o.includes("帰属できなかった記録が 2 件")),
+    r.observations.some((o) => o.includes("2 records could not be attributed")),
     `件数が出ていない: ${JSON.stringify(r.observations)}`,
   );
-  assert.ok(r.observations.some((o) => o.includes("帰属できなかった理由")));
+  assert.ok(r.observations.some((o) => o.includes("Why it could not be attributed")));
 });
 
 // 免除するのは work_item_id だけ。ランタイム由来の属性は帰属できなくても付く。
@@ -523,7 +523,7 @@ test("アダプタが書いた記録の model の欠けは、失敗にしない"
     input({ events: [unattributed({ model: "", emitter: "adapter" })] }),
   );
   assert.equal(
-    without.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("model")),
+    without.observations.some((o) => o.startsWith("Required attribute missing") && o.includes("model")),
     false,
     `失敗として扱っている: ${JSON.stringify(without.observations)}`,
   );
@@ -547,7 +547,7 @@ test("model を特定できなかった記録の件数を出す", async () => {
     }),
   );
   assert.ok(
-    r.observations.some((o) => o.includes("model を特定できなかった記録が 2 件")),
+    r.observations.some((o) => o.includes("2 records could not identify the model")),
     JSON.stringify(r.observations),
   );
   // **なぜ特定できなかったかまで出す。** 件数だけでは、直せるものか判断できない。
@@ -562,7 +562,7 @@ test("手で書いた記録の model の欠けは、失敗のまま", async () =
   );
   assert.equal(r.state, UNSUBSTITUTED);
   assert.ok(
-    r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("model")),
+    r.observations.some((o) => o.startsWith("Required attribute missing") && o.includes("model")),
     `欠落を言う観測が無い: ${JSON.stringify(r.observations)}`,
   );
 });
@@ -574,7 +574,7 @@ test("アダプタが書いても、kit_version の欠けは失敗", async () =>
   );
   assert.equal(r.state, UNSUBSTITUTED);
   assert.ok(
-    r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("kit_version")),
+    r.observations.some((o) => o.startsWith("Required attribute missing") && o.includes("kit_version")),
     JSON.stringify(r.observations),
   );
 });
@@ -586,7 +586,7 @@ test("理由を名乗っても、置き場が違えば免除しない", async ()
     input({ events: [unattributed({ source: "repo/telemetry/AUT-1.jsonl" })] }),
   );
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("work_item_id")));
+  assert.ok(r.observations.some((o) => o.startsWith("Required attribute missing") && o.includes("work_item_id")));
 });
 
 test("置き場が同じでも、理由が無ければ免除しない", async () => {
@@ -594,7 +594,7 @@ test("置き場が同じでも、理由が無ければ免除しない", async ()
     input({ events: [unattributed({ unattributed_reason: "  " })] }),
   );
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.startsWith("必須属性が欠けている") && o.includes("work_item_id")));
+  assert.ok(r.observations.some((o) => o.startsWith("Required attribute missing") && o.includes("work_item_id")));
 });
 
 test("有効境界より前の直書きは、判定の対象から外れる", async () => {
@@ -604,7 +604,7 @@ test("有効境界より前の直書きは、判定の対象から外れる", as
     event({ ts: "2026-03-01T00:00:00Z" }),
   ];
   const r = await check("telemetry_recorded").run(input({ events }));
-  assert.ok(r.observations.some((o) => o.includes("有効境界")));
+  assert.ok(r.observations.some((o) => o.toLowerCase().includes("activation boundary")));
   assert.equal(r.observations.some((o) => o.includes("emitter=manual")), false);
 });
 
@@ -628,7 +628,7 @@ test("有効境界を動かした回数を隠さない", async () => {
   const mark = (ts) => event({ ts, type: "enactment", invariant: "telemetry_recorded" });
   const events = [mark("2026-02-01T00:00:00Z"), mark("2026-03-01T00:00:00Z"), event({ ts: "2026-04-01T00:00:00Z" })];
   const r = await check("telemetry_recorded").run(input({ events }));
-  assert.ok(r.observations.some((o) => o.includes("2 回動いている")));
+  assert.ok(r.observations.some((o) => o.includes("has moved 2 times")));
 });
 
 test("有効境界より前でも、必須属性の欠けは見逃さない", async () => {
@@ -693,7 +693,7 @@ test("提出を経ずに既定ブランチへ入った変更があれば失敗�
   );
   assert.equal(r.state, UNSUBSTITUTED);
   assert.ok(
-    r.observations.some((o) => o.includes("提出を経ずに既定ブランチへ入っている") && o.includes("bbbbbbb")),
+    r.observations.some((o) => o.includes("Entered the default branch without a submission") && o.includes("bbbbbbb")),
     `どのコミットかを出していない: ${JSON.stringify(r.observations)}`,
   );
 });
@@ -706,7 +706,7 @@ test("統合済みの提出に含まれていれば、直接コミットとし�
     input({ repos, api: planLimitedApi(merged), events: [event({ type: "substitution", invariant: "ai_cannot_disable", detail: "—" })] }),
   );
   assert.equal(r.state, SUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("すべて提出を経て入っている")));
+  assert.ok(r.observations.some((o) => o.includes("entered through a submission")));
 });
 
 test("提出を読めなければ、直接コミットの有無を判定しない", async () => {
@@ -715,14 +715,14 @@ test("提出を読めなければ、直接コミットの有無を判定しな�
     input({ repos, api: planLimitedApi({ status: 403, body: { message: "Resource not accessible" } }) }),
   );
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("提出を読めず")), JSON.stringify(r.observations));
+  assert.ok(r.observations.some((o) => o.includes("cannot read submissions")), JSON.stringify(r.observations));
 });
 
 test("既定ブランチの履歴を読めなければ判定しない", async () => {
   const repos = [fakeRepo("r", "owner/r", null)];
   const r = await check("ai_cannot_disable").run(input({ repos, api: planLimitedApi() }));
   assert.equal(r.state, UNSUBSTITUTED);
-  assert.ok(r.observations.some((o) => o.includes("提出を経たかを確かめられない")), JSON.stringify(r.observations));
+  assert.ok(r.observations.some((o) => o.includes("cannot be confirmed whether changes went through submissions")), JSON.stringify(r.observations));
 });
 
 test("すべての判定が、有効でないときに代替の記録を読むこと", async () => {
@@ -760,8 +760,8 @@ test("停止は2種類に分けて数える", () => {
   const lines = observed(
     stopped(["入力", "見え方の決定"], ["手戻り", "承認で差し戻し"], ["入力", "見え方の決定"]),
   );
-  assert.ok(lines[0]?.includes("入力 2"), lines.join(" / "));
-  assert.ok(lines[0]?.includes("手戻り 1"), lines.join(" / "));
+  assert.ok(lines[0]?.includes("入力 input 2"), lines.join(" / "));
+  assert.ok(lines[0]?.includes("手戻り rework 1"), lines.join(" / "));
 });
 
 // **繰り返し出ている種別が上に来る。** 定義§6の「繰り返し出る種別はスキル化・
@@ -772,21 +772,21 @@ test("同じ種別が繰り返し出ていることが分かる", () => {
     stopped(["手戻り", "1回だけ"], ["入力", "多いほう"], ["入力", "多いほう"]),
   );
   const body = lines.slice(1);
-  assert.ok(body[0]?.includes("多いほう") && body[0]?.includes("2 件"), body.join(" / "));
+  assert.ok(body[0]?.includes("多いほう") && body[0]?.includes(": 2"), body.join(" / "));
 });
 
 // **区別の無い記録を欠陥として扱わない。** 種類は後から足したものであり、
 // 遡って分類すると解釈が入る（定義§6は遡及付与を禁じる）。
 test("種類を持たない古い記録は「区別なし」として残す", () => {
   const lines = observed(stopped([undefined, "昔の記録"], ["入力", "いまの記録"]));
-  assert.ok(lines[0]?.includes("区別なし 1"), lines.join(" / "));
-  assert.ok(lines.some((l) => l.includes("区別なし / 昔の記録")), lines.join(" / "));
+  assert.ok(lines[0]?.includes("unclassified 1"), lines.join(" / "));
+  assert.ok(lines.some((l) => l.includes("unclassified / 昔の記録")), lines.join(" / "));
 });
 
 // 区別が要らないときに、要らない言葉を出さない。
 test("すべてに種類が付いていれば、区別なしは出さない", () => {
   const lines = observed(stopped(["入力", "a"], ["手戻り", "b"]));
-  assert.equal(lines[0]?.includes("区別なし"), false, lines[0]);
+  assert.equal(lines[0]?.includes("unclassified"), false, lines[0]);
 });
 
 test("停止が1件も無ければ、何も言わない", () => {
@@ -801,7 +801,7 @@ test("停止以外の記録を数に混ぜない", () => {
     ...stopped(["入力", "見え方の決定"]),
     ...([{ type: "rework", cause: "要件のズレ", source: "t" }] ),
   ];
-  assert.ok(observed(events)[0]?.startsWith("停止 1 件"), observed(events).join(" / "));
+  assert.ok(observed(events)[0]?.startsWith("Stops: 1"), observed(events).join(" / "));
 });
 
 // ------------------------- 登録されていることと、動くことは違う（AUT-207）
@@ -827,9 +827,9 @@ test("登録された仕掛けが実在しなければ、有効にしない", as
 
   assert.notEqual(r.state, ACTIVE, "実在しないものを指しているのに有効にしている");
   const text = r.observations.join("\n");
-  assert.match(text, /実在しないものを指している/, `何が起きているかを言っていない:\n${text}`);
+  assert.match(text, /points at something that does not exist/, `何が起きているかを言っていない:\n${text}`);
   // **黙って止まることまで言う。** 落ちないので、誰も気づかない。
-  assert.match(text, /黙って記録が止まる/, "なぜ気づけないかを言っていない");
+  assert.match(text, /recording stops silently/, "なぜ気づけないかを言っていない");
 });
 
 test("登録された仕掛けが実在すれば、そのことを出す", async () => {
@@ -843,9 +843,9 @@ test("登録された仕掛けが実在すれば、そのことを出す", async
     api: fakeApi(() => ({ ok: true, body: [] })),
     root: repo.path,
   });
-  assert.match(r.observations.join("\n"), /登録されている/, "登録を出していない");
+  assert.match(r.observations.join("\n"), /is registered in/, "登録を出していない");
   assert.equal(
-    r.observations.join("\n").includes("実在しないものを指している"),
+    r.observations.join("\n").includes("points at something that does not exist"),
     false,
     "実在するのに欠けていると言っている",
   );

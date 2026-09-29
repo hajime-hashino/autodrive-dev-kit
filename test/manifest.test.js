@@ -122,21 +122,21 @@ test("何が消えるのかと、どうすればよいかを出す", () => {
   const text = describeEdits([{ path: "a.json", lost: ["足した行"] }]);
   assert.ok(text.includes("a.json"), "どのファイルかが無い");
   assert.ok(text.includes("足した行"), "何が消えるのかが無い");
-  assert.ok(text.includes("何も書いていない"), "書いていないことを言っていない");
-  assert.ok(text.includes("起票"), "どうすればよいかが無い");
+  assert.ok(text.includes("Nothing was written"), "書いていないことを言っていない");
+  assert.ok(text.includes("file it with autodrive-dev-kit"), "どうすればよいかが無い");
 });
 
 // **黙って切ると、出ている分が全部だと読まれる。**
 test("長い場合は打ち切り、打ち切ったことを言う", () => {
   const lost = Array.from({ length: 20 }, (_, i) => `行${i}`);
   const text = describeEdits([{ path: "a", lost }], 3);
-  assert.ok(text.includes("他 17 行"), text);
+  assert.ok(text.includes("17 more lines"), text);
 });
 
 test("確かめられなかったことは、上書きしたと併せて言う", () => {
   const text = describeUnchecked(["a", "b"]);
-  assert.ok(text.includes("2件"));
-  assert.ok(text.includes("上書きした"), "上書きしたことを言っていない");
+  assert.ok(text.includes("(2)"));
+  assert.ok(text.includes("Overwrote them"), "上書きしたことを言っていない");
 });
 
 // ------------------------------------------------------------ 通しで
@@ -215,7 +215,7 @@ test("指紋が無くても一度は通り、その次からは止まる", () =>
 
   const first = place(root);
   assert.equal(first.code, 0, "止まってしまっている");
-  assert.ok(first.notes.join("\n").includes("確かめられなかった"), "黙って上書きしている");
+  assert.ok(first.notes.join("\n").includes("Could not confirm"), "黙って上書きしている");
 
   writeFileSync(target, `${readFileSync(target, "utf8")}\nexample.com  # 二度目\n`, "utf8");
   assert.equal(place(root).code, 1, "次も確かめられていない");
@@ -231,7 +231,7 @@ test("壊れた指紋で落とさない。確かめられないものとして�
 
   const r = place(root);
   assert.equal(r.code, 0);
-  assert.ok(r.notes.join("\n").includes("確かめられなかった"));
+  assert.ok(r.notes.join("\n").includes("Could not confirm"));
 });
 
 test("書いた指紋を、読み直せる", () => {
@@ -274,8 +274,8 @@ test("前に置いた中身が分からなければ、kit が変えた行も含�
   writeFileSync(join(root, "a.env"), "# 前の版の説明\n# 自分で足した\n", "utf8");
   const { edited } = findEdits(root, [{ path: "a.env", body: "# 新しい版の説明\n" }], { "a.env": "x" });
   assert.equal(edited[0].exact, false);
-  assert.ok(describeEdits(edited).includes("autodrive-dev-kit が文言を変えた行も含む"));
-  assert.equal(describeEdits([{ ...edited[0], exact: true }]).includes("文言を変えた行も含む"), false);
+  assert.ok(describeEdits(edited).includes("lines whose wording autodrive-dev-kit changed"));
+  assert.equal(describeEdits([{ ...edited[0], exact: true }]).includes("lines whose wording autodrive-dev-kit changed"), false);
 });
 
 test("置いたら、行の指紋も残す。中身そのものは残さない", () => {
@@ -301,5 +301,5 @@ test("手で足して止まったとき、実物の入れ替えでも足した�
   const r = place(root);
   assert.equal(r.code, 1);
   assert.ok(r.message.includes("# 自分で足した"), r.message);
-  assert.equal(r.message.includes("文言を変えた行も含む"), false, r.message);
+  assert.equal(r.message.includes("lines whose wording autodrive-dev-kit changed"), false, r.message);
 });

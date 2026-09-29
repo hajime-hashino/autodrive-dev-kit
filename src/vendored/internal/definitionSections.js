@@ -131,15 +131,15 @@ export function describe(moved) {
   if (moved.length === 0) return [];
   return [
     "",
-    `定義の節が動いている（${moved.length}件）。**この番号を引いている記述は、別の節を指している。**`,
+    `Sections of the definition have moved (${moved.length}). **Text citing these numbers points at a different section.**`,
     "",
     ...moved.flatMap((m) => [
-      `  定義§${m.n}`,
-      `      引いているつもり: ${m.expected}`,
-      `      いまそこにあるもの: ${m.actual ?? "**その番号の節が無い**"}`,
+      `  definition §${m.n}`,
+      `      Meant to cite: ${m.expected}`,
+      `      What is there now: ${m.actual ?? "**no section with that number**"}`,
       "",
     ]),
-    "`定義§N` を引いている箇所を見直すこと。**直したら EXPECTED も更新する。**",
-    "更新しないと、次に動いたときも同じ見落としが起きる。",
+    "Review the places citing `definition §N` (or `定義§N`). **After fixing, update EXPECTED too.**",
+    "Without updating it, the same oversight happens the next time sections move.",
   ];
 }

@@ -30,7 +30,7 @@ export function loadEvents(repos) {
           events.push({ ...parsed, source: `${repo.name}/telemetry/${name}` });
         } catch (error) {
           const why = error instanceof Error ? error.message : String(error);
-          broken.push(`${repo.name}/${name}:${index + 1} JSON として読めない (${why})`);
+          broken.push(`${repo.name}/${name}:${index + 1} cannot be read as JSON (${why})`);
         }
       });
     }
@@ -59,7 +59,7 @@ export function firstSubstitutionDetail(
 ) {
   const note = substitutionNotes(events, invariantKey)[0];
   if (note === undefined) return null;
-  return typeof note.detail === "string" ? note.detail : "（詳細の記載なし）";
+  return typeof note.detail === "string" ? note.detail : "(no details written)";
 }
 
 /**

@@ -38,7 +38,7 @@ const ng = (host, reason) => ({ host, reachable: false, reason });
 test("全部へ出られるなら、件数だけを言う", () => {
   const { lines, code } = report([ok("a"), ok("b")]);
   assert.equal(code, 0);
-  assert.match(lines.join("\n"), /2 件すべて/);
+  assert.match(lines.join("\n"), /All 2 allowed/);
 });
 
 // **出られたものを並べない。** 並べると、出られなかったものが埋もれる。
@@ -54,8 +54,8 @@ test("出られない宛先だけを並べ、失敗として返す", () => {
 test("直し方と、直らない場合のことまで言う", () => {
   const text = report([ng("塞がる.example", "つながらない")]).lines.join("\n");
   assert.match(text, /init-firewall\.sh/, "置き直す手が無い");
-  assert.match(text, /入れ替わ/, "なぜ起きるのかが無い");
-  assert.match(text, /置き直しても出られない/, "追いつかない宛先があることが無い");
+  assert.match(text, /swap/, "なぜ起きるのかが無い");
+  assert.match(text, /unreachable even after re-placing/, "追いつかない宛先があることが無い");
 });
 
 // ------------------------------------------------------------ まとめて測る
@@ -95,12 +95,12 @@ test("一覧が無ければ、出られないとは言わない", async () => {
   const root = tempDir("autodrive-reach-none-");
   const { output, code } = await run(["宛先を確かめる"], root, async (h) => ok(h));
   assert.equal(code, 1);
-  assert.match(output, /許可一覧が無い/);
-  assert.equal(/出られない/.test(output), false, "無いことを出られないことと混ぜている");
+  assert.match(output, /There is no allowlist/);
+  assert.equal(/unreachable/.test(output), false, "無いことを出られないことと混ぜている");
 });
 
 test("知らない操作は、使い方を出して失敗で返す", async () => {
   const { output, code } = await run(["まだ無い操作"], workspace("a.example\n"), async (h) => ok(h));
   assert.equal(code, 1);
-  assert.match(output, /知らない操作/);
+  assert.match(output, /Unknown operation/);
 });

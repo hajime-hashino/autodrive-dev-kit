@@ -321,7 +321,7 @@ test("前の名前で呼んでも記録される", () => {
     assert.equal(res.code, 0, `${old} が通らない`);
     assert.equal(readEvents(join(r, "kit", "telemetry", "AUT-90.jsonl")).length, 1, `${old} で記録されない`);
     // **黙って受け入れない。** 新しい名前を出さないと、2つの名前が生き続ける。
-    assert.ok(res.output.includes("に変わった"), `${old} で新しい名前を案内していない`);
+    assert.ok(res.output.includes("has been renamed to"), `${old} で新しい名前を案内していない`);
   }
 });
 
@@ -372,7 +372,7 @@ test("作業単位が無ければ、そう言う", async () => {
   const res = await trackerRun(["本文を直す", "AUT-99", "--body", "x"], root(), t);
 
   assert.equal(res.code, 1);
-  assert.match(res.output, /該当する作業単位が無い/);
+  assert.match(res.output, /No matching work item/);
 });
 
 // **使い方に出ていること。** 出ていない操作は、無いのと同じである。
@@ -380,5 +380,5 @@ test("使い方に、本文を直す操作と着手前の制限が出る", async
   const { output } = await trackerRun([], root(), fakeTracker());
 
   assert.match(output, /本文を直す/);
-  assert.match(output, /着手前/, output);
+  assert.match(output, /before work starts/, output);
 });

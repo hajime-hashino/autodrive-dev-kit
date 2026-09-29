@@ -47,13 +47,13 @@
 const ALWAYS = [
   {
     name: "GIT_USER_NAME",
-    why: "コミットの作者情報。ホストの git の設定は引き継がれない環境がある",
-    lost: "決め直すだけでよい",
+    why: "Commit author information. Some environments do not carry over the host's git settings",
+    lost: "Just decide it again",
   },
   {
     name: "GIT_USER_EMAIL",
-    why: "同上",
-    lost: "決め直すだけでよい",
+    why: "Same as above",
+    lost: "Just decide it again",
   },
 ];
 
@@ -66,8 +66,8 @@ const FOR_IMPLEMENTATION = {
   github: [
     {
       name: "GH_TOKEN",
-      why: "提出と push。**無いと push が通らない**（サンドボックスの支度が git の資格情報ヘルパに使う）",
-      lost: "再発行する。古い値は使えなくなる",
+      why: "Submissions and push. **Without it, push fails** (the sandbox setup uses it for the git credential helper)",
+      lost: "Reissue it. The old value stops working",
       // **要る権限を先に全部言う。** 足りないまま作ると、作業が進んでから止まる。
       // 足すたびにまた止まる。**同じ停止が2つのプロジェクトで起きた**（AUT-108）。
       //
@@ -83,25 +83,25 @@ const FOR_IMPLEMENTATION = {
         {
           permission: "Pull requests",
           level: "Read and write",
-          why: "提出の作成と、統合されたかの読取",
+          why: "Creating submissions, and reading whether they were integrated",
           via: "POST /repos/{repo}/pulls, GET /repos/{repo}/pulls",
         },
         {
           permission: "Actions",
           level: "Read",
-          why: "CI が動いたか・通ったかの確認",
+          why: "Checking whether CI ran and passed",
           via: "GET /repos/{repo}/actions/runs",
         },
         {
           permission: "Workflows",
           level: "Read and write",
-          why: "CI 定義を置く・変える",
-          via: "git push（.github/workflows/ を含む変更）",
+          why: "Placing and changing CI definitions",
+          via: "git push (changes that include .github/workflows/)",
         },
         {
           permission: "Secrets",
           level: "Read and write",
-          why: "CI が使う資格情報の登録",
+          why: "Registering the credentials CI uses",
           via: "PUT /repos/{repo}/actions/secrets/{name}",
         },
       ],
@@ -115,14 +115,14 @@ const FOR_IMPLEMENTATION = {
       // **1つ作るために、全部を消せる鍵を渡さない。** 定義§9が固定条件として挙げる
       // 「外部への不可逆な操作」に、常時手が届く状態を作らないためでもある。
       note:
-        "置き場所（リポジトリ）そのものの作成は、この権限では行えない。" +
-        "作成には全リポジトリへの管理権限が要るため、**あえて求めていない。** " +
-        "置き場所は人が作り、このトークンをそこへ絞ること。",
+        "Creating the place (repository) itself cannot be done with these permissions. " +
+        "Creating it needs admin permission over all repositories, so **it is deliberately not requested.** " +
+        "A human creates the place, and this token is narrowed to it.",
     },
     {
       name: "AUTODRIVE_CI_TOKEN",
-      why: "判定が Repo を読む。無いと「外側ループが起動したか」を判定できない",
-      lost: "再発行する",
+      why: "The checks read the Repo. Without it, \"has the outer loop started\" cannot be judged",
+      lost: "Reissue it",
       // **なぜ GH_TOKEN で兼ねないかを書く。** 2つ並んでいる理由が書いていないと、
       // 「同じ GitHub なのになぜ2つ要るのか」が分からず、片方で兼ねたくなる。
       // 実際に、使い分けを問われている（AUT-139）。
@@ -130,16 +130,16 @@ const FOR_IMPLEMENTATION = {
       // 兼ねると、**判定する側が判定対象を書き換えられる。** 定義§9の「AIがこれらを
       // 無効化できないこと」を見るのが`invariants` であり、その分離が消える。
       note:
-        "**GH_TOKEN で兼ねないこと。** こちらは判定に使い、読取しか要らない。" +
-        "書ける鍵を渡すと、**判定する側が判定対象を書き換えられる。** " +
-        "CI へ登録するのはこちらだけであり、CI に書き込み用の鍵は置かない。",
+        "**Do not share GH_TOKEN for this.** This one is used for the checks and needs only read access. " +
+        "Hand over a key that can write, and **the side that checks can rewrite what it checks.** " +
+        "Only this one is registered in CI; no key for writing is placed in CI.",
       // **保護設定の読取に Administration は要らない。** GitHub が要求するのは
       // Metadata: Read であり、これは選ばなくても必ず付く（AUT-110 で実測）。
       needs: [
         {
           permission: "Pull requests",
           level: "Read",
-          why: "統合されたかの読取",
+          why: "Reading whether it was integrated",
           via: "GET /repos/{repo}/commits/{sha}/pulls",
         },
       ],
@@ -153,31 +153,31 @@ const FOR_IMPLEMENTATION = {
   "jsonl+otlp": [
     {
       name: "AUTODRIVE_OTLP_ENDPOINT",
-      why: "トークン消費の送り先。**秘密ではない**（宛先の名指し）が、認証と組で扱う",
-      lost: "受け側の設定画面で確認できる",
+      why: "Where token consumption is sent. **Not a secret** (it names a destination), but handled together with authentication",
+      lost: "It can be checked on the receiving side's settings screen",
       note:
-        "**トークン消費は任意の記録対象である**（定義§6）。設定しない構成も成立し、" +
-        "その場合トークン消費は記録されない。**§6の他の5つは影響を受けない。**",
+        "**Token consumption is an optional recording target** (definition §6). A configuration without it also works, " +
+        "and in that case token consumption is not recorded. **The other five in §6 are not affected.**",
     },
     {
       name: "AUTODRIVE_OTLP_HEADERS",
-      why: "送り先の認証。`key=value,key=value` で書く（OpenTelemetry の慣習に合わせている）",
-      lost: "受け側で鍵を再発行し、`Authorization=Basic <base64(公開鍵:秘密鍵)>` を組み直す",
+      why: "Authentication for the destination. Written as `key=value,key=value` (following the OpenTelemetry convention)",
+      lost: "Reissue the key on the receiving side, and rebuild `Authorization=Basic <base64(public key:secret key)>`",
       // **実際にここで 401 になった**（AUT-174）。値が切れていることは見えず、
       // 認証だけが落ちるため、キーが違うのかと疑うことになる。
       note:
-        "**`.env` では引用符で囲むこと。** 値に空白が入るため（`Basic` と base64 の間）、" +
-        "囲まないとシェルが読んだ時点で `Authorization=Basic` までで切れる。" +
-        "**切れても静かに通り、認証だけが 401 で落ちる。**\n" +
+        "**Quote it in `.env`.** The value contains a space (between `Basic` and the base64), " +
+        "so unquoted, it is cut off at `Authorization=Basic` when the shell reads it. " +
+        "**Cut off, it passes silently and only authentication fails with 401.**\n" +
         '    AUTODRIVE_OTLP_HEADERS="Authorization=Basic xxx,x-langfuse-ingestion-version=4"\n' +
-        "**値に `=` が入るのは正しい。** base64 は `=` で終わる（最初の `=` だけで割る）。",
+        "**The value containing `=` is correct.** base64 ends with `=` (it is split only at the first `=`).",
     },
   ],
   linear: [
     {
       name: "LINEAR_API_KEY",
-      why: "作業単位の取得・起票・状態の更新",
-      lost: "再発行する",
+      why: "Getting, filing, and updating the status of work items",
+      lost: "Reissue it",
     },
   ],
   // **同じ鍵に権限を足す。別の鍵を並べない。**
@@ -195,16 +195,16 @@ const FOR_IMPLEMENTATION = {
   "github-issues": [
     {
       name: "GH_TOKEN",
-      why: "作業単位の取得・起票・状態の更新",
-      lost: "再発行する。古い値は使えなくなる",
+      why: "Getting, filing, and updating the status of work items",
+      lost: "Reissue it. The old value stops working",
       note:
-        "**別に持ちたい場合は `AUTODRIVE_TRACKER_TOKEN` を設定する。** " +
-        "設定されていればそちらを使う。作業単位の操作だけを絞りたいときに使う。",
+        "**To keep a separate one, set `AUTODRIVE_TRACKER_TOKEN`.** " +
+        "If set, it is used instead. Use it when you want to narrow down just the work item operations.",
       needs: [
         {
           permission: "Issues",
           level: "Read and write",
-          why: "作業単位の取得・起票・状態の更新",
+          why: "Getting, filing, and updating the status of work items",
           via: "GET/POST/PATCH /repos/{repo}/issues",
         },
       ],
@@ -213,13 +213,13 @@ const FOR_IMPLEMENTATION = {
   "cloudflare-workers": [
     {
       name: "CLOUDFLARE_API_TOKEN",
-      why: "配布と、配布先の状態の確認",
-      lost: "再発行する。古い値は使えなくなる",
+      why: "Deployment, and checking the state of the deployment target",
+      lost: "Reissue it. The old value stops working",
     },
     {
       name: "CLOUDFLARE_ACCOUNT_ID",
-      why: "配布先の指定。**秘密ではない**（資格情報ではなく名指し）が、組で扱う",
-      lost: "ダッシュボードで確認できる",
+      why: "Specifies the deployment target. **Not a secret** (it names something; it is not a credential), but handled as a pair",
+      lost: "It can be checked on the dashboard",
     },
   ],
 };
@@ -257,7 +257,7 @@ export function credentialsFor(config) {
       const added = (c.needs ?? []).filter((n) => !known.has(`${n.permission}/${n.level}`));
       if (added.length > 0) already.needs = [...(already.needs ?? []), ...added];
       // **用途も合流させる。** 片方しか書かないと、もう片方で使っていることが消える。
-      if (!already.why.includes(c.why)) already.why = `${already.why}。${c.why}`;
+      if (!already.why.includes(c.why)) already.why = `${already.why}. ${c.why}`;
       // **注記は足す。** 分けたい人への案内が消える。
       if (c.note !== undefined && !(already.note ?? "").includes(c.note)) {
         already.note = already.note === undefined ? c.note : `${already.note}\n${c.note}`;
@@ -288,11 +288,11 @@ export function credentialsFor(config) {
  */
 export function envExample(config) {
   const lines = [
-    "# 資格情報。**このファイルはテンプレートであり、値を書かない。**",
-    "# 写して .env を作り、そちらに書くこと（.env は追跡しない）。",
+    "# Credentials. **This file is a template; do not write values in it.**",
+    "# Copy it to create .env, and write them there (.env is not tracked).",
     "#",
-    "# **この一覧は構成（autodrive.json）から作られている。** 使わないポートのものは",
-    "# 入っていない。構成を変えたら `autodrive-dev-kit update` を打ち直すこと。",
+    "# **This list is built from the configuration (autodrive.json).** Ports not in use are",
+    "# not included. If you change the configuration, run `autodrive-dev-kit update` again.",
   ];
 
   let started = false;
@@ -303,16 +303,16 @@ export function envExample(config) {
       started = true;
       lines.push(
         "",
-        "# ここから下は、このプロジェクト自身のもの。",
-        "# **足すときは autodrive.json の app.credentials に書き、`update` を打つこと。**",
-        "# ここへ直接書いても、入れ替えのときに消える。",
+        "# Below here belongs to this project itself.",
+        "# **To add one, write it in app.credentials in autodrive.json and run `update`.**",
+        "# Writing here directly gets erased on replacement.",
       );
     }
     lines.push("", `# ${c.why}`);
     // **要る権限を先に全部並べる。** 足りないまま作ると、作業が進んでから止まり、
     // 足すたびにまた止まる。**一度で済む形にする。**
     if (c.needs !== undefined) {
-      lines.push("#", "# 要る権限（作るときに、まとめて付けること）:");
+      lines.push("#", "# Permissions needed (grant them all at once when creating it):");
       const width = Math.max(...c.needs.map((n) => n.permission.length));
       for (const n of c.needs) {
         lines.push(`#   ${n.permission.padEnd(width)}  ${n.level.padEnd(14)} ${n.why}`);
@@ -326,7 +326,7 @@ export function envExample(config) {
     // Repo と Tracker の両方が求める構成）。先頭の行にしか `#` を付けないと、残りが
     // 値の行として読まれ、写して作った `.env` が壊れる（#115）。
     if (c.note !== undefined) lines.push(...c.note.split("\n").map((l) => `# ${l.trim()}`), "#");
-    lines.push(`# 失ったとき: ${c.lost}`, `${c.name}=`);
+    lines.push(`# If lost: ${c.lost}`, `${c.name}=`);
   }
   return `${lines.join("\n")}\n`;
 }

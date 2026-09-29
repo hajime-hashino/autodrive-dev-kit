@@ -78,7 +78,7 @@ test("素の状態で落ちていたら、変異を当てずに止まる", () =>
   assert.deepEqual(result.outcomes, []);
   assert.equal(applied, 1, "素の確認すらしていない");
   assert.equal(allCaught(result), false);
-  assert.ok(describe(result).join("").includes("区別できない"), "理由を言っていない");
+  assert.ok(describe(result).join("").includes("cannot be told"), "理由を言っていない");
 });
 
 // --------------------------------------------------- 実行の読み方
@@ -99,7 +99,7 @@ test("打ち方が壊れているときを、捕まえたと読まない", () =>
   const result = mutate(root, [m()], run);
   assert.equal(result.baseline, false, "素の状態の確認をすり抜けている");
   assert.equal(allCaught(result), false, "**壊れた打ち方を、捕まえたと読んでいる**");
-  assert.ok(describe(result).join("").includes("変異は当てていない"), "何が起きたか言っていない");
+  assert.ok(describe(result).join("").includes("No mutations were applied"), "何が起きたか言っていない");
 });
 
 // **出力の文字列で判断しない。** 実行器はファイルごとの小計も出すため、
@@ -134,13 +134,13 @@ test("捕まえられなかったものを、目立たせる", () => {
     baseline: true,
     outcomes: [{ name: "あ", outcome: "caught" }, { name: "い", outcome: "survived" }],
   }).join("\n");
-  assert.ok(text.includes("通った（捕まえていない）"), "通ったことが読めない");
-  assert.ok(text.includes("1 個が捕まえられていない"), "数を出していない");
+  assert.ok(text.includes("passed (not caught)"), "通ったことが読めない");
+  assert.ok(text.includes("1 were not caught"), "数を出していない");
 });
 
 test("全部落ちたら、そう言う", () => {
   const text = describe({ baseline: true, outcomes: [{ name: "あ", outcome: "caught" }] }).join("\n");
-  assert.ok(text.includes("すべてで落ちた"), text);
+  assert.ok(text.includes("were caught"), text);
 });
 
 // 変異が残したものを、掃くこと。
@@ -212,15 +212,15 @@ test("素の状態で落ちたら、そのときの出力を出す", () => {
     baselineOutput: "not ok 2 - 何かが壊れている\nError: Cannot find module 'x'",
   });
   const text = lines.join("\n");
-  assert.match(text, /素の状態でテストが落ちている/);
+  assert.match(text, /Tests fail in the unmutated state/);
   assert.match(text, /何かが壊れている/, "**落ちた中身を出していない**");
   assert.match(text, /Cannot find module/, "標準エラーを捨てている");
 });
 
 test("出力が無ければ、余計な見出しを出さない", () => {
   const text = describe({ baseline: false, outcomes: [] }).join("\n");
-  assert.match(text, /素の状態でテストが落ちている/);
-  assert.equal(text.includes("そのときの出力"), false, "空の見出しを出している");
+  assert.match(text, /Tests fail in the unmutated state/);
+  assert.equal(text.includes("Output at that time"), false, "空の見出しを出している");
 });
 
 // ------------------------------------------- かかった時間を出す（AUT-227）
@@ -256,14 +256,14 @@ test("全体と、1件あたりの両方を出す", () => {
     elapsedMs: 10_000,
   });
   const text = lines.join("\n");
-  assert.match(text, /10 秒かかった/, `全体が出ていない:\n${text}`);
-  assert.match(text, /1件あたり 5\.0 秒/, `1件あたりが出ていない:\n${text}`);
+  assert.match(text, /Took 10 seconds/, `全体が出ていない:\n${text}`);
+  assert.match(text, /5\.0 seconds each/, `1件あたりが出ていない:\n${text}`);
 });
 
 // **素の状態で落ちたときは、時間を出さない。** 変異を当てていないので測る対象が無い。
 test("素の状態で落ちたら、時間は出さない", () => {
   const text = describe({ baseline: false, outcomes: [], baselineOutput: "落ちた" }).join("\n");
-  assert.equal(text.includes("秒かかった"), false, "当てていないのに時間を出している");
+  assert.equal(text.includes("seconds each"), false, "当てていないのに時間を出している");
 });
 
 // --------------------------------------------------- 変異の一覧そのもの

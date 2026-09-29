@@ -83,7 +83,7 @@ export function readDefinition(text) {
   try {
     /** @type {DevcontainerJson | null} */
     const json = JSON.parse(stripped);
-    if (json === null || typeof json !== "object") return { json: null, error: "中身が項目になっていない" };
+    if (json === null || typeof json !== "object") return { json: null, error: "the contents are not an object" };
     return { json, error: null };
   } catch (e) {
     return { json: null, error: e instanceof Error ? e.message : String(e) };
@@ -153,8 +153,8 @@ export function isolationGaps(root) {
   // 定義ごと消すと黙って通っていた（AUT-218）。
   if (!existsSync(path)) {
     add(
-      "devcontainer と宣言しているが、定義が無い",
-      "隔離が何も無い状態で動く。**使わないなら `autodrive.json` の `sandbox` を変えること**",
+      "devcontainer is declared, but there is no definition",
+      "It runs with no isolation at all. **If you do not use it, change `sandbox` in `autodrive.json`**",
     );
     return gaps;
   }
@@ -163,14 +163,14 @@ export function isolationGaps(root) {
   try {
     text = readFileSync(path, "utf8");
   } catch {
-    add("読めない", "中身を確かめられない。**確かめられないものを、通さない**");
+    add("unreadable", "The contents cannot be confirmed. **What cannot be confirmed does not pass**");
     return gaps;
   }
 
   const { json, error } = readDefinition(text);
   if (json === null) {
     // **黙って通さない。** 読めないことは、正しいことではない。
-    add("読めない", `${error}。中身を確かめられない`);
+    add("unreadable", `${error}. The contents cannot be confirmed`);
     return gaps;
   }
 
@@ -181,10 +181,10 @@ export function isolationGaps(root) {
   // （AUT-121）。
   if (!invokes(json.postStartCommand, FIREWALL)) {
     add(
-      `postStartCommand が ${FIREWALL} を呼んでいない`,
+      `postStartCommand does not call ${FIREWALL}`,
       invokes(json.postCreateCommand, FIREWALL)
-        ? "**postCreateCommand は作ったときにしか走らない。** 2回目以降の起動で隔離が無くなる（AUT-121）"
-        : "出口を閉じる処理が走らない。**許可一覧に無い宛先へ素通りする**",
+        ? "**postCreateCommand runs only when the container is created.** From the second start onward the isolation is gone (AUT-121)"
+        : "The step that closes the egress does not run. **Traffic goes straight through to destinations not on the allowlist**",
     );
   }
 
@@ -192,7 +192,7 @@ export function isolationGaps(root) {
   const runArgs = Array.isArray(json.runArgs) ? json.runArgs.join(" ") : "";
   for (const cap of CAPABILITIES) {
     if (!runArgs.includes(cap)) {
-      add(`runArgs に ${cap} が無い`, "iptables の規則を置けない。**出口を閉じられない**");
+      add(`runArgs has no ${cap}`, "iptables rules cannot be placed. **The egress cannot be closed**");
     }
   }
 
@@ -202,8 +202,8 @@ export function isolationGaps(root) {
   // 置いた規則をそのまま外せる。
   if (json.remoteUser === undefined || json.remoteUser === "root") {
     add(
-      "remoteUser が root（または指定が無い）",
-      "エージェントが root で動くと、**置いた規則を自分で外せる**",
+      "remoteUser is root (or not specified)",
+      "If the agent runs as root, **it can remove the placed rules itself**",
     );
   }
 
@@ -215,7 +215,7 @@ export function isolationGaps(root) {
     const referenced =
       invokes(json.postStartCommand, script) || invokes(json.postCreateCommand, script);
     if (referenced && !existsSync(join(root, ".devcontainer", script))) {
-      add(`${script} を呼んでいるが、置かれていない`, "起動のたびに失敗する");
+      add(`${script} is called but not placed`, "It fails on every start");
     }
   }
 
@@ -231,10 +231,10 @@ export function describe(gaps) {
   if (gaps.length === 0) return [];
   return [
     "",
-    `隔離の設定が欠けている（${gaps.length}件）。**このままでは、外向き通信が絞られない。**`,
+    `Isolation settings are missing (${gaps.length}). **As it is, outbound traffic is not narrowed.**`,
     "",
     ...gaps.flatMap((g) => [`  ${g.path}`, `      ${g.gap}`, `      ${g.why}`, ""]),
-    "このファイルはプロジェクトのものであり、kit は書き換えない。**直すのはこちらである。**",
-    "元の形は kit の templates/devcontainer/devcontainer.json にある。",
+    "This file belongs to the project, and the kit does not rewrite it. **It is ours to fix.**",
+    "The original shape is in the kit's templates/devcontainer/devcontainer.json.",
   ];
 }

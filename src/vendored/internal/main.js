@@ -25,26 +25,26 @@ import { ACTIVE, INVARIANTS, Result } from "./state.js";
 
 import { loadEvents } from "./telemetry.js";
 
-const USAGE = `不変条件の状態を判定する
+const USAGE = `Judge the state of the invariants
 
   invariants [--root PATH] [--scope cross|self] [--format text|json]
-  invariants --enact <不変条件のキー> [--root PATH]
-  invariants --substitute <不変条件のキー> --by <主体> --detail <内容> [--root PATH]
+  invariants --enact <invariant key> [--root PATH]
+  invariants --substitute <invariant key> --by <who> --detail <details> [--root PATH]
 
-  --root    判定の起点。既定はカレントディレクトリ
-  --scope   cross: 起点と直下のリポジトリを横断して判定（既定）
-            self:  起点のリポジトリのみ
-  --format  text（既定）または json
-  --enact   有効境界を進める。これ以降の記録が判定の対象になる。
-            記録を自動で残す仕掛けが登録されていなければ拒否する。
-            有効境界はアダプタ経由で書かれるため、アダプタが壊れていれば進められない。
+  --root    Where judging starts. Defaults to the current directory
+  --scope   cross: judge across the starting point and the repositories directly under it (default)
+            self:  only the starting repository
+  --format  text (default) or json
+  --enact   Advance the activation boundary. Records from then on are judged.
+            Refused if the mechanism that records automatically is not registered.
+            The activation boundary is written through the adapter, so it cannot advance if the adapter is broken.
   --substitute
-            有効になっていない不変条件について、何が手で代替しているかを記録する。
-            定義§9の立ち上げ期の例外は、この記録があることを条件としている。
-            既に有効である不変条件に対しては拒否する。
+            For an invariant that is not active, record what is substituting for it by hand.
+            The bootstrap-phase exception in definition §9 is conditional on this record existing.
+            Refused for an invariant that is already active.
 
-終了コード 0=失敗なし / 1=代替の記録が無い、または判定できない / 2=対象が無い
-判定基準の全文は docs/invariants.md を参照。`;
+Exit codes 0=no failures / 1=no substitution record, or cannot be judged / 2=no target
+The full criteria are in docs/invariants.md.`;
 
 /**
  * 有効境界を進める。
@@ -58,13 +58,13 @@ const USAGE = `不変条件の状態を判定する
 function enact(invariant , root , repos) {
   const known = INVARIANTS.map((i) => i.key);
   if (!known.includes(invariant)) {
-    return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
+    return { output: `Unknown invariant: ${invariant}\nCandidates: ${known.join(" / ")}`, code: 2 };
   }
   const registeredIn = hookRegistered(repos);
   if (registeredIn === null) {
     return {
-      output: "記録を自動で残す仕掛けが .claude/settings.json に登録されていない。\n" +
-        "登録しないまま有効境界を進めると、記録が続く保証が無いまま有効を名乗ることになる。",
+      output: "The mechanism that records automatically is not registered in .claude/settings.json.\n" +
+        "Advancing the activation boundary without it would claim active with no guarantee that recording continues.",
       code: 1,
     };
   }
@@ -72,20 +72,20 @@ function enact(invariant , root , repos) {
   const boundary = new Date().toISOString();
   telemetry.recordEnactment(
     invariant,
-    `有効境界を進めた。仕掛けは ${registeredIn} に登録されている`,
+    `Advanced the activation boundary. The mechanism is registered in ${registeredIn}`,
     boundary,
   );
   const written = telemetry.lastWrite;
   if (written === null || !written.attributed) {
     return {
-      output: "有効境界の記録が作業単位に紐づかなかった。着手してから実行すること。",
+      output: "The activation boundary record was not linked to a work item. Start work first, then run it.",
       code: 1,
     };
   }
   return {
     output:
-      `${invariant} の有効境界を進めた: ${written.path}\n` +
-      `${boundary} 以前の記録は判定の対象から外れる（履歴としては残る）`,
+      `Advanced the activation boundary of ${invariant}: ${written.path}\n` +
+      `Records before ${boundary} are no longer judged (they remain as history)`,
     code: 0,
   };
 }
@@ -110,17 +110,17 @@ async function substitute(
 ) {
   const known = INVARIANTS.map((i) => i.key);
   if (!known.includes(invariant)) {
-    return { output: `知らない不変条件: ${invariant}\n候補: ${known.join(" / ")}`, code: 2 };
+    return { output: `Unknown invariant: ${invariant}\nCandidates: ${known.join(" / ")}`, code: 2 };
   }
-  if ((by ?? "").trim() === "") return { output: "--by は必須（何が代替しているか）", code: 2 };
-  if ((detail ?? "").trim() === "") return { output: "--detail は必須", code: 2 };
+  if ((by ?? "").trim() === "") return { output: "--by is required (what is substituting)", code: 2 };
+  if ((detail ?? "").trim() === "") return { output: "--detail is required", code: 2 };
 
   const check = CHECKS.find((c) => c.key === invariant);
   if (check !== undefined) {
     const current = await check.run(input);
     if (current.state === ACTIVE) {
       return {
-        output: `${invariant} は既に有効である。代替の記録は要らない。`,
+        output: `${invariant} is already active. No substitution record is needed.`,
         code: 2,
       };
     }
@@ -130,9 +130,9 @@ async function substitute(
   telemetry.recordSubstitution(invariant, by , detail);
   const written = telemetry.lastWrite;
   if (written === null || !written.attributed) {
-    return { output: "代替の記録が作業単位に紐づかなかった。着手してから実行すること。", code: 1 };
+    return { output: "The substitution record was not linked to a work item. Start work first, then run it.", code: 1 };
   }
-  return { output: `${invariant} の代替を記録した: ${written.path}`, code: 0 };
+  return { output: `Recorded the substitution for ${invariant}: ${written.path}`, code: 0 };
 }
 
 export async function run(argv) {
@@ -153,10 +153,10 @@ export async function run(argv) {
 
   if (values.help) return { output: USAGE, code: 0 };
   if (values.scope !== "cross" && values.scope !== "self") {
-    return { output: `--scope は cross か self（受け取った値: ${values.scope}）`, code: 2 };
+    return { output: `--scope must be cross or self (received: ${values.scope})`, code: 2 };
   }
   if (values.format !== "text" && values.format !== "json") {
-    return { output: `--format は text か json（受け取った値: ${values.format}）`, code: 2 };
+    return { output: `--format must be text or json (received: ${values.format})`, code: 2 };
   }
   const scope = values.scope;
 
@@ -164,7 +164,7 @@ export async function run(argv) {
   const writing = values.enact !== undefined || values.substitute !== undefined;
   const repos = discoverRepos(values.root, writing ? "cross" : scope);
   if (repos.length === 0) {
-    return { output: `判定対象のリポジトリが見つからない: ${resolve(values.root)}`, code: 2 };
+    return { output: `No repository to judge was found: ${resolve(values.root)}`, code: 2 };
   }
 
   const { events, broken } = loadEvents(repos);
@@ -187,11 +187,11 @@ export async function run(argv) {
   const results = [];
   for (const { key, label } of INVARIANTS) {
     const check = CHECKS.find((c) => c.key === key);
-    if (check === undefined) throw new Error(`判定が登録されていない不変条件: ${key}`);
+    if (check === undefined) throw new Error(`Invariant with no registered check: ${key}`);
     if (!check.scopes.has(scope)) {
       results.push(
         new Result(key, label).skip(
-          "リポジトリをまたいで初めて成立するため、--scope cross でのみ判定する",
+          "It holds only across repositories, so it is judged only with --scope cross",
         ),
       );
       continue;

@@ -103,7 +103,7 @@ test("配られる中身が変わったのに上げていなければ、落と�
   assert.equal(r.ok, false);
   // **なぜ・何をすればよいかが出ていること**（配布物「停止するときの作法」）。
   assert.match(r.message, /kit_version/, "なぜ困るのかが無い");
-  assert.match(r.message, /VERSION の末尾の数字を1つ上げる/, "何をすればよいかが無い");
+  assert.match(r.message, /Raise the last number of VERSION by one/, "何をすればよいかが無い");
   assert.match(r.message, /package\.json/, "揃える先が無い");
   assert.match(r.message, /src\/vendored\/internal\/init\.js/, "どれが引っかかったのかが無い");
 });
@@ -133,13 +133,13 @@ test("上げていれば、通る", () => {
 test("下げていたら、落とす", () => {
   const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: "0.2.0", head: "0.1.0" });
   assert.equal(r.ok, false);
-  assert.match(r.message, /下がっている/);
+  assert.match(r.message, /went down/);
 });
 
 test("読めない形にしていたら、落とす", () => {
   const r = checkBump({ changed: ["src/vendored/internal/init.js"], base: "0.1.0", head: "v0.1.1" });
   assert.equal(r.ok, false);
-  assert.match(r.message, /`1\.2\.3` の形/, "どう書けばよいかが無い");
+  assert.match(r.message, /Write it as `1\.2\.3`/, "どう書けばよいかが無い");
 });
 
 // **調べられなかったことを、通過として扱わない**（定義§9）。

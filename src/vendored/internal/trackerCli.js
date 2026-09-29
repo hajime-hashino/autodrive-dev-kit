@@ -16,21 +16,21 @@ import { REVISABLE_STATES, isRevisable, isWorkItemState } from "./ports/tracker.
 
 import { STATE_DIR, defaultRoot, resolveWorkItem } from "./workItem.js";
 
-const USAGE = `作業単位を扱う
+const USAGE = `Handle work items
 
-  tracker 作業単位を取得する [<ID>]
-  tracker 作業単位を起票する --title <題> --body <本文>
-  tracker ステータスを進める <ID> --to <状態> [--repo <対象リポジトリ>]
-  tracker 作業ログを追記する [<ID>] --text <内容>   ID を省くと、いま着手中の作業単位へ
-  tracker 本文を直す <ID> --body <本文>
+  tracker 作業単位を取得する [<ID>]                     Get work item
+  tracker 作業単位を起票する --title <title> --body <body>   File work item
+  tracker ステータスを進める <ID> --to <state> [--repo <target repository>]   Advance status
+  tracker 作業ログを追記する [<ID>] --text <text>        Append to work log. Without an ID, to the work item currently started
+  tracker 本文を直す <ID> --body <body>                  Edit work item body
 
-  状態: backlog / todo / started / done / canceled
-  本文を直せるのは着手前（backlog / todo）に限る。着手後の訂正は
-  「作業ログを追記する」で行う。
-  --repo は started へ進めるときに必須。記録の書き込み先になる。
+  States: backlog / todo / started / done / canceled
+  The body can be edited only before work starts (backlog / todo). Corrections after
+  work starts are made with "作業ログを追記する" (Append to work log).
+  --repo is required when advancing to started. It is where records are written.
 
-資格情報は環境変数 LINEAR_API_KEY から読む。対象が複数ある場合は
-AUTODRIVE_TRACKER_TEAM で指定する。`;
+Credentials are read from the environment variable LINEAR_API_KEY. If there are several targets,
+specify one with AUTODRIVE_TRACKER_TEAM.`;
 
 export const OPERATIONS = {
   作業単位を取得する: "get",
@@ -110,31 +110,31 @@ export async function run(
 
   if (operation === "get") {
     const item = await tracker.get(id);
-    if (item === null) return { output: "該当する作業単位が無い", code: 1 };
+    if (item === null) return { output: "No matching work item", code: 1 };
     return { output: `${item.id} [${item.state}] ${item.title}\n${item.url}\n\n${item.body}`, code: 0 };
   }
 
   if (operation === "create") {
-    if ((values.title ?? "").trim() === "") return { output: "--title は必須", code: 2 };
-    if ((values.body ?? "").trim() === "") return { output: "--body は必須", code: 2 };
+    if ((values.title ?? "").trim() === "") return { output: "--title is required", code: 2 };
+    if ((values.body ?? "").trim() === "") return { output: "--body is required", code: 2 };
     const item = await tracker.create({ title: values.title , body: values.body });
-    return { output: `起票した: ${item.id}\n${item.url}`, code: 0 };
+    return { output: `Filed: ${item.id}\n${item.url}`, code: 0 };
   }
 
   // **作業ログは、ID を省けば着手中の作業単位へ書く。** 止まって人が答えるたびに
   // 書くものであり、毎回 ID を引かせると書かれなくなる（AUT-258）。記録と同じ
   // 解決の仕方をとるので、書いた先がテレメトリとずれない。
   if (operation === "note") {
-    if ((values.text ?? "").trim() === "") return { output: "--text は必須", code: 2 };
+    if ((values.text ?? "").trim() === "") return { output: "--text is required", code: 2 };
     const target = id ?? resolveWorkItem(root).item?.workItemId;
     if (target === undefined) {
-      return { output: "着手中の作業単位が無い。ID を渡すこと（先に begin で着手する）", code: 2 };
+      return { output: "No work item is currently started. Pass an ID (or start one with begin first)", code: 2 };
     }
     await tracker.note(target, values.text);
-    return { output: `追記した: ${target}`, code: 0 };
+    return { output: `Appended: ${target}`, code: 0 };
   }
 
-  if (id === undefined) return { output: "作業単位のIDが要る", code: 2 };
+  if (id === undefined) return { output: "A work item ID is required", code: 2 };
 
   // **本文を直せるのは着手前に限る**（定義§16）。
   //
@@ -144,31 +144,31 @@ export async function run(
   // **規則はここにある。アダプタには置かない。** 実装が増えたときに片方だけ
   // 緩くなる。
   if (operation === "revise") {
-    if ((values.body ?? "").trim() === "") return { output: "--body は必須", code: 2 };
+    if ((values.body ?? "").trim() === "") return { output: "--body is required", code: 2 };
     const current = await tracker.get(id);
-    if (current === null) return { output: "該当する作業単位が無い", code: 1 };
+    if (current === null) return { output: "No matching work item", code: 1 };
     if (!isRevisable(current.state)) {
       // **何をすればよいかまで出す。** 断るだけでは、訂正の行き先が分からない。
       return {
         output:
-          `${current.id} は ${current.state} であり、本文を直せない` +
-          `（直せるのは ${REVISABLE_STATES.join(" / ")}）。\n` +
-          "**着手後の本文は「何を頼まれたか」の記録である。**\n" +
-          `訂正は作業ログへ: tracker 作業ログを追記する ${current.id} --text "..."`,
+          `${current.id} is ${current.state}, so its body cannot be edited` +
+          ` (it can be edited in ${REVISABLE_STATES.join(" / ")}).\n` +
+          "**After work starts, the body is the record of \"what was asked for.\"**\n" +
+          `Put corrections in the work log: tracker 作業ログを追記する ${current.id} --text "..."`,
         code: 2,
       };
     }
     const item = await tracker.revise(id, values.body);
-    return { output: `本文を直した: ${item.id}\n${item.url}`, code: 0 };
+    return { output: `Edited the body: ${item.id}\n${item.url}`, code: 0 };
   }
 
   const to = values.to ?? "";
-  if (!isWorkItemState(to)) return { output: "--to は backlog / todo / started / done / canceled", code: 2 };
+  if (!isWorkItemState(to)) return { output: "--to must be backlog / todo / started / done / canceled", code: 2 };
   const target = to;
 
   if (target === "started" && (values.repo ?? "").trim() === "") {
     // 着手は記録の紐づけの起点であり、書き込み先が決まらないと成立しない。
-    return { output: "started へ進めるには --repo が要る（記録の書き込み先になる）", code: 2 };
+    return { output: "Advancing to started needs --repo (it is where records are written)", code: 2 };
   }
 
   // **対象リポジトリを Tracker にも渡す。** 手元のマーカーにしか書かないと、
@@ -177,11 +177,11 @@ export async function run(
   let note = "";
   if (target === "started") {
     writeMarker(root, item.id, values.repo);
-    note = `\n以降の記録は ${values.repo} の ${item.id} に紐づく`;
+    note = `\nRecords from now on are linked to ${item.id} in ${values.repo}`;
   } else if (target === "done" || target === "canceled") {
-    if (clearMarker(root, item.id)) note = "\n作業単位マーカーを外した";
+    if (clearMarker(root, item.id)) note = "\nRemoved the work item marker";
   }
-  return { output: `${item.id} を ${target} へ進めた${note}`, code: 0 };
+  return { output: `Advanced ${item.id} to ${target}${note}`, code: 0 };
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
@@ -191,7 +191,7 @@ if (invokedDirectly) {
   // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
   const { tracker, error } = createTracker(root);
   if (tracker === null && OPERATIONS[argv[0] ?? ""] !== undefined) {
-    console.error(error ?? "Tracker を組み立てられない");
+    console.error(error ?? "Cannot build the Tracker");
     process.exit(2);
   }
   try {

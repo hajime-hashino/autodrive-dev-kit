@@ -13,24 +13,24 @@ import { defaultRoot, resolveWorkItem } from "./workItem.js";
 import { STOP_TYPES } from "./ports/telemetry.js";
 
 
-const USAGE = `記録を残す
+const USAGE = `Leave records
 
-  telemetry 停止を記録する   --kind <種別> --type <入力|手戻り> --detail <内容> [--resolved]
-  telemetry 手戻りを記録する   --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
-  telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> --not-looked <見なかった範囲>
-                                 --detail <内容> [--fixed]
-  telemetry 委譲範囲の変更を記録する   --area <領域> --from <状態> --to <状態> --detail <内容> [--basis <根拠>]
+  telemetry 停止を記録する   --kind <kind> --type <入力|手戻り> --detail <details> [--resolved]      Record stop
+  telemetry 手戻りを記録する   --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]      Record rework
+  telemetry 抜き取り確認を記録する --area <area> --looked <range looked at> --not-looked <range not looked at>
+                                 --detail <details> [--fixed]      Record spot check
+  telemetry 委譲範囲の変更を記録する   --area <area> --from <state> --to <state> --detail <details> [--basis <ground>]      Record delegation change
 
-  --root  記録の起点。既定は CLAUDE_PROJECT_DIR かカレントディレクトリ
+  --root  Where records start from. Defaults to CLAUDE_PROJECT_DIR or the current directory
 
-停止の種類（--type）は「入力」か「手戻り」。**すべての停止が減らす対象ではない。**
-入力を得る停止（ヒアリング、見え方の決定、資格情報の発行）は、手法が正しく
-働いている証拠である。**同じことを繰り返し聞くのは、入力ではなく手戻り。**
+The kind of stop (--type) is 「入力」 (input) or 「手戻り」 (rework). **Not every stop is something to reduce.**
+Stops to obtain input (hearing requirements, deciding how it looks, issuing credentials) are evidence that the method
+is working correctly. **Asking the same thing again is rework, not input.**
 
-原因は「要件のズレ」「設計のズレ」「実装バグ」のいずれか（定義§6）。
-抜き取り確認は、修正が入らなかった場合も必ず記録すること（定義§8）。
---found-in を付けた修正は検出漏れとして記録される（定義§16）。
-作業単位ID・モデル・autodrive-dev-kit のバージョン・書き込み経路は自動で付く。渡さないこと。`;
+The cause is one of 「要件のズレ」 (requirements drift), 「設計のズレ」 (design drift), 「実装バグ」 (implementation bug) (definition §6).
+Always record spot checks, even when nothing was corrected (definition §8).
+A fix with --found-in is recorded as a missed detection (definition §16).
+The work item ID, model, autodrive-dev-kit version, and write path are attached automatically. Do not pass them.`;
 
 // 語彙は定義§16の操作名で受ける。英語の別名も受けるが、正は日本語の操作名とする。
 export const OPERATIONS = {
@@ -92,26 +92,26 @@ export function run(argv , root) {
   });
 
   const detail = values.detail ?? "";
-  if (detail.trim() === "") return { output: "--detail は必須", code: 2 };
+  if (detail.trim() === "") return { output: "--detail is required", code: 2 };
   if (values.cause !== undefined && !CAUSES.includes(values.cause)) {
-    return { output: `--cause は ${CAUSES.join(" / ")} のいずれか`, code: 2 };
+    return { output: `--cause must be one of ${CAUSES.join(" / ")}`, code: 2 };
   }
 
   const telemetry = new JsonlTelemetry(values.root ?? root);
 
   if (operation === "stop") {
-    if ((values.kind ?? "").trim() === "") return { output: "--kind は必須", code: 2 };
+    if ((values.kind ?? "").trim() === "") return { output: "--kind is required", code: 2 };
     // **省略できる形にしない。** 既定値を置くと、考えずに通る側へ倒れる。
     // 定義§6は記録の時点で区別することを求めており、後から分類し直すと解釈が入る。
     if (!(STOP_TYPES).includes(values.type ?? "")) {
       return {
         output:
-          `--type は ${STOP_TYPES.join(" / ")} のいずれか\n\n` +
-          "  入力    何を作るかのヒアリング、見え方の決定、順序の合意、資格情報の発行\n" +
-          "          手法が正しく働いている。減らす対象ではない\n" +
-          "  手戻り  認識が違っていた、作り直しが要る、承認で差し戻された\n" +
-          "          減らす対象\n\n" +
-          "**同じことを繰り返し聞くのは、入力ではなく手戻りである。**",
+          `--type must be one of ${STOP_TYPES.join(" / ")}\n\n` +
+          "  入力 (input)     hearing what to build, deciding how it looks, agreeing on the order, issuing credentials\n" +
+          "                   the method is working correctly. Not something to reduce\n" +
+          "  手戻り (rework)  the understanding was different, something has to be rebuilt, it was sent back at approval\n" +
+          "                   something to reduce\n\n" +
+          "**Asking the same thing again is rework, not input.**",
         code: 2,
       };
     }
@@ -122,7 +122,7 @@ export function run(argv , root) {
       resolved: values.resolved,
     });
   } else if (operation === "fix") {
-    if ((values.target ?? "").trim() === "") return { output: "--target は必須", code: 2 };
+    if ((values.target ?? "").trim() === "") return { output: "--target is required", code: 2 };
     telemetry.recordFix({
       target: values.target ,
       detail,
@@ -131,7 +131,7 @@ export function run(argv , root) {
     });
   } else if (operation === "sampling") {
     for (const key of ["area", "looked", "not-looked"] ) {
-      if ((values[key] ?? "").trim() === "") return { output: `--${key} は必須`, code: 2 };
+      if ((values[key] ?? "").trim() === "") return { output: `--${key} is required`, code: 2 };
     }
     telemetry.recordSampling({
       area: values.area ,
@@ -144,7 +144,7 @@ export function run(argv , root) {
     });
   } else {
     for (const key of ["area", "from", "to"] ) {
-      if ((values[key] ?? "").trim() === "") return { output: `--${key} は必須`, code: 2 };
+      if ((values[key] ?? "").trim() === "") return { output: `--${key} is required`, code: 2 };
     }
     telemetry.recordBoundaryChange({
       area: values.area ,
@@ -156,20 +156,20 @@ export function run(argv , root) {
   }
 
   const written = telemetry.lastWrite;
-  if (written === null) return { output: "記録できなかった", code: 1 };
+  if (written === null) return { output: "Could not record", code: 1 };
   // **理由をそのまま出す。** 紐づく先が無いのか、マーカーが壊れているのかで、
   // 人がやることが違う。同じ言葉で報告すると、違うところを探すことになる。
-  const reason = resolveWorkItem(root).unattributedReason ?? "理由を特定できない";
+  const reason = resolveWorkItem(root).unattributedReason ?? "Could not identify the reason";
   // **古い名前で呼ばれたら、新しい名前を出す。** 黙って受け入れると、いつまでも
   // 2つの名前が生き続ける。移行のための措置であり、残し続けるものではない。
   const notice =
     renamedTo === undefined
       ? ""
-      : `\n（「${given}」は「${renamedTo}」に変わった。次からはそちらを使うこと）`;
+      : `\n("${given}" has been renamed to "${renamedTo}". Use that from now on)`;
   return {
     output: written.attributed
-      ? `記録した: ${written.path}${notice}`
-      : `記録したが作業単位に紐づいていない: ${written.path}\n${reason}${notice}`,
+      ? `Recorded: ${written.path}${notice}`
+      : `Recorded, but not linked to a work item: ${written.path}\n${reason}${notice}`,
     // 紐づかない記録は残すが、成功として返さない。捨てずに、気づける形にする。
     code: written.attributed ? 0 : 1,
   };

@@ -84,7 +84,7 @@ export function runOnce(root, exec = execFileSync) {
   // **1件も走っていないなら、通ったとは言わない。**
   const ran = /^# tests (\d+)$/m.exec(out);
   if (ran !== null && Number(ran[1]) > 0) return { ok: true, output: out };
-  return { ok: false, output: `${out}\n（走った件数を読み取れない。1件も走っていない可能性がある）` };
+  return { ok: false, output: `${out}\n(cannot read how many ran. Possibly none ran at all)` };
 }
 
 /** 出力の終わりだけを取り出す。**全部出すと、肝心の行が流れる。** */
@@ -147,28 +147,28 @@ export function mutate(root, mutations, run = runTests, now = () => Date.now()) 
 export function describe({ baseline, outcomes, baselineOutput, elapsedMs }) {
   if (!baseline) {
     return [
-      "**素の状態でテストが落ちている。変異は当てていない。**",
-      "落ちたのが変異のせいか、元からかを区別できない。先に直すこと。",
+      "**Tests fail in the unmutated state. No mutations were applied.**",
+      "It cannot be told whether failures come from a mutation or were there already. Fix that first.",
       ...(baselineOutput === undefined || baselineOutput === ""
         ? []
-        : ["", "そのときの出力（終わりだけ）:", ...tail(baselineOutput).map((l) => `  ${l}`)]),
+        : ["", "Output at that time (tail only):", ...tail(baselineOutput).map((l) => `  ${l}`)]),
     ];
   }
-  const label = { caught: "落ちた  ", survived: "**通った（捕まえていない）**", "not-applied": "**当てられなかった**" };
+  const label = { caught: "caught  ", survived: "**passed (not caught)**", "not-applied": "**could not be applied**" };
   const lines = outcomes.map((o) => `  ${label[o.outcome]} ${o.name}`);
   const bad = outcomes.filter((o) => o.outcome !== "caught");
   lines.push("");
   lines.push(
     bad.length === 0
-      ? `${outcomes.length} 個すべてで落ちた。`
-      : `**${bad.length} 個が捕まえられていない。** 判定を足すこと。`,
+      ? `All ${outcomes.length} were caught.`
+      : `**${bad.length} were not caught.** Add checks.`,
   );
   // **1件あたりも出す。** 全体だけだと、件数が増えたのか1件が遅くなったのかが
   // 区別できない。**区別できないと、どちらを直せばよいか決められない。**
   if (elapsedMs !== undefined && elapsedMs > 0 && outcomes.length > 0) {
     const total = Math.round(elapsedMs / 1000);
     const each = (elapsedMs / outcomes.length / 1000).toFixed(1);
-    lines.push("", `${total} 秒かかった（1件あたり ${each} 秒）。`);
+    lines.push("", `Took ${total} seconds (${each} seconds each).`);
   }
   return lines;
 }

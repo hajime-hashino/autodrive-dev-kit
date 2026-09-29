@@ -40,7 +40,7 @@ export async function record(input, root, now = new Date(), env = process.env, d
   const transcriptPath = typeof input.transcript_path === "string" ? input.transcript_path : "";
   const sessionId = typeof input.session_id === "string" ? input.session_id : "";
   if (transcriptPath === "" || sessionId === "") {
-    return { sent: 0, note: "セッション記録の位置か識別子が渡されなかった" };
+    return { sent: 0, note: "The session record's location or identifier was not passed" };
   }
 
   const cursor = cursorPath(root, sessionId);
@@ -50,7 +50,7 @@ export async function record(input, root, now = new Date(), env = process.env, d
   if (byModel.length === 0) {
     // 使用量が無くてもカーソルは進める。次回に同じ行を読み直さないため。
     writeCursor(cursor, lines, lastUuid);
-    return { sent: 0, note: "新しい使用量は無い" };
+    return { sent: 0, note: "No new usage" };
   }
 
   const ts = now.toISOString();
@@ -69,7 +69,7 @@ export async function record(input, root, now = new Date(), env = process.env, d
     // 居ない。** 進めないと、後で設定したときに過去の全量がその時点の作業単位へ
     // 付いてしまう。
     writeCursor(cursor, lines, lastUuid);
-    return { sent: 0, note: "送り先が設定されていない（AUTODRIVE_OTLP_ENDPOINT）。トークン消費は記録しない" };
+    return { sent: 0, note: "No destination is set (AUTODRIVE_OTLP_ENDPOINT). Token consumption is not recorded" };
   }
 
   const { item, unattributedReason } = resolveWorkItem(root);
@@ -86,13 +86,13 @@ export async function record(input, root, now = new Date(), env = process.env, d
   if (!result.ok) {
     // **カーソルを進めない。** 進めると、送れなかった分がそのまま消える。
     // 次に走ったときに、まとめて送り直される。
-    return { sent: 0, note: `${result.note}（次回に送り直す）` };
+    return { sent: 0, note: `${result.note} (will resend next time)` };
   }
 
   writeCursor(cursor, lines, lastUuid);
   return {
     sent: byModel.length,
-    note: item === null ? "作業単位が解決できなかった" : `作業単位 ${item.workItemId}`,
+    note: item === null ? "Could not resolve the work item" : `work item ${item.workItemId}`,
   };
 }
 
@@ -117,9 +117,9 @@ if (invokedDirectly) {
   // 送信に失敗しても、ここで投げさせない。**フックはエージェントを止めない。**
   const result = await record(input, root).catch((e) => ({
     sent: 0,
-    note: `記録の途中で落ちた: ${e instanceof Error ? e.message : String(e)}`,
+    note: `Failed partway through recording: ${e instanceof Error ? e.message : String(e)}`,
   }));
   // 終了コードは常に 0。記録の失敗でエージェントを止めない（フックの非ブロッキング）。
-  console.error(`record-tokens: ${result.sent} 件 / ${result.note}`);
+  console.error(`record-tokens: ${result.sent} sent / ${result.note}`);
   process.exit(0);
 }

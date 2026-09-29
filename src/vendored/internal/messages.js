@@ -127,7 +127,7 @@ const MESSAGES = {
       "代替であること自体は失敗ではない。肩代わりの記録が無いこと、" +
       "および有効かどうかを判定できないことが失敗である。",
     "report.ok": "失敗なし",
-    "report.evidence.ja": "（観測の中身は日本語のまま。AIに聞けば言い直す）",
+    "report.evidence.en": "（観測の中身は英語である。AIに聞けば日本語で言い直す）",
 
     "state.active": "有効",
     "state.substituted": "代替",
@@ -232,7 +232,7 @@ const MESSAGES = {
       "Being substituted is not itself a failure. Failure means there is no record " +
       "of anyone covering it, or the state cannot be determined.",
     "report.ok": "Nothing failing",
-    "report.evidence.ja": "(the observations below are in Japanese. ask the AI and it will restate them)",
+    "report.evidence.en": "(the observations below are in English)",
 
     "state.active": "active",
     "state.substituted": "substituted",

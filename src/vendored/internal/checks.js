@@ -41,7 +41,7 @@ import {
  */
 function resultFor(key) {
   const invariant = INVARIANTS.find((i) => i.key === key);
-  if (invariant === undefined) throw new Error(`未知の不変条件: ${key}`);
+  if (invariant === undefined) throw new Error(`Unknown invariant: ${key}`);
   return new Result(invariant.key);
 }
 
@@ -152,11 +152,11 @@ async function crossCheckTracker(
   const orphans = [...recorded].filter((id) => !known.has(id)).sort();
   if (orphans.length > 0) {
     for (const id of orphans.slice(0, 10)) {
-      r.observe(`記録が存在しない作業単位を指している: ${id}`);
+      r.observe(`A record points at a work item that does not exist: ${id}`);
     }
     return false;
   }
-  r.observe(`記録が指す作業単位 ${recorded.size} 件は、すべて Tracker に実在する`);
+  r.observe(`All ${recorded.size} work items the records point at exist in the Tracker`);
 
   const closedWithout = items
     .filter((i) => i.state === "done" && !recorded.has(i.id))
@@ -164,8 +164,8 @@ async function crossCheckTracker(
     .sort();
   if (closedWithout.length > 0) {
     r.observe(
-      `記録の無い完了済み作業単位: ${closedWithout.join(", ")}` +
-        "（作業が無かったか、記録が別の作業単位へ流れた可能性。区別はできない）",
+      `Completed work items with no records: ${closedWithout.join(", ")}` +
+        " (either there was no work, or the records went to another work item. These cannot be told apart)",
     );
   }
 
@@ -192,7 +192,7 @@ async function crossCheckTracker(
  */
 async function observeUnclosed(r , items , repos , api ) {
   if (api === undefined || !api.available) {
-    r.observe("Repo の資格情報が無く、統合済みの作業単位が閉じているかを確かめられない");
+    r.observe("No Repo credentials, so it cannot be confirmed whether integrated work items are closed");
     return;
   }
   const started = new Set(items.filter((i) => i.state === "started").map((i) => i.id));
@@ -202,12 +202,12 @@ async function observeUnclosed(r , items , repos , api ) {
   for (const repo of repos) {
     const slug = repo.remoteSlug();
     if (slug === null) {
-      r.observe(`${repo.name}: 置き場所を特定できず、提出を確かめられない`);
+      r.observe(`${repo.name}: cannot identify where it is hosted, so submissions cannot be confirmed`);
       continue;
     }
     const submissions = submissionsFrom(await api.submissionsIn(slug));
     if (submissions === null) {
-      r.observe(`${repo.name}: 提出を読めず、取り残しを確かめられない`);
+      r.observe(`${repo.name}: cannot read submissions, so leftovers cannot be confirmed`);
       continue;
     }
     for (const s of submissions) {
@@ -219,8 +219,8 @@ async function observeUnclosed(r , items , repos , api ) {
 
   const unclosed = [...started].filter((id) => merged.has(id)).sort();
   if (unclosed.length > 0) {
-    r.observe(`統合済みなのに着手中の作業単位: ${unclosed.join(", ")}`);
-    r.observe("Tracker と Repo の連携が効いていない可能性がある（統合で完了へ動く設定を確かめること）");
+    r.observe(`Work items still started though integrated: ${unclosed.join(", ")}`);
+    r.observe("The Tracker–Repo integration may not be working (check the setting that moves items to done on integration)");
   }
 }
 
@@ -248,8 +248,8 @@ function observeStaleMarker(r , items , repos ) {
     }
     const id = marker?.work_item_id;
     if (typeof id !== "string" || !closed.has(id)) continue;
-    r.observe(`作業単位マーカーが完了済みの作業単位を指している: ${id}（${repo.name}）`);
-    r.observe("次に着手するまでの間に書かれた記録は、この作業単位に紐づく");
+    r.observe(`The work item marker points at a completed work item: ${id} (${repo.name})`);
+    r.observe("Records written until the next work item is started will be linked to this work item");
   }
 }
 
@@ -299,19 +299,19 @@ export function observeStops(r , events) {
 
   const counts = new Map ();
   for (const stop of stops) {
-    const type = typeof stop.stop_type === "string" ? stop.stop_type : "区別なし";
-    const key = `${type} / ${typeof stop.stop_kind === "string" ? stop.stop_kind : "不明"}`;
+    const type = typeof stop.stop_type === "string" ? stop.stop_type : "unclassified";
+    const key = `${type} / ${typeof stop.stop_kind === "string" ? stop.stop_kind : "unknown"}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  const byType = (t) => stops.filter((e) => (e.stop_type ?? "区別なし") === t).length;
+  const byType = (t) => stops.filter((e) => (e.stop_type ?? "unclassified") === t).length;
   r.observe(
-    `停止 ${stops.length} 件（入力 ${byType("入力")} / 手戻り ${byType("手戻り")}` +
-      `${byType("区別なし") > 0 ? ` / 区別なし ${byType("区別なし")}` : ""}）`,
+    `Stops: ${stops.length} (入力 input ${byType("入力")} / 手戻り rework ${byType("手戻り")}` +
+      `${byType("unclassified") > 0 ? ` / unclassified ${byType("unclassified")}` : ""})`,
   );
   // 多い順に出す。**繰り返し出ている種別が上に来る。**
   for (const [key, n] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
-    r.observe(`  ${key}: ${n} 件`);
+    r.observe(`  ${key}: ${n}`);
   }
 }
 
@@ -326,12 +326,12 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   const r = resultFor("telemetry_recorded");
 
   if (allEvents.length === 0) {
-    r.observe("テレメトリのイベントが1件も無い");
+    r.observe("There is not a single telemetry event");
     return r.conclude(UNSUBSTITUTED);
   }
 
   if (broken.length > 0) {
-    for (const b of broken) r.observe(`読めない行: ${b}`);
+    for (const b of broken) r.observe(`Unreadable line: ${b}`);
     return r.conclude(UNSUBSTITUTED);
   }
 
@@ -342,14 +342,14 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   const boundary = boundaryFor(allEvents, "telemetry_recorded");
   const events = eventsAfter(allEvents, boundary);
 
-  r.observe(`${allEvents.length} 件のイベントを ${repos.length} リポジトリから読んだ`);
+  r.observe(`Read ${allEvents.length} events from ${repos.length} repositories`);
   if (boundary.since === null) {
-    r.observe("有効境界が置かれていない。全期間の記録を判定の対象にする");
+    r.observe("No activation boundary is set. Records from the whole period are judged");
   } else {
-    r.observe(`有効境界: ${boundary.since} 以降の ${events.length} 件を判定の対象にする`);
+    r.observe(`Activation boundary: judging the ${events.length} records since ${boundary.since}`);
     if (boundary.moves > 1) {
       // 何回で異常とみなすかは定めない。回数を出し、判断は人に残す。
-      r.observe(`有効境界はこれまでに ${boundary.moves} 回動いている（直書きへ戻った回数）`);
+      r.observe(`The activation boundary has moved ${boundary.moves} times so far (times it fell back to direct writes)`);
     }
   }
 
@@ -385,33 +385,33 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
       if (exempt.has(attr)) continue;
       const value = event[attr];
       if (typeof value !== "string" || value.trim() === "") {
-        missing.push(`${event.source}: ${attr}${attr in event ? "（値が空）" : "（属性が無い）"}`);
+        missing.push(`${event.source}: ${attr}${attr in event ? " (empty value)" : " (attribute missing)"}`);
       }
     }
   }
   if (missing.length > 0) {
-    for (const m of missing.slice(0, 10)) r.observe(`必須属性が欠けている: ${m}`);
-    if (missing.length > 10) r.observe(`...ほか ${missing.length - 10} 件`);
+    for (const m of missing.slice(0, 10)) r.observe(`Required attribute missing: ${m}`);
+    if (missing.length > 10) r.observe(`...and ${missing.length - 10} more`);
     // 遡って付与できない属性が欠けている。代替では埋められない。
     return r.conclude(UNSUBSTITUTED);
   }
-  r.observe(`必須属性 ${REQUIRED_EVENT_ATTRS.join("/")} に、壊れているものは無い`);
+  r.observe(`None of the required attributes ${REQUIRED_EVENT_ATTRS.join("/")} is broken`);
 
   // **見えなくはしない。** model が付かないのはセッション最初のターンだけのはずで
   // あり、増えたなら仕掛けが壊れている。**失敗にはしないが、数は出す。**
   const noModel = allEvents.filter((e) => e.emitter === "adapter" && !hasValue(e, "model"));
   if (noModel.length > 0) {
-    r.observe(`model を特定できなかった記録が ${noModel.length} 件ある（いずれもアダプタが書いたもの）`);
-    const reasons = [...new Set(noModel.map((e) => String(e.model_unavailable_reason ?? "理由が残っていない")))];
-    for (const reason of reasons.slice(0, 3)) r.observe(`  特定できなかった理由: ${reason}`);
+    r.observe(`${noModel.length} records could not identify the model (all written by the adapter)`);
+    const reasons = [...new Set(noModel.map((e) => String(e.model_unavailable_reason ?? "no reason recorded")))];
+    for (const reason of reasons.slice(0, 3)) r.observe(`  Why it could not be identified: ${reason}`);
   }
 
   // **見えなくしない。** 件数は、帰属しないやり取りがどれだけあるかの信号であり、
   // 量が無視できなくなったときに§6の判断をやり直す材料になる。
   if (unattributed.length > 0) {
     const reasons = [...new Set(unattributed.map((e) => String(e.unattributed_reason)))];
-    r.observe(`作業単位に帰属できなかった記録が ${unattributed.length} 件ある`);
-    for (const reason of reasons.slice(0, 3)) r.observe(`帰属できなかった理由: ${reason}`);
+    r.observe(`${unattributed.length} records could not be attributed to a work item`);
+    for (const reason of reasons.slice(0, 3)) r.observe(`Why it could not be attributed: ${reason}`);
   }
 
   observeStops(r, allEvents);
@@ -420,14 +420,14 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
   // **記録の値は `unknown` である。** 文字列へ寄せてから比べる（AUT-226）。
   const unknownEmitters = [...new Set(allEvents.map((e) => String(e.emitter)))].filter((v) => !known.has(v));
   if (unknownEmitters.length > 0) {
-    r.observe(`emitter に未定義の値がある: ${JSON.stringify(unknownEmitters)}`);
+    r.observe(`emitter has undefined values: ${JSON.stringify(unknownEmitters)}`);
     return r.conclude(UNSUBSTITUTED);
   }
 
   if (scope === "cross") {
     if (tracker === null) {
-      r.observe("Tracker の資格情報が無く、記録と作業単位の対応を確かめられない（LINEAR_API_KEY 未設定）");
-      r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+      r.observe("No Tracker credentials, so records cannot be matched to work items (LINEAR_API_KEY not set)");
+      r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
       return r.conclude(UNSUBSTITUTED);
     }
     try {
@@ -435,7 +435,7 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
         return r.conclude(UNSUBSTITUTED);
       }
     } catch (error) {
-      r.observe(`Tracker を読めない: ${error instanceof Error ? error.message : String(error)}`);
+      r.observe(`Cannot read the Tracker: ${error instanceof Error ? error.message : String(error)}`);
       return r.conclude(UNSUBSTITUTED);
     }
   }
@@ -446,7 +446,7 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
     //
     // 代替の記録を無理に添えて代替を名乗らせるより、判定しないと明示するほうが
     // 正しい。壊れた記録はすでに上で失敗にしているため、見落としは生じない。
-    r.observe("記録の構造に問題は無い。有効かどうかは cross でのみ判定する");
+    r.observe("The structure of the records has no problems. Whether it is active is judged only in cross");
     return r.conclude(NOT_IN_SCOPE);
   }
 
@@ -454,35 +454,35 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
     // 登録は起点のリポジトリに1つ置かれる。self では見えないので判定しない。
     const hook = hookState(repos, root);
     if (hook.registeredIn === null) {
-      r.observe("記録を自動で残す仕掛けが .claude/settings.json に登録されていない");
+      r.observe("The mechanism that records automatically is not registered in .claude/settings.json");
       // 登録が無ければ、いま自動で書けていても続く保証が無い。有効とは呼べない。
-      r.notImplemented("記録の自動化が登録されていないため、有効の条件を満たさない");
+      r.notImplemented("Recording automation is not registered, so the condition for active is not met");
     } else if (hook.missing !== null) {
       // **登録されているのに、指す先が無い。** 登録だけを見ていると通る。
       r.observe(
-        `記録を自動で残す仕掛けが、実在しないものを指している: ${hook.missing}` +
-          `（${hook.registeredIn}/.claude/settings.json）`,
+        `The mechanism that records automatically points at something that does not exist: ${hook.missing}` +
+          ` (${hook.registeredIn}/.claude/settings.json)`,
       );
       r.observe(
-        "**実行基盤はフックが落ちても作業を止めない。** したがって黙って記録が止まる。" +
-          "配布物の置き場所が変わったときに、登録だけが古く残る形である",
+        "**The runtime does not stop work when a hook fails.** So recording stops silently. " +
+          "This is what happens when the distributed files move and only the registration stays behind",
       );
       // **登録が指す先が無いなら、記録が続く保証は無い。** 有効とは呼べない。
-      r.notImplemented("記録の自動化が実在しないものを指しているため、有効の条件を満たさない");
+      r.notImplemented("Recording automation points at something that does not exist, so the condition for active is not met");
     } else {
-      r.observe(`記録を自動で残す仕掛けは ${hook.registeredIn} に登録されている`);
+      r.observe(`The mechanism that records automatically is registered in ${hook.registeredIn}`);
     }
   }
 
   const manual = events.filter((e) => e.emitter === "manual");
   if (manual.length > 0) {
     const sources = [...new Set(manual.map((e) => e.source))].sort();
-    r.observe(`${manual.length} 件が emitter=manual（アダプタを経由せずファイルへ直書き）`);
-    r.observe(`直書きのあるファイル: ${sources.join(", ")}`);
+    r.observe(`${manual.length} are emitter=manual (written directly to the file without the adapter)`);
+    r.observe(`Files with direct writes: ${sources.join(", ")}`);
     return substituted(r, allEvents);
   }
 
-  r.observe("全イベントが emitter=adapter");
+  r.observe("All events are emitter=adapter");
   return r.conclude(ACTIVE);
 };
 
@@ -512,7 +512,7 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
   const targets = repos.filter((repo) => repo.boundariesFile() !== null);
 
   if (targets.length === 0) {
-    r.observe("boundaries.yaml がどのリポジトリにも無い（動かす対象が存在しない）");
+    r.observe("No repository has boundaries.yaml (there is nothing to move)");
     // 対象が無いことを有効と報告してはいけない。仕組みが無いだけである。
     return substituted(r, events);
   }
@@ -527,24 +527,24 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
     const placed = all.filter((sha) => repo.git("show", `${sha}^:boundaries.yaml`) === null);
     const commits = all.filter((sha) => !placed.includes(sha));
     for (const sha of placed) {
-      r.observe(`${repo.name}: ${sha.slice(0, 7)} は委譲範囲の表の初期設置（変更として数えない）`);
+      r.observe(`${repo.name}: ${sha.slice(0, 7)} is the initial placement of the delegation table (not counted as a change)`);
     }
 
     // **動かした変更が無いなら、履歴はまだ要らない。** 置いただけの状態で
     // 「履歴が無い」と言うと、**置いた本人が、何を書けばよいか分からないまま落ちる。**
     if (commits.length === 0) {
-      r.observe(`${repo.name}: 委譲範囲を動かした変更はまだ無い`);
+      r.observe(`${repo.name}: no change has moved the scope of delegation yet`);
       continue;
     }
 
     const historyPath = repo.boundaryHistoryFile();
     if (historyPath === null) {
-      r.observe(`${repo.name}: boundaries.yaml はあるが委譲範囲の変更履歴が無い`);
+      r.observe(`${repo.name}: boundaries.yaml exists but there is no history of delegation changes`);
       unreferenced.push(...commits);
       continue;
     }
     const text = repo.read(historyPath);
-    r.observe(`${repo.name}: boundaries.yaml を変更したコミット ${commits.length} 件を照合`);
+    r.observe(`${repo.name}: checked ${commits.length} commits that changed boundaries.yaml`);
     // **SHA だけで照合しない。** squash / rebase で統合すると SHA が変わり、
     // 履歴が指す先が消える。作業単位のIDでも照合する（AUT-240）。
     unreferenced.push(
@@ -557,12 +557,12 @@ const checkBoundaryChangeLogged = async ({ repos, events }) => {
 
   if (unreferenced.length > 0) {
     for (const c of unreferenced.slice(0, 10)) {
-      r.observe(`履歴から参照されていないコミット: ${c.slice(0, 7)}`);
+      r.observe(`Commit not referenced from the history: ${c.slice(0, 7)}`);
     }
     return substituted(r, events);
   }
 
-  r.observe("boundaries.yaml の全変更コミットが履歴から参照されている");
+  r.observe("Every commit that changed boundaries.yaml is referenced from the history");
   return r.conclude(ACTIVE);
 };
 
@@ -597,7 +597,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
 
     const log = repo.git("log", "--format=%H", "--", "boundaries.yaml") ?? "";
     const commits = log.split("\n").map((c) => c.trim()).filter(Boolean);
-    r.observe(`${repo.name}: boundaries.yaml を変更したコミット ${commits.length} 件`);
+    r.observe(`${repo.name}: ${commits.length} commits changed boundaries.yaml`);
 
     for (const sha of commits) {
       // 初期設置は動きではない。親にバージョンが無いコミットがそれにあたる。
@@ -605,7 +605,7 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
       const before = repo.git("show", `${sha}^:boundaries.yaml`);
       if (after === null) continue;
       if (before === null) {
-        r.observe(`${sha.slice(0, 7)}: 委譲範囲の表の初期設置（動きとして数えない）`);
+        r.observe(`${sha.slice(0, 7)}: initial placement of the delegation table (not counted as a move)`);
         continue;
       }
 
@@ -614,46 +614,49 @@ const checkOuterLoopRunning = async ({ repos, events, api }) => {
 
       const section = historySectionFor(history, sha, repo.git("log", "-1", "--format=%s", sha));
       if (section === null) {
-        r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動いたが、履歴から参照されていない`);
+        r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} moved, but it is not referenced from the history`);
         continue;
       }
-      if (!section.includes("根拠")) {
-        r.observe(`${sha.slice(0, 7)}: 履歴の記載に根拠が無い`);
+      // **英語の `Ground` も根拠として読む**（AUT-264）。配布物の記入例は英語になった
+      // （AUT-262）。日本語しか読まないと、案内どおりに書いたプロジェクトが「根拠が
+      // 無い」と判定され、外側ループが一周したことにならない。
+      if (!(section.includes("根拠") || /\bGround\b/.test(section))) {
+        r.observe(`${sha.slice(0, 7)}: the history entry has no ground`);
         continue;
       }
 
       if (slug === null) {
-        approvalUnreadable ??= `${repo.name}: origin が無く、統合の事実を確かめられない`;
+        approvalUnreadable ??= `${repo.name}: no origin, so the fact of integration cannot be confirmed`;
         continue;
       }
       const res = await api.submissionsFor(slug, sha);
       if (!hasMergedSubmission(res)) {
         if (res.status === 200) {
-          r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動いたが、まだ統合されていない`);
+          r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} moved, but it is not integrated yet`);
         } else {
           approvalUnreadable ??=
-            `${slug}: 応答 ${res.status} — 提出を読めないため、承認を確かめられない`;
+            `${slug}: response ${res.status} — cannot read the submission, so approval cannot be confirmed`;
         }
         continue;
       }
 
       qualified += 1;
-      r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} が動き、根拠と統合済みの提出が揃っている`);
+      r.observe(`${sha.slice(0, 7)}: ${moved.join(", ")} moved, with both a ground and an integrated submission`);
     }
   }
 
   // 継続の閾値は定めない。定義§18が未確定としており、実データなしに決め打ちすると
   // 根拠の無い数字が残る。
-  r.observe("継続の判定は N/A（起動が満たされてから、実データを見て閾値を決める）");
+  r.observe("Judging continuation is N/A (the threshold is decided from real data once starting is satisfied)");
 
   if (qualified === 0) {
     if (approvalUnreadable !== null) {
       // 代替ではなく、判定できていない。代替を添えて通すと両者が区別できなくなる。
       r.observe(approvalUnreadable);
-      r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+      r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
       return r.conclude(UNSUBSTITUTED);
     }
-    r.observe("セルが動き、根拠と承認の揃ったエントリが無い（外側ループが一周していない）");
+    r.observe("There is no entry where a cell moved with both a ground and approval (the outer loop has not gone around once)");
     return substituted(r, events);
   }
 
@@ -679,7 +682,7 @@ async function directCommitsAcross(
   for (const repo of repos) {
     const slug = repo.remoteSlug();
     if (slug === null) {
-      r.observe(`${repo.name}: origin が無く、提出を経たかを確かめられない`);
+      r.observe(`${repo.name}: no origin, so it cannot be confirmed whether changes went through submissions`);
       return null;
     }
 
@@ -688,13 +691,13 @@ async function directCommitsAcross(
     let branch = localDefaultBranch(repo);
     if (branch === null) branch = defaultBranchOf(await api.repository(slug));
     if (branch === null) {
-      r.observe(`${repo.name}: 既定ブランチを特定できず、提出を経たかを確かめられない`);
+      r.observe(`${repo.name}: cannot identify the default branch, so it cannot be confirmed whether changes went through submissions`);
       return null;
     }
 
     const candidates = directCommitCandidates(repo, branch);
     if (candidates === null) {
-      r.observe(`${repo.name}: ${branch} の履歴を読めず、提出を経たかを確かめられない`);
+      r.observe(`${repo.name}: cannot read the history of ${branch}, so it cannot be confirmed whether changes went through submissions`);
       return null;
     }
     if (candidates.length === 0) continue;
@@ -703,7 +706,7 @@ async function directCommitsAcross(
       const res = await api.submissionsFor(slug, c.sha);
       if (hasMergedSubmission(res)) continue; // squash マージ等。提出を経ている
       if (res.status !== 200) {
-        r.observe(`${slug}: 応答 ${res.status} — 提出を読めず、${c.sha.slice(0, 7)} を確かめられない`);
+        r.observe(`${slug}: response ${res.status} — cannot read submissions, so ${c.sha.slice(0, 7)} cannot be confirmed`);
         return null;
       }
       found.push(`${repo.name} ${c.sha.slice(0, 7)} ${c.subject}`);
@@ -775,8 +778,8 @@ const checkAiCannotDisable = async ({ repos, events, api }) => {
   const r = resultFor("ai_cannot_disable");
 
   if (!api.available) {
-    r.observe("Repo API のトークンが無く、保護設定を読めない（AUTODRIVE_CI_TOKEN 未設定）");
-    r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+    r.observe("No Repo API token, so protection settings cannot be read (AUTODRIVE_CI_TOKEN not set)");
+    r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
     return r.conclude(UNSUBSTITUTED);
   }
 
@@ -787,59 +790,59 @@ const checkAiCannotDisable = async ({ repos, events, api }) => {
   for (const repo of repos) {
     const slug = repo.remoteSlug();
     if (slug === null) {
-      unreadable.push(`${repo.name}: origin が無く、対応する Repo を特定できない`);
+      unreadable.push(`${repo.name}: no origin, so the corresponding Repo cannot be identified`);
       continue;
     }
     const res = await api.rulesets(slug);
     if (res.status === 200) {
       const rules = Array.isArray(res.body) ? res.body : [];
-      if (rules.length > 0) r.observe(`${slug}: ruleset ${rules.length} 件`);
+      if (rules.length > 0) r.observe(`${slug}: ${rules.length} rulesets`);
       else unprotected.push(slug);
     } else if (isPlanLimited(res)) {
       planLimited.push(slug);
     } else {
-      unreadable.push(`${slug}: 応答 ${res.status}`);
+      unreadable.push(`${slug}: response ${res.status}`);
     }
   }
 
   for (const slug of planLimited) {
-    r.observe(`${slug}: 403 — 非公開リポジトリに ruleset を設定できないプラン`);
+    r.observe(`${slug}: 403 — a plan that cannot set rulesets on private repositories`);
   }
   for (const slug of unprotected) {
-    r.observe(`${slug}: ruleset が1件も無い（既定ブランチが保護されていない）`);
+    r.observe(`${slug}: no rulesets at all (the default branch is not protected)`);
   }
-  for (const msg of unreadable) r.observe(`読めない: ${msg}`);
+  for (const msg of unreadable) r.observe(`Unreadable: ${msg}`);
 
   // **保護設定を持てなくても、破られたかどうかは見られる。** 段階0で検出による
   // 代替を選んだ以上、検出が無いまま規約だけで担保する状態を続けない。
   const direct = await directCommitsAcross(r, repos, api);
   if (direct === null) {
-    r.observe("判定できない状態は、それ自体を失敗として扱う（定義§9）");
+    r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
     return r.conclude(UNSUBSTITUTED);
   }
   if (direct.length > 0) {
-    for (const line of direct.slice(0, 10)) r.observe(`提出を経ずに既定ブランチへ入っている: ${line}`);
-    if (direct.length > 10) r.observe(`...ほか ${direct.length - 10} 件`);
+    for (const line of direct.slice(0, 10)) r.observe(`Entered the default branch without a submission: ${line}`);
+    if (direct.length > 10) r.observe(`...and ${direct.length - 10} more`);
     // 規約が破られている。代替が成立していないため、代替ありでは通さない。
     return r.conclude(UNSUBSTITUTED);
   }
-  r.observe("既定ブランチの変更は、すべて提出を経て入っている");
+  r.observe("Every change on the default branch entered through a submission");
 
   if (unreadable.length > 0) {
-    r.observe("判定できない対象がある。通さない（定義§9）");
+    r.observe("Some targets cannot be judged. Not passing (definition §9)");
     return r.conclude(UNSUBSTITUTED);
   }
 
   if (planLimited.length > 0 || unprotected.length > 0) {
     // 必須チェックの登録有無も ruleset に依存するため、ここでは判定できない。
     r.notImplemented(
-      "invariants を必須チェックとして登録しているかの検証（ruleset が使えないため判定手段が無い）",
+      "Verifying that invariants is registered as a required check (no means of judging, since rulesets are unavailable)",
     );
     return substituted(r, events);
   }
 
-  r.notImplemented("エージェントに渡っている資格情報が保護設定を変更できないことの検証");
-  r.observe("全リポジトリで既定ブランチが保護されている");
+  r.notImplemented("Verifying that the credentials given to the agent cannot change protection settings");
+  r.observe("The default branch is protected in every repository");
   return r.conclude(ACTIVE);
 };
 

@@ -36,11 +36,11 @@ export function renderText(results , repos , scope , language = "ja") {
     t("report.repos", { repos: repos.map((r) => r.name).join(", ") }),
     t("report.scope", { scope }),
   ];
-  // **観測の中身は日本語のままである。** 黙って混ぜず、そう断る（AUT-135）。
+  // **観測の中身は英語である**（AUT-264）。言語が ja なら、黙って混ぜず、そう断る（AUT-135）。
   const hasDetail = results.some(
     (r) => r.observations.length + r.substitutions.length + r.unimplemented.length > 0,
   );
-  if (language !== "ja" && hasDetail) lines.push(t("report.evidence.ja"));
+  if (language === "ja" && hasDetail) lines.push(t("report.evidence.en"));
   lines.push("");
 
   for (const r of results) {
@@ -52,7 +52,7 @@ export function renderText(results , repos , scope , language = "ja") {
   }
   const failed = results.filter((r) => r.failing);
   if (failed.length > 0) {
-    lines.push(t("report.failed", { labels: failed.map((r) => labelOf(r.key, language)).join("、") }));
+    lines.push(t("report.failed", { labels: failed.map((r) => labelOf(r.key, language)).join(language === "ja" ? "、" : ", ") }));
     lines.push(t("report.failed.why"));
   } else {
     lines.push(t("report.ok"));

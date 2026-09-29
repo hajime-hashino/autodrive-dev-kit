@@ -102,7 +102,7 @@ test("devcontainer と宣言して、定義が無い形を捕まえる", () => {
 
   const gaps = isolationGaps(root);
   assert.equal(gaps.length, 1, JSON.stringify(gaps));
-  assert.ok(gaps[0].gap.includes("定義が無い"), gaps[0].gap);
+  assert.ok(gaps[0].gap.includes("there is no definition"), gaps[0].gap);
   // **直し方まで言う。** 使っていないなら構成を変えればよいと分かる形にする。
   assert.ok(gaps[0].why.includes("sandbox"), gaps[0].why);
 });
@@ -114,7 +114,7 @@ test("構成が無ければ、置かれているもので決める", () => {
   dropPostStart(root);
   rmSync(join(root, "autodrive.json"));
 
-  assert.deepEqual(gapsOf(root), ["postStartCommand が init-firewall.sh を呼んでいない"]);
+  assert.deepEqual(gapsOf(root), ["postStartCommand does not call init-firewall.sh"]);
 });
 
 // ------------------------------------------------------------ 壊し方を当てる
@@ -143,14 +143,14 @@ test("出口を閉じる処理を呼んでいない形を捕まえる", () => {
   const root = placed();
   dropPostStart(root);
 
-  assert.deepEqual(gapsOf(root), ["postStartCommand が init-firewall.sh を呼んでいない"]);
+  assert.deepEqual(gapsOf(root), ["postStartCommand does not call init-firewall.sh"]);
 });
 
 test("規則を置く権限が無い形を捕まえる", () => {
   const root = placed();
   edit(root, (s) => s.replace('"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],', ""));
 
-  assert.deepEqual(gapsOf(root), ["runArgs に NET_ADMIN が無い", "runArgs に NET_RAW が無い"]);
+  assert.deepEqual(gapsOf(root), ["runArgs has no NET_ADMIN", "runArgs has no NET_RAW"]);
 });
 
 // **片方だけ消しても捕まえる。** 両方要る。
@@ -158,14 +158,14 @@ test("権限が片方だけでも捕まえる", () => {
   const root = placed();
   edit(root, (s) => s.replace('"--cap-add=NET_RAW"', '"--cap-add=SYS_PTRACE"'));
 
-  assert.deepEqual(gapsOf(root), ["runArgs に NET_RAW が無い"]);
+  assert.deepEqual(gapsOf(root), ["runArgs has no NET_RAW"]);
 });
 
 test("root で動かす形を捕まえる", () => {
   const root = placed();
   edit(root, (s) => s.replace('"remoteUser": "vscode",', '"remoteUser": "root",'));
 
-  assert.deepEqual(gapsOf(root), ["remoteUser が root（または指定が無い）"]);
+  assert.deepEqual(gapsOf(root), ["remoteUser is root (or not specified)"]);
 });
 
 // **指定が無いのも同じ。** 既定は root である。
@@ -173,7 +173,7 @@ test("remoteUser の指定が無い形を捕まえる", () => {
   const root = placed();
   edit(root, (s) => s.replace('"remoteUser": "vscode",', ""));
 
-  assert.deepEqual(gapsOf(root), ["remoteUser が root（または指定が無い）"]);
+  assert.deepEqual(gapsOf(root), ["remoteUser is root (or not specified)"]);
 });
 
 // **指しているだけの状態を作らない。** 起動のたびに失敗するが、見られるとは限らない。
@@ -181,7 +181,7 @@ test("呼んでいるスクリプトが無い形を捕まえる", () => {
   const root = placed();
   rmSync(join(root, ".devcontainer", "init-firewall.sh"));
 
-  assert.deepEqual(gapsOf(root), ["init-firewall.sh を呼んでいるが、置かれていない"]);
+  assert.deepEqual(gapsOf(root), ["init-firewall.sh is called but not placed"]);
 });
 
 // ------------------------------------------------------------ 読めないもの
@@ -193,7 +193,7 @@ test("読めない定義は、通さずにそう言う", () => {
 
   const gaps = isolationGaps(root);
   assert.equal(gaps.length, 1);
-  assert.equal(gaps[0].gap, "読めない");
+  assert.equal(gaps[0].gap, "unreadable");
 });
 
 // **行の途中の // を、コメントとして落とさない。** URL が壊れる。
@@ -209,7 +209,7 @@ test("URL の // を、コメントと間違えない", () => {
 test("見つけたら、誰のものかと、元の形がどこにあるかを言う", () => {
   const text = describe([{ path: "x/.devcontainer/devcontainer.json", gap: "穴", why: "理由" }]).join("\n");
 
-  assert.ok(text.includes("プロジェクトのもの"), text);
+  assert.ok(text.includes("belongs to the project"), text);
   assert.ok(text.includes("templates/devcontainer/devcontainer.json"), text);
   assert.ok(text.includes("理由"), text);
 });
@@ -242,6 +242,6 @@ test("`invariants` を通しても、設定の欠けが出力に出る", async (
   const { run } = await import("../src/vendored/internal/main.js");
   const { output } = await run(["--root", root, "--scope", "self"]);
 
-  assert.ok(output.includes("隔離の設定が欠けている"), output.slice(-500));
+  assert.ok(output.includes("Isolation settings are missing"), output.slice(-500));
   assert.ok(output.includes("remoteUser"), "どこが欠けているかを出していない");
 });

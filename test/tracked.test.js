@@ -99,8 +99,8 @@ test("見つけたものの中身を出さない", () => {
 test("履歴に入っている場合の手当てまで出す", () => {
   const root = repoWith({ core: elf() });
   const text = describe(forbidden(root, new Repo(root).trackedFiles())).join("\n");
-  assert.ok(text.includes("消すコミットを積むだけでは消えない"), "履歴のことを言っていない");
-  assert.ok(text.includes("失効"), "失効が先だと言っていない");
+  assert.ok(text.includes("adding a commit that deletes it does not remove it"), "履歴のことを言っていない");
+  assert.ok(text.includes("revoke"), "失効が先だと言っていない");
 });
 
 test("何も無ければ、何も出さない", () => {
@@ -128,7 +128,7 @@ async function invariantsOn(root) {
 test("`invariants` が、追跡してはいけないものを出す", async () => {
   const root = repoWith({ core: elf(), "src.js": "//\n" });
   const { output } = await invariantsOn(root);
-  assert.ok(output.includes("追跡してはいけないものが追跡されている"), output.slice(-400));
+  assert.ok(output.includes("Things that must not be tracked are tracked"), output.slice(-400));
   assert.ok(output.includes("core"), "どのファイルかを出していない");
 });
 

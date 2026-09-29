@@ -9,12 +9,12 @@ import { join, resolve } from "node:path";
 import { checkAll, hostsIn, report } from "./reachability.js";
 import { defaultRoot } from "./workItem.js";
 
-const USAGE = `サンドボックスの出口を確かめる
+const USAGE = `Check the sandbox egress
 
-  sandbox 宛先を確かめる [--root <場所>]
+  sandbox 宛先を確かめる [--root <path>]   Check destinations
 
-許可一覧にある宛先へ、いま本当に出られるかを測る。**規則は起動時に解決した
-IP に対して置かれるため、宛先の IP が入れ替わると出られなくなる。**`;
+Measures whether the destinations on the allowlist are actually reachable right now. **Rules are placed against
+the IPs resolved at start, so when a destination swaps its IPs it becomes unreachable.**`;
 
 const ALLOWED = join(".devcontainer", "allowed-domains.txt");
 
@@ -22,7 +22,7 @@ export async function run(argv, root, probeImpl) {
   const [operation] = argv;
   if (operation === undefined || operation === "--help") return { output: USAGE, code: 0 };
   if (operation !== "宛先を確かめる") {
-    return { output: `知らない操作: ${operation}\n\n${USAGE}`, code: 1 };
+    return { output: `Unknown operation: ${operation}\n\n${USAGE}`, code: 1 };
   }
 
   const at = argv.indexOf("--root");
@@ -31,13 +31,13 @@ export async function run(argv, root, probeImpl) {
   if (!existsSync(path)) {
     return {
       // **無いことを、出られないことと混ぜない。** 直す先が違う。
-      output: `許可一覧が無い（${path}）。サンドボックスを使わない構成か、起点が違う`,
+      output: `There is no allowlist (${path}). Either the configuration does not use a sandbox, or the starting point is wrong`,
       code: 1,
     };
   }
 
   const hosts = hostsIn(readFileSync(path, "utf8"));
-  if (hosts.length === 0) return { output: `許可一覧に宛先が1件も無い（${path}）`, code: 1 };
+  if (hosts.length === 0) return { output: `The allowlist has no destinations (${path})`, code: 1 };
 
   const { lines, code } = report(await checkAll(hosts, probeImpl));
   return { output: lines.join("\n"), code };

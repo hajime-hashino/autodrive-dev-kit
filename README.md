@@ -248,7 +248,7 @@ Output looks like this.
 [unresolved]  Delegation changes stay in the history
 ```
 
-**It follows the `language` you chose at setup.** The evidence lines under each result are still Japanese; the output says so, and the AI will restate them for you.
+**The headings follow the `language` you chose at setup.** The evidence lines under each result are in English; if you chose Japanese, the output says so, and the AI will restate them for you.
 
 There are four states (definition §9). **Each says what something currently is.**
 

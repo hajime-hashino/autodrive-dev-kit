@@ -187,6 +187,17 @@ test("履歴から参照されていなければ有効しない", async () => {
   assert.equal(r.state, SUBSTITUTED);
 });
 
+// **配布物の記入例どおりに英語で書いた履歴も通る**（AUT-264）。日本語しか読まない
+// 形で 0.12.23 を配っていた。
+test("英語で書いた根拠も、根拠として読む", async () => {
+  const repo = repoWith(
+    [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
+    "# History of delegation changes\n\n## 2026-08-23 Appearance to detectable\n\n- Configuration change: commit bbbbbbb\n- Ground: 3 missed detections\n",
+  );
+  const r = await outerLoop.run(input(repo, merged));
+  assert.equal(r.state, ACTIVE);
+});
+
 test("根拠が書かれていなければ有効しない", async () => {
   const repo = repoWith(
     [["aaaaaaa", table()], ["bbbbbbb", table({ detectable: true })]],
@@ -216,7 +227,7 @@ test("統合を読めなければ失敗する。代替ではない", async () =>
   const r = await outerLoop.run(input(repo, forbidden));
   assert.equal(r.state, UNSUBSTITUTED);
   assert.ok(
-    r.observations.some((o) => o.includes("403") && o.includes("承認")),
+    r.observations.some((o) => o.includes("403") && o.includes("approval")),
     `読めない理由が出ていない: ${JSON.stringify(r.observations)}`,
   );
 });

@@ -89,15 +89,18 @@ test("既定は日本語のまま", () => {
   assert.match(out, /\[有効\] テレメトリが記録されること/);
 });
 
-// **観測の中身は日本語のままである。黙って混ぜない。**
-test("観測が日本語であることを、英語の出力では断る", () => {
-  const withDetail = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self", "en");
-  assert.ok(withDetail.includes("in Japanese"), "断っていない");
+// **観測の中身は英語である**（AUT-264）。日本語の出力では、黙って混ぜずにそう断る。
+test("観測が英語であることを、日本語の出力では断る", () => {
+  const withDetail = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self", "ja");
+  assert.ok(withDetail.includes("観測の中身は英語"), "断っていない");
+  // **英語の出力では断らない。** 見出しも観測も同じ言語である。
+  const en = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self", "en");
+  assert.equal(en.includes("観測の中身は英語") || en.includes("in English"), false, "英語の出力で断っている");
 
   const r = new Result("telemetry_recorded");
   r.conclude(ACTIVE);
   assert.equal(
-    renderText([r], repos, "self", "en").includes("in Japanese"),
+    renderText([r], repos, "self", "ja").includes("観測の中身は英語"),
     false,
     "観測が無いのに断っている",
   );

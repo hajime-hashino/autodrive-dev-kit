@@ -39,7 +39,7 @@ test("未実装が無く代替も要らなければ有効になる", () => {
 });
 
 test("判定前に状態を読むと落ちる", () => {
-  assert.throws(() => new Result("k", "l").state, /判定が終わっていない/);
+  assert.throws(() => new Result("k", "l").state, /judging has not finished/);
 });
 
 // ------------------------------------------- セッションの記録を探す（AUT-231）

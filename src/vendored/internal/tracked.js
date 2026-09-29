@@ -52,10 +52,10 @@ const ELF = Buffer.from([0x7f, 0x45, 0x4c, 0x46]);
  * **`.env.example` は除く。** あれは値を持たないテンプレートであり、追跡するのが正しい。
  */
 const BY_NAME = [
-  { test: (n) => /^core(\.\d+)?$/.test(n), why: "コアダンプ。実行時のメモリがそのまま入る" },
-  { test: (n) => n === ".env" || (n.startsWith(".env.") && n !== ".env.example"), why: "資格情報" },
-  { test: (n) => /\.(pem|key|p12|pfx|jks)$/.test(n), why: "鍵ファイル" },
-  { test: (n) => /^id_(rsa|dsa|ecdsa|ed25519)$/.test(n), why: "秘密鍵" },
+  { test: (n) => /^core(\.\d+)?$/.test(n), why: "Core dump. Contains the runtime memory as-is" },
+  { test: (n) => n === ".env" || (n.startsWith(".env.") && n !== ".env.example"), why: "Credentials" },
+  { test: (n) => /\.(pem|key|p12|pfx|jks)$/.test(n), why: "Key file" },
+  { test: (n) => /^id_(rsa|dsa|ecdsa|ed25519)$/.test(n), why: "Private key" },
 ];
 
 /**
@@ -65,12 +65,12 @@ const BY_NAME = [
  * 並べてよいのは、`.env.example` に名前があるものに限る（AUT-225）。
  */
 const SECRETS = [
-  { re: /\bghp_[A-Za-z0-9]{36}\b/, why: "GitHub の個人アクセストークン" },
-  { re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/, why: "GitHub の細かい権限のトークン" },
-  { re: /\blin_api_[A-Za-z0-9]{40,}\b/, why: "Tracker（Linear）の鍵" },
-  { re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/, why: "モデルを呼ぶ鍵" },
-  { re: /\bsk-lf-[A-Za-z0-9-]{20,}\b/, why: "記録の送り先（Langfuse）の鍵" },
-  { re: /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/, why: "秘密鍵の本文" },
+  { re: /\bghp_[A-Za-z0-9]{36}\b/, why: "A GitHub personal access token" },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/, why: "A GitHub fine-grained token" },
+  { re: /\blin_api_[A-Za-z0-9]{40,}\b/, why: "A Tracker (Linear) key" },
+  { re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/, why: "A key for calling models" },
+  { re: /\bsk-lf-[A-Za-z0-9-]{20,}\b/, why: "A key for the record destination (Langfuse)" },
+  { re: /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/, why: "The body of a private key" },
 ];
 
 /**
@@ -129,12 +129,12 @@ export function forbidden(root, files) {
     const full = join(root, path);
     if (!existsSync(full)) continue;
     if (looksExecutable(full)) {
-      found.push({ path, why: "実行形式。追跡する理由が無ければ置かない" });
+      found.push({ path, why: "An executable. Do not keep it unless there is a reason to track it" });
       continue;
     }
     // **値が直に書かれている場合。** 名前と ELF では捕まらない（AUT-225）。
     const secret = embeddedSecret(full);
-    if (secret !== null) found.push({ path, why: `${secret}が、値のまま書かれている` });
+    if (secret !== null) found.push({ path, why: `${secret} is written as a raw value` });
   }
   return found;
 }
@@ -149,15 +149,15 @@ export function describe(found) {
   if (found.length === 0) return [];
   const lines = [
     "",
-    "追跡してはいけないものが追跡されている:",
+    "Things that must not be tracked are tracked:",
     "",
   ];
   for (const f of found) lines.push(`  ${f.path}  — ${f.why}`);
   lines.push(
     "",
-    "**履歴に入っている場合、消すコミットを積むだけでは消えない。**",
-    "資格情報が含まれていた可能性があるなら、**まず失効させること。**",
-    "失効させれば、どこに複製が残っていても無意味になる。**消し切るより確実で安い。**",
+    "**If it is in the history, adding a commit that deletes it does not remove it.**",
+    "If credentials may have been included, **revoke them first.**",
+    "Once revoked, copies left anywhere become useless. **More certain and cheaper than erasing every copy.**",
   );
   return lines;
 }
