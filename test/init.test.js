@@ -365,21 +365,25 @@ test("付ける文書を決める手順が、what-why.md の節を指してい�
   init(root, KIT);
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
   const whatWhy = readFileSync(join(root, "docs", "what-why.md"), "utf8");
-  assert.ok(rules.includes('"付ける文書"'), "規約が置き場所を指していない");
-  assert.ok(whatWhy.includes("\n## 付ける文書\n"), "what-why.md に節が無い");
+  assert.ok(rules.includes('"Documents to include"'), "規約が置き場所を指していない");
+  assert.ok(whatWhy.includes("\n## Documents to include\n"), "what-why.md に節が無い");
+  // **前の版の名前も読む**（AUT-263）。既に配った what-why.md はプロジェクトのものであり、
+  // 雛形を英語にしても日本語のまま残る。読めないと、決め終えたプロジェクトで毎回聞き直す。
+  assert.ok(rules.includes('"付ける文書"'), "前の版の節の名前を読んでいない");
+  assert.ok(rules.includes("`（ここに書く）`"), "前の版の目印を読んでいない");
   // **読み手ごとにディレクトリで分ける**（AUT-260）。「操作手順書」だけでは、開発する人の
   // 手順か、本番を運用する人の手順かが読めなかった。
   for (const [doc, dir] of [
-    ["開発者向けガイド", "docs/guides/developer/"],
-    ["運用者向けガイド", "docs/guides/operator/"],
-    ["ユーザマニュアル", "docs/guides/user/"],
+    ["Developer guide", "docs/guides/developer/"],
+    ["Operator guide", "docs/guides/operator/"],
+    ["User manual", "docs/guides/user/"],
   ]) {
     const row = whatWhy.split("\n").find((l) => l.startsWith(`| ${doc} |`));
     assert.ok(row?.includes(`\`${dir}\``), `${doc} の行が ${dir} を指していない`);
   }
   assert.equal(whatWhy.includes("docs/operations.md"), false, "読み手の決まらない手順書が残っている");
   // 外へ出す2つは、リリース前に HTML にするかを決めて残せる。
-  assert.ok(whatWhy.includes("リリース前に HTML にするか"), "HTML にするかの欄が無い");
+  assert.ok(whatWhy.includes("Turn into HTML before release"), "HTML にするかの欄が無い");
   // 前の版の形で決めたプロジェクトも、聞き直しの対象になる。
   assert.ok(rules.includes("does not point to `docs/guides/`"), "前の版の形で決めたところを拾っていない");
 });

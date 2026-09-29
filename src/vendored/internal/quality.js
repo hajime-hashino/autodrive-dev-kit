@@ -38,15 +38,24 @@ export const QUALITY_FILE = "docs/quality.md";
  * テンプレートのまま残っている行。
  *
  * **埋まっていないことを、埋まっていると読ませない。** 例として置いた行が残って
- * いれば、そこは決めていない。`docs/what-why.md` の `（ここに書く）` と同じ見方である。
+ * いれば、そこは決めていない。`docs/what-why.md` の `(write here)` と同じ見方である。
+ *
+ * **日本語の目印も読み続ける**（AUT-263）。雛形を英語にしても、既に配った先の
+ * `docs/quality.md` はプロジェクトのものであり、`update` でも日本語のまま残る。
+ *
+ * 英語の例の目印を `(e.g.` にしないのは、**普通の文でも使われるためである。**
+ * 利用者が自分で書いた行を、決めていない行として読むことになる。
  */
 export function unfilled(body) {
   if (body === null) return [];
   return body
     .split("\n")
     .map((line, i) => ({ line: line.trim(), at: i + 1 }))
-    .filter(({ line }) => line.includes("（例：") || line.includes("（ここに書く）"));
+    .filter(({ line }) => UNFILLED.some((marker) => line.includes(marker)));
 }
+
+/** 雛形に置いた目印。英語の雛形のものと、それより前の日本語の雛形のもの。 */
+const UNFILLED = ["(example:", "(write here)", "（例：", "（ここに書く）"];
 
 /** 値ごとの件数。**多い順**。読む人が最初に見るべきものを上に出す。 */
 function tally(rows, pick) {

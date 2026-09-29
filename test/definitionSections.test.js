@@ -155,7 +155,13 @@ test("`invariants` を通しても、節の食い違いが出力に出る", asyn
 
 // ------------------------------------------------------------ 写しの手入れ
 
-/** この参照実装の中で `定義§N` を引いている番号を、すべて集める。 */
+/**
+ * この参照実装の中で `定義§N` を引いている番号を、すべて集める。
+ *
+ * **英語の `definition §N` も拾う。** 配布物を英語にしたとき（AUT-262）、書き方が
+ * 変わって拾われなくなっていた。引いている節は揃っていたので通り続け、**新しく引いた
+ * 節を見逃す形で黙って弱くなっていた**（AUT-263 で気づいた）。
+ */
 function referenced(dir, found = new Set()) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
@@ -165,7 +171,7 @@ function referenced(dir, found = new Set()) {
       continue;
     }
     if (!/\.(js|md|ya?ml)$/.test(entry.name)) continue;
-    for (const m of readFileSync(path, "utf8").matchAll(/定義§(\d+)/g)) found.add(Number(m[1]));
+    for (const m of readFileSync(path, "utf8").matchAll(/(?:定義|definition )§(\d+)/gi)) found.add(Number(m[1]));
   }
   return found;
 }

@@ -1110,11 +1110,11 @@ test("手法の一覧が、引く側に配ってある", () => {
 test("決めたことの置き場が、実体として配られる", () => {
   const body = template(KIT, "quality.md");
   // **手法と範囲まで書かせる。**「見ている」だけでは何も分からない（人の指摘）。
-  assert.ok(body.includes("どこまで見ているか"), "範囲の欄が無い");
-  assert.ok(body.includes("「どこまで」を省略しないこと"), "省略を禁じていない");
-  assert.ok(body.includes("確認しないと決めたこと"), "意図して空けた記録の欄が無い");
-  assert.ok(body.includes("戻せないもの"), "戻せないものの欄が無い");
-  assert.ok(body.includes("空欄は「問題なし」と読まれる"), "空欄の読まれ方への注意が無い");
+  assert.ok(body.includes("How far it looks"), "範囲の欄が無い");
+  assert.ok(body.includes('Do not omit "how far."'), "省略を禁じていない");
+  assert.ok(body.includes("What was decided not to check"), "意図して空けた記録の欄が無い");
+  assert.ok(body.includes("What cannot be undone"), "戻せないものの欄が無い");
+  assert.ok(body.includes('A blank is read as "no problem."'), "空欄の読まれ方への注意が無い");
 
   const root = project();
   init(root, KIT);
@@ -1125,8 +1125,8 @@ test("決めたことの置き場が、実体として配られる", () => {
 // 違い、混ぜるとどちらをどこまで見ているかが読めない（人の指摘）。
 test("雛形が、プロダクトと開発環境・開発プロセスを別の章に分けている", () => {
   const body = template(KIT, "quality.md");
-  const product = body.indexOf("# プロダクトの品質");
-  const place = body.indexOf("# 開発環境・開発プロセスの品質");
+  const product = body.indexOf("# Product quality");
+  const place = body.indexOf("# Quality of the development environment and development process");
 
   assert.notEqual(product, -1, "プロダクトの節が無い");
   assert.notEqual(place, -1, "開発環境・開発プロセスの章が無い");
@@ -1134,24 +1134,24 @@ test("雛形が、プロダクトと開発環境・開発プロセスを別の�
   assert.ok(product < place, "開発環境・開発プロセスがプロダクトより先に来ている");
 
   // サンドボックスは開発環境の側にある。
-  assert.ok(body.indexOf("## サンドボックス") > place, "サンドボックスがプロダクト側にある");
+  assert.ok(body.indexOf("## Sandbox") > place, "サンドボックスがプロダクト側にある");
 
   // **品質の文書として、何を確認しているかから始める**（AUT-256）。以前は「作る場の話。
   // 損をするのは開発する側」と始めていた。プロセスが崩れればプロダクトの品質も崩れる。
   const opening = body.slice(place).split("\n").find((l, i) => i > 0 && l.trim() !== "");
-  assert.match(opening ?? "", /^開発環境・開発プロセスの品質は、次の点で確認している/, opening);
-  assert.equal(body.includes("損をするのは開発する側"), false, "プロセスの穴が開発する側だけの損だとしている");
+  assert.match(opening ?? "", /^The quality of the development environment and development process is checked on the following points/, opening);
+  assert.equal(body.includes("the ones who lose out are those developing"), false, "プロセスの穴が開発する側だけの損だとしている");
 });
 
 // **自動で見ているものが全部だと読まれる。** 人が担保する欄が無いと、そうなる。
 test("雛形に、人が確認するものの欄がある", () => {
   const body = template(KIT, "quality.md");
 
-  assert.ok(body.includes("人が確認するもの"), "人が担保する欄が無い");
-  assert.ok(body.includes("定義§17"), "何が人の領域かの根拠が示されていない");
+  assert.ok(body.includes("What the human checks"), "人が担保する欄が無い");
+  assert.ok(body.includes("definition §17"), "何が人の領域かの根拠が示されていない");
   // **知識不足を人の領域にしない。** 混ぜると、渡せば済むものまで戻る。
   assert.ok(
-    body.includes("知識が足りないことは"),
+    body.includes("Lack of knowledge is not a reason"),
     "渡せば済むものと、人が担保するものの境が書かれていない",
   );
 });
@@ -1159,7 +1159,7 @@ test("雛形に、人が確認するものの欄がある", () => {
 // **「無い」と書いただけでは、次が起きない。** 穴が見えたまま残る。
 test("手法が無い行に、行き先を求めている", () => {
   const body = template(KIT, "quality.md");
-  assert.ok(body.includes("いつ見直すか、または作業単位のID"), "行き先を求めていない");
+  assert.ok(body.includes("add when it will be revisited, or a work item ID"), "行き先を求めていない");
 });
 
 // **決める段が無いと、決めないまま進む。**

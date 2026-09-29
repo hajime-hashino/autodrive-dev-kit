@@ -1,30 +1,30 @@
-# 資格情報。追跡しない。
+# Credentials. Not tracked.
 .env
 .env.*
 !.env.example
 
-# 作業状態。成果物ではない。
+# Working state. Not a deliverable.
 #
-# **共有すると壊れる。** current-work-item.json は「いま自分が着手している作業単位」
-# であり、共有するとクローンした人が他人の作業単位に着手している状態で始まる。
-# その人の記録が、他人の作業単位に紐づく。cursors はこの機械のセッションごとの
-# 読み取り位置であり、他所では意味を持たない。
+# **Sharing it breaks things.** current-work-item.json is "the work item I have started right now,"
+# and if shared, whoever clones it starts out working on someone else's work item.
+# Their records get linked to someone else's work item. cursors are this machine's per-session
+# read positions and mean nothing elsewhere.
 #
-# **無い状態は黙って通らない。** マーカーが無いまま記録が発生すると
-# telemetry/unattributed.jsonl へ理由つきで残り、判定がその件数を出す。
+# **Its absence does not pass silently.** If a record is produced without the marker, it is kept
+# in telemetry/unattributed.jsonl with the reason, and the checks report the count.
 .autodrive/
 
-# 人が使う置き場所。**中身は追跡しない。**
+# A place for humans to use. **Its contents are not tracked.**
 #
-# **README だけは追跡する。** 全部を無視すると、クローンした先にディレクトリ自体が
-# 無くなり、「何を置いてはいけないか」が消える。
+# **Only the README is tracked.** Ignoring everything would make the directory itself disappear
+# in a clone, and with it "what must not be put here".
 notes/*
 !notes/README.md
 
-# コアダンプ。**追跡しない。**
+# Core dumps. **Not tracked.**
 #
-# テストが落ちたときに出る。実行時のメモリがそのまま入るため、**環境変数の値が
-# 平文で含まれる。** 実際に 39MB のコアダンプが commit され、資格情報が入っていた
-# （AUT-137）。バイナリなので、鍵を探す道具の多くは走査すらしない。
+# Produced when tests crash. They contain the runtime memory as-is, so **environment variable values
+# are included in plain text.** A 39MB core dump was actually committed with credentials in it
+# (AUT-137). Being binary, most secret-scanning tools do not even scan them.
 core
 core.*

@@ -348,7 +348,7 @@ test("作業状態を追跡しない。理由も書いてある", () => {
   const ignore = readFileSync(join(initialized(), ".gitignore"), "utf8");
 
   assert.ok(ignore.includes(".autodrive/"), ignore);
-  assert.ok(ignore.includes("共有すると壊れる"), "なぜ追跡しないのかが書かれていない");
+  assert.ok(ignore.includes("Sharing it breaks things"), "なぜ追跡しないのかが書かれていない");
   // **無い状態が黙って通らないこと**も、ここで伝える。
   assert.ok(ignore.includes("unattributed"), ignore);
 });

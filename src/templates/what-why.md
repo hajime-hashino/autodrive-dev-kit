@@ -1,33 +1,33 @@
-# 何を作るか、なぜ作るか
+# What to build, and why
 
-**提示は人の役割である。この文書をAIが独断で書き換えないこと。** 変更は人の提示を受けてのみ行う。
+**Presenting this is the human's role. The AI must not rewrite this document on its own judgment.** Changes are made only when the human presents them.
 
-確定度のラベルの意味は次のとおり。
+The certainty labels mean the following.
 
-| ラベル | 意味 | AIの扱い |
+| Label | Meaning | How the AI treats it |
 |---|---|---|
-| 確定 | 決まっている | 前提として進める |
-| 暫定 | 仮に置いている | 矛盾を見つけたら停止点として上げる |
-| 要検証 | まだ確かめていない | 着手前に確かめる |
+| Settled | Decided | Proceeds on it as a premise |
+| Provisional | Placed tentatively | Raises a stopping point if it finds a contradiction |
+| Needs verification | Not yet confirmed | Confirms it before starting |
 
-**暫定と要検証を区別して書くことに意味がある。** 人が固めた要件はAIから見て決定済みに見えるため、ラベルが無いと矛盾があっても指摘せず従ってしまう。
+**Writing provisional and needs verification distinctly is what gives this meaning.** Requirements firmed up by humans look decided from the AI's point of view, so without labels it follows them without pointing out contradictions.
 
 ---
 
-## 何を作るか
+## What to build
 
-（ここに書く）
+(write here)
 
-## できること
+## What it can do
 
-| # | 内容 | 確定度 |
+| # | Description | Certainty |
 |---|---|---|
 | 1 | | |
 
-## 付ける文書
+## Documents to include
 
-| 文書 | 読み手 | 作るか | 置き場所 | リリース前に HTML にするか |
+| Document | Readers | Write it? | Where | Turn into HTML before release? |
 |---|---|---|---|---|
-| 開発者向けガイド | このプロジェクトを開発する人。人が行う反復作業の手順 | | `docs/guides/developer/` | — |
-| 運用者向けガイド | 本番に出して運用するインフラ担当者 | | `docs/guides/operator/` | |
-| ユーザマニュアル | エンドユーザ | | `docs/guides/user/` | |
+| Developer guide | People developing this project. Procedures for repetitive work done by humans | | `docs/guides/developer/` | — |
+| Operator guide | Infrastructure staff who ship it to production and operate it | | `docs/guides/operator/` | |
+| User manual | End users | | `docs/guides/user/` | |

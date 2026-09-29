@@ -106,5 +106,5 @@ test("配る判定のワークフローが、パッケージ管理のキャッ�
   const body = readFileSync(join(KIT, "src", "templates", "invariants.yml"), "utf8");
   assert.match(body, /package-manager-cache:\s*false/, "止めていない。lock ファイルのある先で落ちる");
   // **止めた理由まで置く。** 消してよいものに見えると、次に消される。
-  assert.match(body, /依存を1つも使わない/, "なぜ止めているのかが無い");
+  assert.match(body, /use no dependencies at all/, "なぜ止めているのかが無い");
 });

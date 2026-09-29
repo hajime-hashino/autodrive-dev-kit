@@ -1,24 +1,24 @@
-# 委譲範囲の表
+# Delegation table
 #
-# 領域ごとに「気づけるか」「戻せるか」を記し、任せる範囲の状態を持つ。
+# For each area, note whether it is detectable and whether it is reversible, and hold the state of what is entrusted.
 #
-#            | 気づけない        | 気づける
-#   戻せない | 固定条件          | 自動ゲート＋人が発火
-#   戻せる   | 抜き取り確認      | 完全委譲
+#                  | not detectable     | detectable
+#   not reversible | fixed condition    | automated gate + human trigger
+#   reversible     | spot check         | full delegation
 #
-# 状態は 保留 / 観察中 / 委譲済み の3つ。
-#   緩和  : 観察中でN回連続して人の修正が入らなければ委譲済みへ
-#   締め直し: 委譲済みで失敗が出たら観察中へ戻す
-#   **緩和と締め直しは必ず対で運用する。**
+# There are three states: on hold / under observation / delegated.
+#   loosening      : if N consecutive times under observation pass without human correction, move to delegated
+#   tightening back: if a failure occurs while delegated, return to under observation
+#   **Loosening and tightening back are always operated as a pair.**
 #
-# 変更の提案はAI、承認は人、**履歴は必ず残す**（docs/boundary-changes.md）。
+# The AI proposes changes, the human approves, and **the history is always kept** (docs/boundary-changes.md).
 #
 # ---
 #
-# **初期状態を推測で埋めないこと。** 人が実際にどこを見ていたかが記録に残ってから、
-# それを使って起こす。見ていた領域を保留、見ていなかった領域を委譲済みとする。
+# **Do not fill in the initial state by guessing.** Build it from the records once they show where humans
+# actually looked. Areas that were looked at are on hold; areas that were not looked at are delegated.
 #
-# 宣言と実態がズレていれば、それ自体が読むべき信号になる。
+# If the declaration and reality drift apart, that itself is a signal to read.
 
 version: 1
 
