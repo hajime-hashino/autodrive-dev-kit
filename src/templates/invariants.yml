@@ -1,7 +1,7 @@
 name: invariants
 
-# このリポジトリの範囲の判定のみを行う。リポジトリをまたいで初めて成立する
-# 不変条件は、参照実装側の定期実行が見る。
+# Only checks within the scope of this repository. Invariants that hold only
+# across repositories are looked at by the scheduled run on the autodrive-dev-kit side.
 on:
   pull_request:
   push:
@@ -14,22 +14,22 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          # **既定ブランチの履歴が要る。** 提出を経ずに入った変更の検出は
-          # first-parent を辿って判定するため、浅い取得では判定できない。
+          # **The default branch's history is needed.** Detecting changes that entered
+          # without a submission follows first-parent, so a shallow fetch cannot judge it.
           fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
           node-version: "22.18"
-          # **パッケージ管理のキャッシュを止める。** 既定では直下の lock ファイルを
-          # 見て、その管理ツールでキャッシュしようとする。pnpm / yarn / bun を使う
-          # プロジェクトでは、その実行ファイルが無いと**判定そのものが落ちる**
-          # （AUT-180、実際に `Unable to locate executable file: pnpm` で落ちた）。
+          # **Turn off the package manager cache.** By default it looks at the lock file
+          # at the top and tries to cache with that manager. In projects using
+          # pnpm / yarn / bun, **the check itself fails** if that executable is missing
+          # (AUT-180; it actually failed with `Unable to locate executable file: pnpm`).
           #
-          # **判定は依存を1つも使わない。** 参照実装は依存ゼロであり、node さえ
-          # あれば走る。要らないキャッシュのために、プロジェクト側の都合を
-          # 持ち込まない。
+          # **The checks use no dependencies at all.** autodrive-dev-kit has zero
+          # dependencies and runs with node alone. Do not bring in the project's
+          # circumstances for a cache that is not needed.
           package-manager-cache: false
 
-      - name: 判定する
+      - name: Run the checks
         run: {{KIT}}/invariants --root . --scope self

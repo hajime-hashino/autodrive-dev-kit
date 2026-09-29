@@ -1,5 +1,5 @@
-# 作業ルール
+# Working rules
 
-作業の進め方は [docs/autodrive.md](docs/autodrive.md) に従う。
+Follow [docs/autodrive.md](docs/autodrive.md) for how to work.
 
-（プロジェクト固有の決まりがあれば、ここに足す）
+(Add project-specific rules here, if any)

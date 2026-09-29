@@ -62,6 +62,14 @@ test("未記入の欄を見つける", () => {
   assert.equal(unfilled(body).length, 1, "例の行を拾えていない");
   assert.equal(unfilled(null).length, 0, "置かれていない場合に落ちている");
 
+  // **英語の雛形の目印も、前の版の日本語の目印も拾う**（AUT-263）。既に配った
+  // docs/quality.md はプロジェクトのものであり、update でも日本語のまま残る。
+  assert.equal(unfilled("| Functionality | Unit | (example: automated tests) | |\n").length, 1, "英語の例を拾えていない");
+  assert.equal(unfilled("## What to build\n\n(write here)\n").length, 1, "英語の記入欄を拾えていない");
+  assert.equal(unfilled("## 何を作るか\n\n（ここに書く）\n").length, 1, "前の版の記入欄を拾えていない");
+  // **普通の文を、未記入と読まない。** 利用者は自分で (e.g. ...) と書く。
+  assert.equal(unfilled("| Security | Static | Dependency scanning (e.g. npm audit) | all |\n").length, 0, "利用者の文を未記入と読んでいる");
+
   const text = render(summary([], [{ repo: "app", body }]));
   assert.match(text, /未記入の欄が 1 行ある/, "未記入を出していない");
 });

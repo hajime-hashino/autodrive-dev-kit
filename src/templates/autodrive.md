@@ -65,9 +65,9 @@ decide where to begin ourselves. Do not ask back "What should I do?"
 
 | State | Where to begin |
 |---|---|
-| `docs/what-why.md` still contains `（ここに書く）` (= it is still the template) | **1. Ask what to build** |
+| `docs/what-why.md` still contains `（ここに書く）` (earlier versions) or `(write here)` (= it is still the template) | **1. Ask what to build** |
 | There is something to build, but not a single work item | **3. Agree on the order to build in** |
-| `docs/what-why.md` has no "付ける文書" section, or it does not point to `docs/guides/` (started on an earlier version) | **5. Have them decide which documents to include.** Then continue |
+| `docs/what-why.md` has no "Documents to include" section (called "付ける文書" in earlier versions), or it does not point to `docs/guides/` (started on an earlier version) | **5. Have them decide which documents to include.** Then continue |
 | Anything else | Continue. Look at the history and the list of work items, and say what is in progress |
 
 ## Standard development process
@@ -83,7 +83,7 @@ decide where to begin ourselves. Do not ask back "What should I do?"
 | 2 | **If there is a UI, have them decide the design and how it looks.** This is part of the What | Screen proposals |
 | 3 | **Agree on the order to build in.** Split it into three or four and have them decide which comes first | The order |
 | 4 | **Have them decide what to check for quality.** Propose options and have them choose. Do not ask with a blank page | `docs/quality.md` |
-| 5 | **Have them decide which documents to include.** Whether to write guides for developers, operators, and users. Ask along with what goes wrong without them. For the latter two, also ask whether to turn them into HTML before release. **If they are written, submissions that change behavior also update them** | `docs/what-why.md` "付ける文書" |
+| 5 | **Have them decide which documents to include.** Whether to write guides for developers, operators, and users. Ask along with what goes wrong without them. For the latter two, also ask whether to turn them into HTML before release. **If they are written, submissions that change behavior also update them** | `docs/what-why.md` "Documents to include" |
 | 6 | **Set up only the environment the first one needs.** Credentials that are not used only add risk by existing | A working foundation |
 | 7 | **Prepare the verification environment.** Without a place to confirm before shipping, nothing after this holds | Verification environment |
 

@@ -389,8 +389,8 @@
   {
     "name": "AUT-210 どこまで見ているかを省略させる",
     "file": "src/templates/quality.md",
-    "from": "**「どこまで」を省略しないこと。**",
-    "to": "「どこまで」は書けるときに書く。",
+    "from": "**Do not omit \"how far.\"**",
+    "to": "Write \"how far\" when you can.",
     "why": "手法の名前だけでは、全体を見ているのか1本だけなのかが分からない"
   },
   {
@@ -445,7 +445,7 @@
   {
     "name": "AUT-211 未記入の欄を、埋まっているものとして数える",
     "file": "src/vendored/internal/quality.js",
-    "from": "    .filter(({ line }) => line.includes(\"（例：\") || line.includes(\"（ここに書く）\"));",
+    "from": "    .filter(({ line }) => UNFILLED.some((marker) => line.includes(marker)));",
     "to": "    .filter(() => false);",
     "why": "テンプレートのままの欄が、決めたものとして読まれる"
   },
@@ -642,22 +642,22 @@
   {
     "name": "AUT-230 プロダクトと作る場を、同じ節に戻す",
     "file": "src/templates/quality.md",
-    "from": "# 開発環境・開発プロセスの品質",
-    "to": "## つづき",
+    "from": "# Quality of the development environment and development process",
+    "to": "## Continued",
     "why": "同じ重さで読まれる。壊れたときに損をする人が違う"
   },
   {
     "name": "AUT-230 人が担保するものの欄を落とす",
     "file": "src/templates/quality.md",
-    "from": "## 人が確認するもの",
-    "to": "## 参考",
+    "from": "## What the human checks",
+    "to": "## Reference",
     "why": "自動で見ているものが全部だと読まれる（定義§17）"
   },
   {
     "name": "AUT-230 「無い」と書いた行の行き先を求めない",
     "file": "src/templates/quality.md",
-    "from": "いつ見直すか、または作業単位のIDを添えること。",
-    "to": "そう書くこと。",
+    "from": "**add when it will be revisited, or a work item ID.**",
+    "to": "write so.",
     "why": "穴が見えたまま残る。実際に残った"
   },
   {
@@ -864,15 +864,15 @@
   {
     "name": "AUT-257 付ける文書の節の名前をずらす",
     "file": "src/templates/what-why.md",
-    "from": "## 付ける文書",
-    "to": "## 文書",
+    "from": "## Documents to include",
+    "to": "## Documents",
     "why": "立ち上げで決めた文書の置き場所が無くなり、毎回聞き直す"
   },
   {
     "name": "AUT-256 開発プロセスの章を、何を確認しているかから始めない",
     "file": "src/templates/quality.md",
-    "from": "開発環境・開発プロセスの品質は、次の点で確認している。",
-    "to": "作る場の話。",
+    "from": "The quality of the development environment and development process is checked on the following points.",
+    "to": "About the place where things are built.",
     "why": "品質の文書として読めず、プロセスの穴がプロダクトに効くことが伝わらない"
   },
   {
@@ -892,8 +892,22 @@
   {
     "name": "AUT-260 運用者向けガイドを、読み手の決まらない1ファイルへ戻す",
     "file": "src/templates/what-why.md",
-    "from": "| 運用者向けガイド | 本番に出して運用するインフラ担当者 | | `docs/guides/operator/` | |",
-    "to": "| 操作手順書（よく出る操作） | | | `docs/operations.md` | |",
+    "from": "| Operator guide | Infrastructure staff who ship it to production and operate it | | `docs/guides/operator/` | |",
+    "to": "| Operating procedures (common operations) | | | `docs/operations.md` | |",
     "why": "開発する人の手順か、本番を運用する人の手順かが読めない"
+  },
+  {
+    "name": "AUT-263 証跡が、前の版の日本語の目印を読まなくなる",
+    "file": "src/vendored/internal/quality.js",
+    "from": "const UNFILLED = [\"(example:\", \"(write here)\", \"（例：\", \"（ここに書く）\"];",
+    "to": "const UNFILLED = [\"(example:\", \"(write here)\"];",
+    "why": "既に配った docs/quality.md は日本語のまま残る。未記入の欄が、決めたものとして読まれる"
+  },
+  {
+    "name": "AUT-263 規約が、前の版の節の名前を読まなくなる",
+    "file": "src/templates/autodrive.md",
+    "from": " (called \"付ける文書\" in earlier versions)",
+    "to": "",
+    "why": "既に配った what-why.md は日本語のまま残る。決め終えたプロジェクトで、付ける文書を毎回聞き直す"
   }
 ]

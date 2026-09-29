@@ -1,118 +1,118 @@
-# 品質管理
+# Quality management
 
-**このプロジェクトが、何を、どの手法で、どこまで確認するかを決めた記録である。**
+**This is the record of what this project decided to check, by which method, and how far.**
 
-観点と箇所の一覧、ベースライン、決め方は `docs/autodrive.md`「品質管理」にある。
-**ここは決めた結果を置く場所。**
+The list of aspects and stages, the baseline, and how to decide are in `docs/autodrive.md` "Quality management."
+**This is where the decided results go.**
 
-**2つに分けて書く。** 作ったものそのものと、それを作る環境・プロセスとでは、確認する
-対象も手段も違う。混ぜると、どちらをどこまで見ているかが読めなくなる。
+**Write it in two parts.** What was built and the environment and process that build it differ in what is checked
+and how. Mixed together, it becomes unreadable which is looked at and how far.
 
 ---
 
-# プロダクトの品質
+# Product quality
 
-**作ったものそのものの品質。**
+**The quality of what was built itself.**
 
-## AIが確認していること
+## What the AI checks
 
-**手法と、どこまで見ているかを書く。**「見ている」だけでは、何をどこまで見ているのかが
-読めない。
+**Write the method and how far it looks.** "It is looked at" alone does not say what is looked at or how
+far.
 
-| 観点 | 箇所 | 手法 | どこまで見ているか |
+| Aspect | Stage | Method | How far it looks |
 |---|---|---|---|
-| ビジネス目的の達成 | 受入 | （例：E2E） | （例：注文から決済までの1本のみ。返品は含まない） |
-| 機能 | 単体・結合 | | |
-| 性能 | | | |
-| セキュリティ | 静的 | | |
-| 信頼性 | 本番監視 | | |
-| 保守性 | 静的 | | |
+| Achieving the business purpose | Acceptance | (example: E2E) | (example: only the one path from ordering to payment. Returns are not included) |
+| Functionality | Unit, integration | | |
+| Performance | | | |
+| Security | Static | | |
+| Reliability | Production monitoring | | |
+| Maintainability | Static | | |
 
-**「どこまで」を省略しないこと。** 手法の名前だけでは、全体を見ているのか1本だけなのかが
-分からない。**読む人は、書いていない範囲まで見ていると受け取る。**
+**Do not omit "how far."** The name of a method alone does not say whether it looks at everything or at a single path.
+**Readers take it that ranges not written are being looked at too.**
 
-**この表は、すべて自動で回るものである。**「受入」は確認する箇所の名前であって、
-人が見ることではない。
+**This table is all run automatically.** "Acceptance" is the name of a stage at which things are checked, not
+something a human looks at.
 
-### 手法が「無い」なら、行き先を書く
+### If there is "no" method, write where it goes next
 
-**「無い」と書いただけでは、次が起きない。** 書いた時点では穴が見えているが、
-そのまま何年も残る。実際に残った（定義リポジトリの記録が、誰も見ていない参照の
-ずれを先に見つけていた）。
+**Writing "none" alone makes nothing happen next.** At the moment of writing, the hole is visible, but
+it stays that way for years. It actually did (the definition repository's record had found, before anyone else, a drift in references
+that nobody was looking at).
 
-「無い」と書く行には、**いつ見直すか、または作業単位のIDを添えること。**
+On a row that says "none," **add when it will be revisited, or a work item ID.**
 
-## 人が確認するもの
+## What the human checks
 
-**AIに判断がつかない品質は、人が担保する**（定義§17）。表に出さないと、
-自動で見ているものが全部だと読まれる。
+**Quality the AI cannot judge is ensured by the human** (definition §17). If it is not in the table,
+what is looked at automatically is read as being everything.
 
-| 何を | なぜAIに判断がつかないか | どう見るか |
+| What | Why the AI cannot judge it | How it is looked at |
 |---|---|---|
-| （例：画面の使い勝手） | 正解が人の感覚にしかない | 抜き取り確認（定義§8） |
-| （例：障害時にどこまで許容するか） | 正解ではなく、事業としての選択 | 停止点での判断（定義§10）。決めた水準に書く |
+| (example: usability of the screens) | The correct answer exists only in human sense | Spot checks (definition §8) |
+| (example: how much to tolerate during an outage) | Not a correct answer but a business choice | Decision at a stopping point (definition §10). Write it under levels decided |
 
-**知識が足りないことは、ここに入れる理由にならない**（定義§17）。法規制や
-社内規程は、渡せばAIが判断できる。渡すこと。
+**Lack of knowledge is not a reason to put something here** (definition §17). Regulations and
+internal rules can be judged by the AI once handed over. Hand them over.
 
-## 確認しないと決めたこと
+## What was decided not to check
 
-**意図して見ないことにしたものを、ここに書く。** 書かないと、決めたのか忘れたのかが
-後から区別できない。
+**Write here what was deliberately left unwatched.** If not written, it cannot later be told whether it was decided
+or forgotten.
 
-| 何を | なぜ空けたか | 見直す条件 |
+| What | Why it was left open | Condition for revisiting |
 |---|---|---|
-| （例：性能） | （例：利用者が社内10名。遅くても業務が止まらない） | （例：社外へ公開するとき） |
+| (example: performance) | (example: 10 internal users. Slowness does not stop the work) | (example: when it is opened to outside users) |
 
-## 戻せないもの
+## What cannot be undone
 
-**壊れたら取り消せないもの。ここに検出が無い状態で先へ進めない。**
+**Things that cannot be undone if they break. Do not move on while there is no detection here.**
 
-| 何が起きうるか | 検出しているもの | 誰が発火するか |
+| What could happen | What detects it | Who triggers |
 |---|---|---|
-| （例：本番データの削除） | （例：削除の手前で確認を挟むテスト） | 人 |
+| (example: deleting production data) | (example: a test that puts a confirmation before the deletion) | Human |
 
-**無いなら「無い」と書くこと。** 空欄は「問題なし」と読まれる。
+**If there is none, write "none."** A blank is read as "no problem."
 
-## 決めた水準
+## Levels decided
 
-**案を出したのはAI、選んだのは人。** どちらが決めたかが読めること。
+**It was the AI that proposed and the human that chose.** It must be readable who decided.
 
-| 項目 | 決めた水準 | いつ決めたか |
+| Item | Level decided | When decided |
 |---|---|---|
-| （例：可用性） | （例：平日日中のみ。夜間は停止してよい） | （例：2026-09-20） |
+| (example: availability) | (example: weekday daytime only. May be down at night) | (example: 2026-09-20) |
 
 ---
 
-# 開発環境・開発プロセスの品質
+# Quality of the development environment and development process
 
-開発環境・開発プロセスの品質は、次の点で確認している。**ここが崩れると、プロダクトの
-品質も保てない。** 誤りを見逃す、記録が残らず直す場所を選べない、といった形で効く。
+The quality of the development environment and development process is checked on the following points. **If this breaks down, product
+quality cannot be kept either.** It shows up as errors slipping through, or as records not remaining so that there is no way to choose where to fix.
 
-## サンドボックス
+## Sandbox
 
-`autodrive.json` の `sandbox` に選んだものが、何を引き受けているかを書く。
-この道具が中身を知っているのは devcontainer だけで、それ以外は名前を控えるに
-とどまる。どこまで守られているかを知っているのは、選んだ側である。
+Write what the choice for `sandbox` in `autodrive.json` takes on.
+This tool knows the contents only of devcontainer; for anything else it only
+keeps the name. It is whoever chose it that knows how far it protects.
 
-| 項目 | 記入 |
+| Item | Entry |
 |---|---|
-| 使っているもの | （例：Claude Managed Agent） |
-| 隔離を用意するのは誰か | （例：提供側。こちらは構成を変えられない） |
-| 出口の制限 | （例：提供側の既定に従う。許可一覧を手元で読む手段は無い） |
-| 手元の資格情報との関係 | （例：手元には置かない。環境へ渡す） |
-| 記録のフックが動くか | （例：確認済み／未確認） |
+| What is used | (example: Claude Managed Agent) |
+| Who provides the isolation | (example: the provider. We cannot change the configuration) |
+| Egress restriction | (example: follows the provider's default. There is no way to read the allowlist locally) |
+| Relation to local credentials | (example: not kept locally. Passed to the environment) |
+| Whether the recording hook runs | (example: confirmed / not confirmed) |
 
-最後の行だけは性質が違う。**記録が残ることは不変条件である**（定義§9）。
-環境を変えたときに最初に確かめる対象になる。
+Only the last row differs in nature. **Records remaining is an invariant** (definition §9).
+It is the first thing to confirm when the environment changes.
 
-## 開発の仕掛けについて確認していること
+## What is checked about the development machinery
 
-判定・記録・入れ替えの仕掛けが動いているか。
+Whether the machinery for checks, records, and replacement is working.
 
-| 何を | 手法 | どこまで見ているか |
+| What | Method | How far it looks |
 |---|---|---|
-| （例：隔離の設定） | （例：起動時の自己検証と、設定の判定） | （例：出口制限の呼び出しが残っているか。到達可否は起動時が見る） |
+| (example: isolation settings) | (example: self-check at start, and the checks on the settings) | (example: whether the call to the egress restriction remains. Reachability is looked at by the check at start) |
 
-ここも「無い」なら、そう書き、行き先も書く（プロダクトの品質と同じ）。**ここの穴は、
-プロダクトの誤りの見逃しとして表に出る。**
+Here too, if there is "none," write so, and write where it goes next (same as product quality). **Holes here
+show up as errors in the product slipping through.**
