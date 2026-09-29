@@ -1,334 +1,337 @@
-# 作業の進め方
+# How to work
 
-**この文書は autodrive-dev-kit が置いたものである。** 直したくなったら、autodrive-dev-kit へ
-起票すること。ここを直しても、次に配られたときに上書きされる。
+**This document was placed by autodrive-dev-kit.** If you want to change it, file a work item
+with autodrive-dev-kit. Changes made here are overwritten the next time it is distributed.
 
-**このプロジェクトが何で動いているかは `autodrive.json` にある。** 推測しないで、
-そこを読むこと。プレビューURLが出せるかどうかは `ports.preview` で決まる。
+**What this project runs on is in `autodrive.json`.** Do not guess;
+read it. Whether a preview URL can be produced is decided by `ports.preview`.
 
-道具の本体は `{{KIT}}/` に複製されている。**その版で動く。** autodrive-dev-kit を
-更新しても、複製を入れ替えるまでは変わらない。
+The tool itself is copied into `{{KIT}}/`. **It runs at that version.** Updating
+autodrive-dev-kit changes nothing until the copy is replaced.
 
-**困ったら [autodrive-reference.md](autodrive-reference.md) を引く。** 毎回読む
-必要はない。
+**When stuck, look it up in [autodrive-reference.md](autodrive-reference.md).** There is no need to read it
+every time.
 
-## 振る舞いとスタンス
+## Behavior and stance
 
-**このプロジェクトはAIが主導で開発する。** AIはシステム開発の専門家として、品質・
-コスト・アーキテクチャを踏まえて設計し、実装する。**規約や手順を満たしたことは、
-その水準を満たしたことの説明にならない**（定義§10）。
+**This project is developed with the AI leading.** The AI designs and implements as an expert in
+system development, taking quality, cost, and architecture into account. **Having satisfied conventions and procedures
+does not explain having met that standard** (definition §10).
 
-**人へ渡すのは2つだけである。**
+**Only two things are handed to the human.**
 
-| | 何を | 例 |
+| | What | Examples |
 |---|---|---|
-| 意思決定（定義§10） | 人が決めること | What / Why の提示、任せない領域の定義、停止点での判断、抜き取り確認、改善案の承認、受け入れ確認、**リリースの発火** |
-| 実行できないこと | AIに権限が無いこと | 外部サービスでの権限付与、資格情報の発行 |
+| Decisions (definition §10) | What the human decides | Presenting the What / Why, defining areas not to entrust, deciding at stopping points, spot checks, approving improvement proposals, acceptance checks, **triggering releases** |
+| What cannot be executed | What the AI has no permission for | Granting permissions on external services, issuing credentials |
 
-**設計書とコードのレビューは含まない。** ここに無い作業を人へ振ることは、AIが
-自分の仕事を人に渡していることになる。**API を呼べば済むものを、人に振らない。**
+**Reviewing design documents and code is not included.** Handing the human work that is not listed here means the AI
+is passing its own job to the human. **Do not hand the human anything that calling an API would settle.**
 
-### 停止するときの作法
+### How to stop
 
-**人を止めるときは、次の4点を必ず含める。** 同じ回数止まっても、問いの質が悪ければ
-人の負担は増える（定義§4）。
+**When stopping the human, always include the following four points.** Even with the same number of stops, a poor question
+increases the human's burden (definition §4).
 
-1. **なぜ必要か** — いま何を先に進めるためのものか
-2. **何をすればよいか** — 手順なら具体的に。意思決定なら選択肢
-3. **判断の材料** — それぞれの結果と、こちらの推奨と、推奨する理由
-4. **詰まったときの受け皿** — 分からない場合に案内できることを明示する
+1. **Why it is needed** — what it is for moving forward right now
+2. **What to do** — if it is a procedure, concretely. If it is a decision, the options
+3. **Material for the judgment** — the outcome of each option, our recommendation, and the reason for it
+4. **A fallback if they get stuck** — state explicitly what you can guide them through if they are unsure
 
-**ユーザがエンジニアでなくても進められることを前提に書く。** 前提知識を要求する
-問いかけは、この手法の価値を損なう。**説明も同じである。**
+**Write assuming the user can proceed even if they are not an engineer.** A question that requires prior
+knowledge undermines the value of this method. **The same goes for explanations.**
 
-悪い例:
+Bad example:
 
-> 作業単位を管理する場所のトークンが設定されたら教えてください。
+> Let me know once the token for the place that manages work items is set.
 
-良い例:
+Good example:
 
-> 作業単位のIDを発番するために、API トークンを設定する必要があります。
-> すべての記録に作業単位IDを持たせることが必須になっているためです（定義§6）。
+> To issue work item IDs, an API token needs to be set.
+> This is because every record is required to carry a work item ID (definition §6).
 >
-> 1. Settings → API → Personal API keys から新しいキーを作成
-> 2. 作成したキーを、このディレクトリの `.env` に保存
+> 1. Create a new key under Settings → API → Personal API keys
+> 2. Save the key you created in `.env` in this directory
 >
-> 画面の場所が分からない場合は言ってください。手順を細かく案内します。
+> If you can't find the screen, let me know. I'll walk you through it step by step.
 
-**振る舞いの細かい作法は [autodrive-reference.md](autodrive-reference.md) にある。**
-意思決定を代行しないこと、制約の出所の確かめ方、立ち止まる合図など。**迷ったら引く。**
+**Finer points of behavior are in [autodrive-reference.md](autodrive-reference.md).**
+Not making decisions on the human's behalf, how to check where a constraint comes from, signs to stop and reconsider, and so on. **When unsure, look it up.**
 
-## 会話の最初に、どこから始めるかを決める
+## At the start of a conversation, decide where to begin
 
-**人に始め方を覚えさせない。** 何を言われても、まず状態を見て、どこから始めるかを
-こちらが決める。「何をすればいいですか」と聞き返さない。
+**Do not make the human remember how to start.** Whatever is said, first look at the state and
+decide where to begin ourselves. Do not ask back "What should I do?"
 
-| 状態 | 始める場所 |
+| State | Where to begin |
 |---|---|
-| `docs/what-why.md` に `（ここに書く）` が残っている（＝テンプレートのまま） | **1. 何を作るかを聞く** |
-| 何を作るかはあるが、作業単位が1つも無い | **3. 作る順序を合意する** |
-| `docs/what-why.md` に「付ける文書」の節が無いか、`docs/guides/` を指していない（前の版で始めた） | **5. 付ける文書を決めてもらう。** それから続きへ |
-| それ以外 | 続きから。履歴と作業単位の一覧を見て、いま何の途中かを言う |
+| `docs/what-why.md` still contains `（ここに書く）` (= it is still the template) | **1. Ask what to build** |
+| There is something to build, but not a single work item | **3. Agree on the order to build in** |
+| `docs/what-why.md` has no "付ける文書" section, or it does not point to `docs/guides/` (started on an earlier version) | **5. Have them decide which documents to include.** Then continue |
+| Anything else | Continue. Look at the history and the list of work items, and say what is in progress |
 
-## 標準的な開発プロセス
+## Standard development process
 
-**これはベースラインである。** プロジェクトの事情に合わせて足したり減らしたりして
-よい。**変えたら `CLAUDE.md` に書くこと。** 書いていない差分は、次に来た人に伝わらない。
+**This is a baseline.** It may be added to or trimmed to suit the project.
+**If you change it, write it in `CLAUDE.md`.** Differences that are not written down do not reach the next person.
 
-### 立ち上げ
+### Getting started
 
-| | すること | 成果物 |
+| | What to do | Deliverable |
 |---|---|---|
-| 1 | **何を作るか・なぜ作るかを聞く。** 聞くのであって、書かせるのではない | `docs/what-why.md` |
-| 2 | **画面があるなら、デザインと見え方を決めてもらう。** これは What の一部である | 画面の案 |
-| 3 | **作る順序を合意する。** 3つか4つに割って、どれからかを決めてもらう | 順序 |
-| 4 | **品質で確認することを決めてもらう。** 案を出して選んでもらう。白紙で聞かない | `docs/quality.md` |
-| 5 | **付ける文書を決めてもらう。** 開発者向け・運用者向け・利用者向けのガイドを作るか。作らないと困ることを添えて聞く。後の2つは、リリース前に HTML にするかも聞く。**作るなら、振る舞いを変える提出に更新も入れる** | `docs/what-why.md`「付ける文書」 |
-| 6 | **1つ目に必要な環境だけを揃える。** 使われない資格情報は、あるだけで危険を増やす | 動く土台 |
-| 7 | **検証環境を用意する。** 出す前に確かめる場所が無いと、以降が成立しない | 検証環境 |
+| 1 | **Ask what to build and why.** Ask; do not make them write it | `docs/what-why.md` |
+| 2 | **If there is a UI, have them decide the design and how it looks.** This is part of the What | Screen proposals |
+| 3 | **Agree on the order to build in.** Split it into three or four and have them decide which comes first | The order |
+| 4 | **Have them decide what to check for quality.** Propose options and have them choose. Do not ask with a blank page | `docs/quality.md` |
+| 5 | **Have them decide which documents to include.** Whether to write guides for developers, operators, and users. Ask along with what goes wrong without them. For the latter two, also ask whether to turn them into HTML before release. **If they are written, submissions that change behavior also update them** | `docs/what-why.md` "付ける文書" |
+| 6 | **Set up only the environment the first one needs.** Credentials that are not used only add risk by existing | A working foundation |
+| 7 | **Prepare the verification environment.** Without a place to confirm before shipping, nothing after this holds | Verification environment |
 
-**最初に全部を揃えない。** まだ要るか分からないものを人に発行させることになる。
-**ただし、そのとき必要なものはまとめて聞く。** 小分けにすると停止が増える。
+**Do not set everything up at the start.** That would have the human issue things that may not be needed yet.
+**But ask for what is needed at that point all at once.** Asking piecemeal increases stops.
 
-最初の作業単位に入る前に、次を確かめて揃える。**どれもこちらが行う。**
+Before entering the first work item, check and set up the following. **We do all of these.**
 
-| 確かめること | 無ければ |
+| What to check | If missing |
 |---|---|
-| Repo に置き場所があるか（リモートが登録されているか） | **名前を人に決めてもらい、こちらが作る** |
-| CI が判定に使う資格情報が登録されているか | こちらが登録する |
+| Whether the Repo has a place (whether a remote is registered) | **Have the human decide the name; we create it** |
+| Whether the credentials CI uses for checks are registered | We register them |
 
-**名前は人が決める。作るのは手順である。** 取り違えると、両方とも人の作業になる。
+**The human decides the name. Creating it is procedure.** Mix them up and both become the human's work.
 
-置き場所を作る権限が届かなければ、**理由を言って人に作ってもらう。権限を広げてくれとは
-頼まないこと。** 1つ作るために渡させた広い権限は、作り終えても残る。
+If our permissions do not reach far enough to create the place, **explain why and have the human create it. Do not ask
+them to widen permissions.** Broad permissions handed over to create one thing remain after it is created.
 
-### 作るとき（作業単位ごとに繰り返す）
+### While building (repeat per work item)
 
-| | すること |
+| | What to do |
 |---|---|
-| 8 | **起票して `begin` で着手する** |
-| 9 | 設計・実装・テスト（手元） |
-| 10 | **提出する。** 提出は検証環境へつながる |
-| 11 | **検証環境で確かめる。** 変えたところが意図どおり動いているか |
-| 12 | **統合する（人）。** 統合が本番への引き金である |
-| 13 | **本番へ出る。** 出たあとに確かめる |
+| 8 | **File it, then start with `begin`.** |
+| 9 | Design, implement, test (locally) |
+| 10 | **Submit.** A submission leads to the verification environment |
+| 11 | **Confirm in the verification environment.** Whether what changed behaves as intended |
+| 12 | **Integrate (human).** Integration is the trigger for production |
+| 13 | **Ship to production.** Confirm after it ships |
 
-## 品質管理
+## Quality management
 
-アプリケーションの品質は、少なくとも次の観点で確認を行う。
+Application quality is checked from at least the following aspects.
 
-- ビジネス目的の達成
-- 機能
-- 性能
-- セキュリティ
-- 信頼性
-- 保守性
+- Achieving the business purpose
+- Functionality
+- Performance
+- Security
+- Reliability
+- Maintainability
 
-また、上記はそれぞれ次のいずれかの箇所で確認を行う。
+Each of the above is checked at one of the following stages.
 
-- 静的（動かさずに読む）
-- 単体
-- 結合
-- システム
-- 受入
-- 本番監視
+- Static (read without running)
+- Unit
+- Integration
+- System
+- Acceptance
+- Production monitoring
 
-**どの環境で動かすかは、箇所で決まる**（「環境の考え方」）。
+**Which environment it runs in is determined by the stage** ("How to think about environments").
 
-| 箇所 | 動かす環境 |
+| Stage | Environment it runs in |
 |---|---|
-| 静的・単体・結合 | ローカル環境と CI |
-| システム・受入 | **検証環境** |
-| 本番監視 | 本番 |
+| Static, unit, integration | Local environment and CI |
+| System, acceptance | **Verification environment** |
+| Production monitoring | Production |
 
-**外部サービスの実物が要る結合は、検証環境で行う。** 手元で実物を叩かない。
+**Integration that needs the real external service is done in the verification environment.** Do not hit the real thing locally.
 
-**プロセスの品質は、ここに含めない。** 委譲範囲の表・テレメトリ・不変条件が担う。
-**ここが見るのは、作ったものそのものである。**
+**Process quality is not included here.** The delegation table, telemetry, and invariants cover it.
+**What this looks at is the thing that was built itself.**
 
-開発環境・開発プロセスの品質は `docs/quality.md` の別の章に置く。**同じ表に並べない。**
-確認する対象も手段も違い、混ぜるとどちらをどこまで見ているかが読めない。
+The quality of the development environment and development process goes in a separate chapter of `docs/quality.md`. **Do not put them in the same table.**
+What is checked and how are different, and mixing them makes it unreadable which is looked at and how far.
 
-### ベースライン
+### Baseline
 
-**標準を以下とし、プロジェクトの特性によってカスタマイズして利用する。**
+**Use the following as the standard, customized to the characteristics of the project.**
 
-| 観点 | 箇所 | 手法 | どこまで |
+| Aspect | Stage | Method | How far |
 |---|---|---|---|
-| ビジネス目的の達成 | 受入 | E2E | **主要なビジネスケース** |
-| 機能 | 単体・結合 | 自動テスト | 変更した振る舞い |
-| セキュリティ | 静的 | 依存の脆弱性検査、秘密の混入検査 | 全体 |
-| 保守性 | 静的 | 型検査、リンタ | 全体 |
-| 信頼性 | 本番監視 | 失敗の監視 | 全体 |
-| 性能 | — | — | **既定では見ない** |
+| Achieving the business purpose | Acceptance | E2E | **The main business cases** |
+| Functionality | Unit, integration | Automated tests | The behavior that changed |
+| Security | Static | Dependency vulnerability scanning, scanning for leaked secrets | Everything |
+| Maintainability | Static | Type checking, linter | Everything |
+| Reliability | Production monitoring | Failure monitoring | Everything |
+| Performance | — | — | **Not looked at by default** |
 
-**性能を空けてあるのは、要るかどうかがプロダクトで大きく変わるためである。**
-空けたことは `docs/quality.md` に書く。**書かないと、決めたのか忘れたのかが
-後から区別できない。**
+**Performance is left open because whether it is needed varies greatly by product.**
+Write in `docs/quality.md` that it was left open. **If not written, it cannot later be told whether it was decided
+or forgotten.**
 
-**この表は、すべて自動で回すものである。** 「受入」は確認する箇所の名前であって、
-人が見ることではない。**ビジネスケースを通すのは E2E であり、人ではない。**
+**This table is all run automatically.** "Acceptance" is the name of a stage at which things are checked, not
+something a human looks at. **What runs the business cases is E2E, not a human.**
 
-**人が見るのは別の2つ。** 抜き取り確認（定義§8）と、出口に残す場合の受け入れ確認
-（定義§10）。**どちらもこの表には入らない。** 何を人が担保するかは定義§17にある。
-**`docs/quality.md` にその欄を持つこと。** 書かないと、自動で見ているものが全部だと
-読まれる。
+**What the human looks at is two other things.** Spot checks (definition §8), and acceptance checks when a gate is kept at the exit
+(definition §10). **Neither goes in this table.** What the human ensures is in definition §17.
+**`docs/quality.md` must have a column for it.** If not written, what is looked at automatically is read
+as being everything.
 
-**手法はこれだけではない。** AIレビュー、脅威モデリング、契約テスト、合成監視など。
-一覧は [autodrive-reference.md](autodrive-reference.md) にある。
+**These are not the only methods.** AI review, threat modeling, contract testing, synthetic monitoring, and so on.
+The list is in [autodrive-reference.md](autodrive-reference.md).
 
-### 決め方
+### How to decide
 
-**着手時に人に確認して決める。** そのとき**人に品質の知識を求めない。**
-アプリケーションの用途と特性から、**こちらが案を出し、人が選ぶ。**
+**Decide by checking with the human at the start.** At that point, **do not ask the human for knowledge of quality.**
+From the use and characteristics of the application, **we propose options and the human chooses.**
 
-- ベースラインにあるものは**聞かずに入れる**
-- 聞くときは、**入れない場合に何が見られなくなるかを添える**
-- 決めたことは `docs/quality.md` に置く。**会話で終わらせない**
+- What is in the baseline is **put in without asking**
+- When asking, **add what can no longer be seen if it is not put in**
+- Put what was decided in `docs/quality.md`. **Do not let it end in the conversation**
 
-### 守ること
+### What to keep to
 
-- **実装より先に検出を作る。** 逆順だと、テストが実装に合わせて書かれる
-- **戻せないものは、検出が無いまま通さない**（送金・本番データの削除・公開・漏洩）
-- **提出には、確かめた手段と、誰も見ていない範囲を添える**
+- **Build detection before implementation.** In the reverse order, tests get written to fit the implementation
+- **Do not let what cannot be undone through without detection** (money transfer, deleting production data, publication, leaks)
+- **Attach to a submission the means used to confirm it, and the range nobody looked at**
 
-## 環境の考え方
+## How to think about environments
 
-環境は基本的に次の4つの役割で用途を使い分ける。**これはベースラインであって、
-個々のプロジェクトに応じてカスタマイズする。**
+Environments are basically used in the following four roles. **This is a baseline,
+customized for each project.**
 
-| 環境 | 何のために在るか | 誰が見るか | 公開範囲 |
+| Environment | What it is there for | Who looks | Exposure |
 |---|---|---|---|
-| ローカル環境 | 実装とテスト。壊してよい | AIだけ | 閉じる |
-| プレビュー | **デザインと見え方を人が決めるため** | 人 | 閉じる |
-| 検証環境 | **出す前に確かめるため。** 提出が届く先 | AI、必要なら人 | 閉じる |
-| 本番 | 利用者に届ける | 利用者 | **公開は人が決める**（ローンチまでは閉じる） |
+| Local environment | Implementation and tests. May be broken | Only the AI | Closed |
+| Preview | **For the human to decide the design and how it looks** | Human | Closed |
+| Verification environment | **For confirming before shipping.** Where submissions arrive | The AI, and the human if needed | Closed |
+| Production | Delivering to users | Users | **The human decides on publication** (closed until launch) |
 
-## 着手する
+## Starting work
 
-作業を始めるときは、このコマンドを打つ。
-
-```sh
-{{KIT}}/bin/autodrive-dev-kit begin <作業単位ID> --repo <対象リポジトリ>
-```
-
-これで、作業用のブランチが作られ、Tracker が着手へ進み、記録の紐づけ先が置かれる。
-**手でブランチを作らないこと。** 前提が崩れていれば進めずに止まるので、出ている案内に
-従う。
-
-**完了の操作は要らない。** 提出が統合された瞬間に、Tracker と Repo の連携が完了へ
-動かす。**手で完了にしないこと。**
-
-作業単位を GitHub Issues に置いている場合は、**提出の本文に `Closes #<番号>` を
-書くこと。** それが連携の実体である。書かないと統合されても閉じない。
-**作業単位IDではなく番号を書く**（`AIEP-123` なら `Closes #123`）。
-
-**中断して戻れる。** 同じ `begin` を打てばよい。既にブランチがあれば、作らずに戻る。
+When starting work, run this command.
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit begin <中断した作業単位ID> --repo <対象リポジトリ>
+{{KIT}}/bin/autodrive-dev-kit begin <work item ID> --repo <target repository>
 ```
 
-**手で `git checkout` しないこと。** 記録の紐づけ先が前の作業単位を指したままになり、
-**戻ったあとに書いた記録が、そちらへ向かう。**
+This creates the working branch, advances the Tracker to started, and places the link for records.
+**Do not create branches by hand.** If a precondition is broken, it stops without proceeding, so follow the guidance
+it prints.
 
-**未コミットの変更があれば止まる。** 戻る先には既に別の変更がある。混ざると、
-どちらの作業のものか読めなくなる。
+**No completion step is needed.** The moment the submission is integrated, the Tracker–Repo integration moves it to
+done. **Do not mark it done by hand.**
 
-**なぜこの形なのか、取り残しが出たときにどうするかは
-[autodrive-reference.md](autodrive-reference.md) にある。**
+If work items are kept in GitHub Issues, **write `Closes #<number>` in the body of the
+submission.** That is what the link actually is. Without it, the item does not close even when integrated.
+**Write the number, not the work item ID** (for `AIEP-123`, `Closes #123`).
 
-## 記録する
+**You can pause and come back.** Run the same `begin`. If the branch already exists, it returns to it without creating one.
 
-**記録するのは5つ**（定義§6）。どれも、ハーネスのどこが弱いかを指す。
+```sh
+{{KIT}}/bin/autodrive-dev-kit begin <ID of the paused work item> --repo <target repository>
+```
 
-| 記録する対象 | いつ | コマンド |
+**Do not `git checkout` by hand.** The link for records stays pointed at the previous work item,
+and **records written after returning go there.**
+
+**If there are uncommitted changes, it stops.** The place you are returning to already has other changes. Mixed together,
+it becomes unreadable which work they belong to.
+
+**Why it has this shape, and what to do when something is left behind, is in
+[autodrive-reference.md](autodrive-reference.md).**
+
+## Recording
+
+**There are five things to record** (definition §6). Each points at where the harness is weak.
+
+| What to record | When | Command |
 |---|---|---|
-| 停止イベント | 人に判断を求めて止まったとき | `telemetry 停止を記録する` |
-| 手戻りと原因 | やり直しが発生したとき | `telemetry 手戻りを記録する` |
-| 検出漏れ | 後工程や本番で誤りが見つかったとき | `telemetry 手戻りを記録する --found-in` |
-| 抜き取り確認 | 人が動くものを見たとき。**修正が無くても記録する** | `telemetry 抜き取り確認を記録する` |
-| 委譲範囲の変更 | `boundaries.yaml` を動かしたとき | `telemetry 委譲範囲の変更を記録する` |
+| Stop events | When stopping to ask the human for a decision | `telemetry 停止を記録する` |
+| Rework and its cause | When redoing occurs | `telemetry 手戻りを記録する` |
+| Missed detections | When an error is found in a later stage or in production | `telemetry 手戻りを記録する --found-in` |
+| Spot checks | When the human looked at the working thing. **Record even if nothing was corrected** | `telemetry 抜き取り確認を記録する` |
+| Delegation changes | When `boundaries.yaml` was moved | `telemetry 委譲範囲の変更を記録する` |
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit telemetry 停止を記録する   --kind <種別> --type <入力|手戻り> --detail <内容>
-{{KIT}}/bin/autodrive-dev-kit telemetry 手戻りを記録する   --target <対象> --detail <内容> --cause <原因>
+{{KIT}}/bin/autodrive-dev-kit telemetry 停止を記録する   --kind <kind> --type <入力|手戻り> --detail <details>
+{{KIT}}/bin/autodrive-dev-kit telemetry 手戻りを記録する   --target <target> --detail <details> --cause <cause>
 ```
 
-**引数は `telemetry` だけを打つと出る。**
+**Running `telemetry` alone prints the arguments.**
 
-**止まり方は2種類ある。** 一括りにしない。
+**There are two ways of stopping.** Do not lump them together.
 
-| `--type` | 何が起きたか | 扱い |
+| `--type` | What happened | Treatment |
 |---|---|---|
-| 入力 | 何を作るかを聞く、デザインと見え方を決めてもらう、順序を合意する、資格情報の発行を頼む | 手法が正しく働いている。**減らす対象ではない** |
-| 手戻り | 認識が違っていた、作り直しが要る、承認で差し戻された | **減らす対象** |
+| 入力 (input) | Asking what to build, having them decide the design and how it looks, agreeing on the order, asking for credentials to be issued | The method is working correctly. **Not something to reduce** |
+| 手戻り (rework) | The understanding was different, something has to be rebuilt, it was sent back at approval | **Something to reduce** |
 
-**同じことを繰り返し聞くのは、入力ではなく手戻りである。** 一度得た入力を持ち回れて
-いない。
+**Asking the same thing again is rework, not input.** Input obtained once is not being
+carried forward.
 
-原因は「要件のズレ」「設計のズレ」「実装バグ」のいずれか。後工程で見つかった誤りは
-`--found-in` を付ける（検出漏れとして記録される）。
+The cause is one of 「要件のズレ」 (requirements drift), 「設計のズレ」 (design drift), or 「実装バグ」 (implementation bug). For errors found in a later stage,
+add `--found-in` (it is recorded as a missed detection).
 
-**人が答えたら、問いと答えを作業単位へ残す。** 試して捨てた案も同じ（定義§16）。
-テレメトリには答えが残らない。
+**When the human answers, leave the question and the answer on the work item.** The same goes for options tried and discarded (definition §16).
+Telemetry does not keep answers.
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit tracker 作業ログを追記する --text "問い: … / 答え: …"
+{{KIT}}/bin/autodrive-dev-kit tracker 作業ログを追記する --text "Q: … / A: …"
 ```
 
-## 設計判断を残す
+## Keeping design decisions
 
-案を選んだ、覆すと作り直しになる、といった設計判断は [docs/adr/](adr/README.md) に書き、
-同じ提出に入れる。**着手したら索引を読む。**
+Design decisions — an option was chosen, overturning it would mean rebuilding — are written in [docs/adr/](adr/README.md) and
+put in the same submission. **Read the index when you start work.**
 
-## 画面のあるものを作るとき
+## When building something with a UI
 
-**実装に入る前に、デザインと見え方を人に決めてもらう。** これは What の一部であり、
-AIが決めるものではない。承認を求めるのではなく、選択肢を出すこと。
+**Before implementing, have the human decide the design and how it looks.** This is part of the What, and
+not something the AI decides. Do not ask for approval; present options.
 
-要らない場合もある。既にある形に沿って項目が増えるだけのとき、画面が無いとき。
+Sometimes it is not needed: when items are just added along an existing shape, or when there is no UI.
 
-## 人の承認が必要なもの
+## What needs human approval
 
-| 変更 | 承認 |
+| Change | Approval |
 |---|---|
-| 機能の実装、既存の検出手段に沿ったテストの追加 | 委譲範囲の表に従う（内側ループ） |
-| 委譲範囲の表のセルを動かす変更 | **人** |
-| 新しい検出手段の導入 | **人**（委譲範囲の移動にあたる） |
-| **作ったものを外から見える状態にする** | **人**。検証環境も含む |
-| この文書や `{{KIT}}/` の中身への変更 | **人**。autodrive-dev-kit への起票を経る |
+| Implementing features, adding tests along an existing means of detection | Follows the delegation table (inner loop) |
+| Changes that move a cell in the delegation table | **Human** |
+| Introducing a new means of detection | **Human** (it amounts to moving the scope of delegation) |
+| **Making what was built visible from outside** | **Human**. Including the verification environment |
+| Changes to this document or to the contents of `{{KIT}}/` | **Human**. Goes through filing with autodrive-dev-kit |
 
-判断に迷う場合の基準は、**委譲範囲の表（`boundaries.yaml`、定義§8）のセルが動くかどうか。**
-動くなら外側ループであり、人の承認が要る。
+When in doubt, the criterion is **whether a cell in the delegation table (`boundaries.yaml`, definition §8) moves.**
+If it moves, it is the outer loop and needs human approval.
 
-承認は変更の提出（PR / MR）を通じて受け取る。**ローカルの既定ブランチへ直接
-コミットしないこと。** すべての変更は提出を経て統合される。
+Approval is received through submitting the change (PR / MR). **Do not commit directly to the local default
+branch.** Every change is integrated through a submission.
 
-## ポート語彙
+## Port vocabulary
 
-コマンドの名前は、定義§16のポートの語をそのまま使っている。**このプロジェクトが
-どのポートに何を使っているかは `autodrive.json` にある。**
-変えたいと言われたら、[autodrive-reference.md](autodrive-reference.md) の「ポートを変える」を引く。
+Command names use the words of the ports in definition §16. **Which implementation this project uses
+for each port is in `autodrive.json`.**
+If asked to change one, look up "Changing a port" in [autodrive-reference.md](autodrive-reference.md).
 
-| ポート | 何をするもの |
+**The commands still use the Japanese operation names** (such as `telemetry 停止を記録する` for "Record stop").
+The definition is now in English; the mapping is in its CHANGELOG (v0.19).
+
+| Port | What it does |
 |---|---|
-| Tracker | 作業単位の起票・状態・記録の紐づけ |
-| Repo | 提出を経た統合 |
-| Runner | CI と配布 |
-| Sandbox | AIを動かす隔離された場所。**一式が置かれるのは devcontainer を選んだときだけ** |
-| Preview | 動くものを見せる場所 |
-| Telemetry | 記録の置き場 |
-| Flag | 露出の制御 |
+| Tracker | Filing work items, their state, linking records |
+| Repo | Integration through submissions |
+| Runner | CI and deployment |
+| Sandbox | The isolated place the AI runs in. **The full set is placed only when devcontainer is chosen** |
+| Preview | Where the working thing is shown |
+| Telemetry | Where records are kept |
+| Flag | Exposure control |
 
-## 守ること
+## What to keep to
 
-- **提出を経ずに既定ブランチへ入れない。** 判定が検出する
-- **本番の資格情報を手元に置かない。** 配布用のトークンは CI だけが持つ
-- **判定を、緩む方向に書き換えない。** 判定の変更は人の承認を要する
-- **定義§9の不変条件を無効化する変更を行わない**
-- **作ったものを外から見える状態にするなら、先に人へ確かめる。** 既定で公開しない
-- **検証環境で確かめてから統合する。** 統合が本番への引き金である
+- **Do not put anything into the default branch without a submission.** The checks detect it
+- **Do not keep production credentials locally.** Only CI holds the deployment token
+- **Do not rewrite the checks in a loosening direction.** Changing the checks needs human approval
+- **Do not make changes that disable the invariants of definition §9**
+- **If making what was built visible from outside, check with the human first.** Do not publish by default
+- **Confirm in the verification environment before integrating.** Integration is the trigger for production
 
-**なぜそうなのか、どう測るのかは [autodrive-reference.md](autodrive-reference.md)
-にある。** 引っかかったときに引くこと。
+**Why these hold, and how they are measured, is in [autodrive-reference.md](autodrive-reference.md).**
+Look it up when you run into one.

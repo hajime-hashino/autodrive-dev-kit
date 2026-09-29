@@ -276,17 +276,17 @@ test("置き場所とシークレットは、AIの手順として配られてい
   // **表の行として在ること。** 本文で触れているだけでは、確かめる手順にならない。
   const rows = section.split("\n").filter((l) => l.startsWith("|"));
   assert.ok(
-    rows.some((l) => l.includes("置き場所") && l.includes("リモート")),
+    rows.some((l) => l.includes("Repo has a place") && l.includes("remote")),
     `置き場所を確かめる行が無い:\n${rows.join("\n")}`,
   );
   assert.ok(
-    rows.some((l) => l.includes("資格情報が登録されているか")),
+    rows.some((l) => l.includes("credentials CI uses for checks are registered")),
     `資格情報を確かめる行が無い:\n${rows.join("\n")}`,
   );
   // **名前は人が決める。作るのは手順である。**
-  assert.ok(section.includes("名前は人が決める"), section.slice(0, 900));
+  assert.ok(section.includes("The human decides the name"), section.slice(0, 900));
   // **API を呼べば済むものを人に振らない**という指示があること。
-  assert.ok(section.includes("API を呼べば済むもの"), section.slice(0, 900));
+  assert.ok(section.includes("calling an API would settle"), section.slice(0, 900));
 });
 
 // -------------------------------------------- アプリ自身の宛先（AUT-115）
