@@ -177,8 +177,8 @@
   {
     "name": "AUT-150 配布物から、直接コミットしない旨を落とす",
     "file": "src/templates/autodrive-reference.md",
-    "from": "**既定ブランチで打って直接コミットしないこと。**",
-    "to": "既定ブランチで打ってよい。",
+    "from": "**Do not run it on the default branch and commit directly.**",
+    "to": "It may be run on the default branch.",
     "why": "入れ替えは追跡ファイルを書き換える。直接コミットは規約違反になる"
   },
   {
@@ -268,8 +268,8 @@
   {
     "name": "AUT-163 作る側の規約を、配布物へ混ぜ戻す",
     "file": "src/templates/autodrive.md",
-    "from": "コマンドの名前は、定義§16のポートの語をそのまま使っている。",
-    "to": "**動くものは、ポート語彙で書く。** 手順も文書も、定義§16のポート語彙で書く。",
+    "from": "Command names use the words of the ports in definition §16.",
+    "to": "**Write what runs in the port vocabulary.** Procedures and documents are also written in the port vocabulary of definition §16.",
     "why": "利用する側に要らない規約が配られ、広げた読み方が造語を生む"
   },
   {
@@ -335,54 +335,54 @@
   {
     "name": "AUT-194 配布物へ、作る側の呼び名を持ち込む",
     "file": "src/templates/autodrive.md",
-    "from": "**この文書は autodrive-dev-kit が置いたものである。**",
-    "to": "**この文書は参照実装が置いたものである。**"
+    "from": "**This document was placed by autodrive-dev-kit.**",
+    "to": "**This document was placed by the reference implementation.**"
   },
   {
     "name": "AUT-196 毎回読むほうから、引く先の案内を消す",
     "file": "src/templates/autodrive.md",
-    "from": "**困ったら [autodrive-reference.md](autodrive-reference.md) を引く。**",
-    "to": "困ったら自分で考える。"
+    "from": "**When stuck, look it up in [autodrive-reference.md](autodrive-reference.md).**",
+    "to": "When stuck, think it through yourself."
   },
   {
     "name": "AUT-196 配布物から、検証環境を経る流れを落とす",
     "file": "src/templates/autodrive.md",
-    "from": "- **検証環境で確かめてから統合する。** 統合が本番への引き金である\n",
+    "from": "- **Confirm in the verification environment before integrating.** Integration is the trigger for production\n",
     "to": "",
     "why": "配布物からこれが消えると、仕掛けは動いているのに誰も見ないまま本番へ進む"
   },
   {
     "name": "AUT-210 プロセスの品質を、製品の軸に混ぜる",
     "file": "src/templates/autodrive.md",
-    "from": "**プロセスの品質は、ここに含めない。**",
-    "to": "プロセスの品質も、ここで見る。",
+    "from": "**Process quality is not included here.**",
+    "to": "Process quality is also looked at here.",
     "why": "委譲範囲の表・テレメトリと二重になり、どちらも中途半端になる"
   },
   {
     "name": "AUT-210 ベースラインを、考えよに変える",
     "file": "src/templates/autodrive.md",
-    "from": "| ビジネス目的の達成 | 受入 | E2E | **主要なビジネスケース** |\n",
+    "from": "| Achieving the business purpose | Acceptance | E2E | **The main business cases** |\n",
     "to": "",
     "why": "実物が無いと、立ち上げで1から考えることになる"
   },
   {
     "name": "AUT-210 品質を、人に白紙で聞かせる",
     "file": "src/templates/autodrive.md",
-    "from": "そのとき**人に品質の知識を求めない。**",
-    "to": "人に品質の方針を決めてもらう。",
+    "from": "At that point, **do not ask the human for knowledge of quality.**",
+    "to": "Have the human decide the quality policy.",
     "why": "非エンジニアは答えられない。熟練に依存しないというゴールが崩れる"
   },
   {
     "name": "AUT-210 実装のあとで検出を考えさせる",
     "file": "src/templates/autodrive.md",
-    "from": "- **実装より先に検出を作る。** 逆順だと、テストが実装に合わせて書かれる\n",
+    "from": "- **Build detection before implementation.** In the reverse order, tests get written to fit the implementation\n",
     "to": "",
     "why": "テストが実装に合わせて書かれ、何も捕まえなくなる"
   },
   {
     "name": "AUT-210 見ていない範囲を報告させない",
     "file": "src/templates/autodrive.md",
-    "from": "- **提出には、確かめた手段と、誰も見ていない範囲を添える**\n",
+    "from": "- **Attach to a submission the means used to confirm it, and the range nobody looked at**\n",
     "to": "",
     "why": "空欄が「問題なし」と読まれる"
   },
@@ -403,21 +403,21 @@
   {
     "name": "AUT-210 手法の一覧から、確認の仕掛けを確かめる手段を落とす",
     "file": "src/templates/autodrive-reference.md",
-    "from": "| 確認の仕掛けを確かめる | **変異テスト**（壊した実装でテストが落ちるかを見る） |\n",
+    "from": "| Check the checking mechanism | **Mutation testing** (see whether tests fail against a broken implementation) |\n",
     "to": "",
     "why": "他の手法は「通った」を出すが、通ったことは何も見ていないことと区別がつかない"
   },
   {
     "name": "AUT-210 受入を、人がやるものと読める形に戻す",
     "file": "src/templates/autodrive.md",
-    "from": "**この表は、すべて自動で回すものである。**",
-    "to": "この表は、人と分担して確認する。",
+    "from": "**This table is all run automatically.**",
+    "to": "This table is checked in collaboration with the human.",
     "why": "「受入」が人の受け入れ確認と読まれ、ビジネスケースの確認が自動で回らなくなる"
   },
   {
     "name": "AUT-210 箇所と環境の対応を落とす",
     "file": "src/templates/autodrive.md",
-    "from": "| システム・受入 | **検証環境** |\n",
+    "from": "| System, acceptance | **Verification environment** |\n",
     "to": "",
     "why": "どこで動かすかが決まらない。手元で通して確かめたことにされる"
   },
@@ -536,7 +536,7 @@
   {
     "name": "AUT-206 配布物から、手で checkout しない旨を落とす",
     "file": "src/templates/autodrive.md",
-    "from": "**手で `git checkout` しないこと。** 記録の紐づけ先が前の作業単位を指したままになり、\n**戻ったあとに書いた記録が、そちらへ向かう。**\n",
+    "from": "**Do not `git checkout` by hand.** The link for records stays pointed at the previous work item,\nand **records written after returning go there.**\n",
     "to": "",
     "why": "入口を通らずに戻ると、記録が前の作業単位へ向かう（AUT-221 と同じ形）"
   },

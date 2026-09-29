@@ -65,13 +65,13 @@ test("揃っていれば、何も言わない", () => {
 // **AUT-212 で実際に起きた形。** §17 が新設され、未確定事項が §18 へ動いた。
 // 番号は実在し続けるため、存在の検査では捕まらない。
 test("中身が入れ替わった節を捕まえる", () => {
-  const moved = { ...EXPECTED, 18: "プロダクトの品質" };
+  const moved = { ...EXPECTED, 18: "Product quality" };
 
   const found = drift(asDocument(moved));
   assert.equal(found.length, 1, JSON.stringify(found));
   assert.equal(found[0].n, 18);
-  assert.equal(found[0].expected, "未確定事項");
-  assert.equal(found[0].actual, "プロダクトの品質");
+  assert.equal(found[0].expected, "Open items");
+  assert.equal(found[0].actual, "Product quality");
 });
 
 // **番号ごと消えた場合も捕まえる。**
@@ -142,14 +142,14 @@ test("不変条件が全部通っていても、節が動いていれば落ち�
 
 // **`invariants` の出力に出ること。** 判断が正しくても、呼ばれていなければ何も起きない。
 test("`invariants` を通しても、節の食い違いが出力に出る", async () => {
-  const root = workspace(asDocument({ ...EXPECTED, 18: "プロダクトの品質" }));
+  const root = workspace(asDocument({ ...EXPECTED, 18: "Product quality" }));
   mkdirSync(join(root, ".git"), { recursive: true });
 
   const { run } = await import("../src/vendored/internal/main.js");
   const { output, code } = await run(["--root", root, "--scope", "cross"]);
 
   assert.ok(output.includes("定義の節が動いている"), output.slice(-600));
-  assert.ok(output.includes("プロダクトの品質"), "いまそこにあるものを出していない");
+  assert.ok(output.includes("Product quality"), "いまそこにあるものを出していない");
   assert.equal(code, 1, "出しているのに落ちていない");
 });
 

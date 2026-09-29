@@ -365,7 +365,7 @@ test("付ける文書を決める手順が、what-why.md の節を指してい�
   init(root, KIT);
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
   const whatWhy = readFileSync(join(root, "docs", "what-why.md"), "utf8");
-  assert.ok(rules.includes("「付ける文書」"), "規約が置き場所を指していない");
+  assert.ok(rules.includes('"付ける文書"'), "規約が置き場所を指していない");
   assert.ok(whatWhy.includes("\n## 付ける文書\n"), "what-why.md に節が無い");
   // **読み手ごとにディレクトリで分ける**（AUT-260）。「操作手順書」だけでは、開発する人の
   // 手順か、本番を運用する人の手順かが読めなかった。
@@ -381,5 +381,5 @@ test("付ける文書を決める手順が、what-why.md の節を指してい�
   // 外へ出す2つは、リリース前に HTML にするかを決めて残せる。
   assert.ok(whatWhy.includes("リリース前に HTML にするか"), "HTML にするかの欄が無い");
   // 前の版の形で決めたプロジェクトも、聞き直しの対象になる。
-  assert.ok(rules.includes("`docs/guides/` を指していない"), "前の版の形で決めたところを拾っていない");
+  assert.ok(rules.includes("does not point to `docs/guides/`"), "前の版の形で決めたところを拾っていない");
 });

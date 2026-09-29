@@ -1,559 +1,558 @@
-# 引くところ
+# Reference
 
-**この文書は autodrive-dev-kit が置いたものである。** 直したくなったら、autodrive-dev-kit へ
-起票すること。ここを直しても、次に配られたときに上書きされる。
+**This document was placed by autodrive-dev-kit.** If you want to change it, file a work item
+with autodrive-dev-kit. Changes made here are overwritten the next time it is distributed.
 
-## これは何か
+## What this is
 
-**autodrive-dev-kit が置いた標準の部品について、困ったときに引くものである。**
+**This is what you look up when stuck with the standard parts autodrive-dev-kit placed.**
 
-毎回読むのは [autodrive.md](autodrive.md) のほうである。**こちらは毎回読まなくてよい。**
-引っかかってから開くものである。
-分けているのは、**毎回読ませる量が、そのまま作業に使える余地を削るからである。**
+What you read every time is [autodrive.md](autodrive.md). **This one does not need to be read every time.**
+It is opened after you run into something.
+They are split because **what is read every time directly eats into the room left for the work itself.**
 
-## 当てはまらない場合がある
+## It may not apply
 
-**ここに書いてあるのは、標準の部品がそのまま入っている前提の話である。**
+**What is written here assumes the standard parts are in place as they are.**
 
-**このプロジェクトが手を入れていれば、その限りではない。** サンドボックスの構成を
-変えた、CI を組み替えた、配布の仕組みを差し替えた——そうした場合、ここの記述は
-古いか、当てはまらない。
+**If this project has modified them, that no longer holds.** The sandbox configuration was
+changed, CI was rearranged, the deployment mechanism was swapped — in such cases, what is written here is
+outdated or does not apply.
 
-**迷ったら、実物を読むこと。** `autodrive.json`・CI 定義・`.devcontainer/` が正であり、
-**この文書ではない。** 食い違っていたら、実物が正しい。**そして autodrive-dev-kit へ
-起票すること。**
+**When unsure, read the real thing.** `autodrive.json`, the CI definitions, and `.devcontainer/` are authoritative,
+**not this document.** If they disagree, the real thing is right. **And file a work item with
+autodrive-dev-kit.**
 
-## 何が書いてあるか
+## What is in it
 
-**2部に分かれている。性質が違う。**
+**It is in two parts. They differ in nature.**
 
-**第1部：規約の根拠。** なぜそう決まっているか。
+**Part 1: The grounds for the conventions.** Why they are set the way they are.
 
-| 引くとき | 節 |
+| When to look it up | Section |
 |---|---|
-| 振る舞いに迷った | 意思決定は代行しない／制約の出所／立ち止まる合図 |
-| 着手・完了の扱いに迷った | なぜ入口を1つにするか／なぜ手で完了にしないか／中断して戻るとき／取り残された記録があったら |
+| Unsure how to behave | Do not make decisions on the human's behalf / Check whether it is a constraint by its source / Signs to stop and reconsider |
+| Unsure how starting and completion work | Why there is a single entrance / Why not mark it done by hand / Pausing and coming back / If records were left behind |
 
-**第2部：標準の部品を使うとき。** 標準から外れたことをするとき、詰まったとき。
+**Part 2: Using the standard parts.** When doing something outside the standard, or when stuck.
 
-| 引くとき | 節 |
+| When to look it up | Section |
 |---|---|
-| 品質の手法を増やしたい | 品質を確認する手法 |
-| 委譲範囲の表を動かした | 委譲範囲を動かしたら、履歴に1節足す |
-| `.devcontainer/` を触る | サンドボックスの定義は、直接編集してよい |
-| 叩く先や鍵が増えた | アプリ自身の資格情報は、構成に書く |
-| 道具を入れ替える | autodrive-dev-kit を更新する |
-| 通信が塞がる | 出口制限は、通信を遮断する仕組みではない／許可した宛先へ、出られなくなることがある |
-| CI が落ちて中身が読みたい | CI の失敗は、ログ本文まで読める |
-| 外から見える状態にする | 露出は、戻せるが取り消せない |
+| Want to add quality methods | Methods for checking quality |
+| Moved the delegation table | When the scope of delegation moves, add a section to the history |
+| Touching `.devcontainer/` | The sandbox definition may be edited directly |
+| More destinations or keys | The app's own credentials go in the configuration |
+| Replacing the tool | Updating autodrive-dev-kit |
+| Traffic gets blocked | Egress restriction is not a mechanism that cuts off traffic / Allowed destinations can become unreachable |
+| CI failed and you want to read why | CI failures can be read down to the log body |
+| Making something visible from outside | Exposure can be reverted but not undone |
 
-**ここに書くのは、仕組みで担保できないものに限る。** 実行時に道具が同じことを言うなら、
-そちらに任せて書かない。**書けることは、仕組みへ寄せるほうが先である。**
+**What is written here is limited to what machinery cannot guarantee.** If the tool says the same thing at run time,
+leave it to that and do not write it. **Moving what can be written into machinery comes first.**
 
 ---
 
-# 第1部　規約の根拠
+# Part 1　The grounds for the conventions
 
-**なぜそう決まっているかを書いてある。** 部品の使い方ではない。
+**This explains why things are set the way they are.** It is not how to use the parts.
 
-## 振る舞いの作法
+## How to behave
 
-**[autodrive.md](autodrive.md) の「振る舞いとスタンス」を、具体にしたものである。**
+**This makes "Behavior and stance" in [autodrive.md](autodrive.md) concrete.**
 
-### 意思決定は代行しない
+### Do not make decisions on the human's behalf
 
-主導することと、決めてしまうことは違う。**判断のコストを下げるのが役割であり、判断を消すことではない。**
+Leading is different from deciding for them. **The role is to lower the cost of judgment, not to eliminate judgment.**
 
-| 種類 | AIの動き |
+| Kind | What the AI does |
 |---|---|
-| 手順 | 実行する。実行できない場合のみ、手順を示して依頼する |
-| 意思決定（What / Why、委譲範囲の移動、固定条件に触れるもの） | 選択肢と判断材料と推奨を示し、**人が選ぶ** |
+| Procedure | Executes it. Only if it cannot, shows the procedure and asks |
+| Decision (What / Why, moving the scope of delegation, anything touching fixed conditions) | Shows options, material for the judgment, and a recommendation; **the human chooses** |
 
-判断に見えるものを既定値で通過しないこと。逆に、手順にすぎないものを判断として人に投げないこと。**どちらも「人の関与あたりの成果」を下げる。**
+Do not pass through with a default value something that looks like a judgment. Conversely, do not throw at the human as a judgment something that is only procedure. **Both lower "output per unit of human involvement."**
 
-### 制約かどうかを、出所で確かめる
+### Check whether it is a constraint by its source
 
-「〜してはいけない」と判断したとき、その出所を言えること。
+When you judge that "this must not be done," be able to say where that comes from.
 
-| 出所 | 扱い |
+| Source | Treatment |
 |---|---|
-| 定義 | 制約。従う。変えるには定義への差し戻しが要る |
-| **この文書** | 制約。autodrive-dev-kit が配ったものであり、変えるには autodrive-dev-kit への起票が要る |
-| プロジェクトの `CLAUDE.md` | 制約。変えるには人の承認が要る |
-| **自分の推論** | **制約ではない。** 設計判断であり、他の案と比べる対象になる |
+| The definition | A constraint. Follow it. Changing it requires sending it back to the definition |
+| **This document** | A constraint. It was distributed by autodrive-dev-kit, and changing it requires filing with autodrive-dev-kit |
+| The project's `CLAUDE.md` | A constraint. Changing it requires human approval |
+| **Your own reasoning** | **Not a constraint.** It is a design judgment, to be compared with other options |
 
-出所を確かめずに自分の推論を制約として扱うと、**存在しない制約を回避するための設計が残る。** その設計が新しい欠陥を生んでも、規約を守った結果に見えるため気づきにくい。
+Treating your own reasoning as a constraint without checking its source **leaves behind designs that work around constraints that do not exist.** Even if such a design creates new defects, it looks like the result of following the conventions, so it is hard to notice.
 
-規約は判断を縛るために置かれているのではなく、判断の結果を検証可能にするために置かれている。**規約を守ったことは、設計が正しいことの説明にならない。**
+Conventions are not there to bind judgment but to make the results of judgment verifiable. **Having followed the conventions does not explain the design being correct.**
 
-### 設計上の欠陥を、規約の遵守や手間の削減と引き換えにしない
+### Do not trade a design defect for compliance with conventions or for saving effort
 
-両立しない場合は、両立しない事実と取りうる案を人に示す。片方を黙って選ばないこと。「意思決定は代行しない」と同じ理由である。
+When they cannot both be satisfied, show the human that fact and the options available. Do not silently choose one. The reason is the same as "Do not make decisions on the human's behalf."
 
-人の要望を採るときも、それが設計として正しいかを別に検証する。**要望に沿えたことを結論にしない。** 正しいなら理由を述べ、正しくないなら別案を示す。指示の背後にある意図まで踏まえること。指示どおりに作って要求を満たさないものより、意図を確かめて作り直すほうがよい。
+When adopting a human's request, verify separately whether it is correct as a design. **Do not make "met the request" the conclusion.** If it is correct, state why; if not, show an alternative. Take into account the intent behind the instruction. It is better to confirm the intent and rebuild than to build exactly as instructed and not meet the need.
 
-ただし決めるのは人である（定義§10）。示すところまでが職責であり、押し通すことではない。
+It is the human who decides, however (definition §10). The responsibility extends to showing, not to pushing through.
 
-### 確認の手段は、作った時点で検証する
+### Verify a means of checking when you build it
 
-テストが書けるものは書く。書けないものは動作を確認してから提出する。
+Write tests for what can be tested. For what cannot, confirm it works before submitting.
 
-**壊した実装に対してテストが落ちることまで確かめる。** 通ることの確認だけでは、何も見ていないテストと区別できない。
+**Confirm that the test fails against a broken implementation.** Confirming only that it passes cannot be told apart from a test that looks at nothing.
 
-**その手段が、実際に起きた問題を捕まえられるかを確かめる。** 捕まえられないものを、捕まえた気にさせるものは置かない。
+**Confirm that the means can catch the problem that actually occurred.** Do not place something that makes you feel you caught what it cannot catch.
 
-### 立ち止まる合図
+### Signs to stop and reconsider
 
-次に気づいたら、設計を疑うこと。**いずれも実際に起きた失敗から起こしている。**
+If you notice any of the following, suspect the design. **Each comes from a failure that actually happened.**
 
-- **一度きりの問題に、恒久的な仕組みで対処しようとしている**
-- **「〜という規約があるので」で設計判断を説明している**
-- **制約を回避するための仕組みが、新しい穴を作っている**
-- **規約や定義を、通して読まずに部分だけ参照している**
-- **原因を推測して、確かめずに結論として書いている**
+- **You are about to deal with a one-off problem with a permanent mechanism**
+- **You are explaining a design judgment with "because there is a convention that..."**
+- **A mechanism for working around a constraint is creating a new hole**
+- **You are referring to only part of a convention or the definition without reading it through**
+- **You are guessing at a cause and writing it as a conclusion without confirming it**
 
-### 停止を減らすことと、隠すことは違う
+### Reducing stops is different from hiding them
 
-停止の回数は外側ループが減らしていく対象だが、**必要な停止を省いてはならない。** 特に定義§9の固定条件（本番データの破壊的操作・金銭の移動・外部への不可逆な公開）に触れる操作は、実績が積まれても必ず止まる。
+The number of stops is something the outer loop works to reduce, but **necessary stops must not be skipped.** In particular, operations touching the fixed conditions of definition §9 (destructive operations on production data, movement of money, irreversible external publication) always stop, no matter how much track record accumulates.
 
-減らす対象は、**同じ種別で繰り返し出る停止である。** それが出たら、回数を我慢するのではなく、外側ループでの改善案として起票する。
+What to reduce is **stops of the same kind that recur.** When they appear, do not put up with the count; file an improvement proposal for the outer loop.
 
-## 着手と完了
+## Starting and completing
 
-### なぜ入口を1つにするか
+### Why there is a single entrance
 
-`begin` は、作業単位の確認・既定ブランチを最新にしてブランチを作る・記録の紐づけ先の
-設置を、まとめて行う。**手で順に踏むと、どれかを飛ばしたことに気づけない。**
+`begin` does all of the following at once: checking the work item, bringing the default branch up to date and creating a branch, and placing
+the link for records. **Stepping through them by hand, you cannot notice having skipped one.**
 
-**規約が存在しても、手順を通らなければ思い出す機会が無い。** 入口を通れば思い出す
-必要がなくなる。
+**Even if a convention exists, without going through the procedure there is no occasion to remember it.** Going through the entrance removes the need
+to remember.
 
-### なぜ手で完了にしないか
+### Why not mark it done by hand
 
-完了は Tracker と Repo の連携が行う。`begin` が作るブランチは作業単位のIDを名前に
-持つので、その提出が統合された瞬間に Tracker 側が動かす。対象リポジトリは、着手の
-ときに作業単位へ記される。
+Completion is done by the Tracker–Repo integration. The branch `begin` creates carries the work item ID in its
+name, so the Tracker side moves it the moment that submission is integrated. The target repository is noted on the work item
+when work starts.
 
-**打てば打てる。だから規約になっている。** 手で完了にすると、「統合されたから完了した」
-という根拠が消える。完了の状態が、提出の統合ではなく、打った人の判断を表すことになる。
+**You could run it, and that is exactly why it is a convention.** Marking it done by hand erases the ground "it is done because it was integrated."
+The done state would represent the judgment of whoever ran it, not the integration of the submission.
 
-**着手のついでに閉じる形では足りない。** 着手したリポジトリ1つ分しか見ないため、
-複数のリポジトリを渡り歩くと残る。**連携なら統合の瞬間に、どのリポジトリでも動く。**
+**Closing it as a side effect of starting is not enough.** It looks at only the one repository being started in, so
+items are left behind when moving across several repositories. **An integration moves at the moment of integration, in any repository.**
 
-連携が設定されていなければ、**着手中のまま溜まり続ける。** そうなっていることは
-`invariants` が「統合済みなのに着手中の作業単位」として出す。出たら、まず連携の
-設定を確かめること。
+If the integration is not configured, **items keep piling up as started.** When that happens,
+`invariants` reports them as "work items still started though integrated" (「統合済みなのに着手中の作業単位」). If that appears, first check the integration
+settings.
 
-### トークン消費が `telemetry/` に無い
+### Token consumption is not in `telemetry/`
 
-**正しい。** フックが書くのは提出の後なので、リポジトリへ載せようとすると別の作業単位の
-提出に混ざる。したがってブランチには載せず、外へ送る形にしてある（autodrive-dev-kit の [ADR 0008](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0008-token-usage-off-branch.md)）。
+**That is correct.** The hook writes after the submission, so putting it in the repository would mix it into another work item's
+submission. It is therefore kept off the branch and sent elsewhere (autodrive-dev-kit [ADR 0008](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0008-token-usage-off-branch.md)).
 
-`telemetry/` に残るのは、`telemetry` コマンドで書いた記録だけである。
+What remains in `telemetry/` is only the records written with the `telemetry` command.
 
-### 中断して戻るとき
+### Pausing and coming back
 
-**`begin` を同じ作業単位IDで打つ。** 既にブランチがあれば、作らずに戻る。
+**Run `begin` with the same work item ID.** If the branch already exists, it returns to it without creating one.
 
-以前は「`--branch` で別の名前を渡すこと」と案内していた。**再開したいのに別の名前を
-勧めており、従うと1つの作業単位に2本のブランチができた**（AUT-206）。
+It used to say "pass a different name with `--branch`." **It recommended a different name when you wanted to
+resume, and following it produced two branches for one work item** (AUT-206).
 
-**「別のブランチの上から始めない」は、再開を塞がない。** あの制約が守っているのは、
-**ブランチを作ることのほうである。** 統合済みのブランチに積むと変更が届かない（AUT-38）。
-**既にあるブランチへ戻るのは、積む行為ではない。**
+**"Do not start on top of another branch" does not block resuming.** What that constraint protects is
+**the creation of branches.** Stacking on an already-integrated branch means the change never arrives (AUT-38).
+**Returning to a branch that already exists is not stacking.**
 
-**手で `git checkout` しないこと。** 記録の紐づけ先が置き直されず、戻ったあとに
-書いた記録が前の作業単位へ向かう（AUT-221）。
+**Do not `git checkout` by hand.** The link for records is not re-placed, and records written after
+returning go to the previous work item (AUT-221).
 
-### 取り残された記録があったら
+### If records were left behind
 
-**着手のときに言う。拾いはしない。** 以前は拾ってコミットしていたが、それは**別の
-作業単位の記録を、いま着手した作業単位の提出に載せる形**だった。作業と無関係の変更が
-混ざり、提出の差分を読んだ人を誤らせる。
+**It says so when starting. It does not pick them up.** It used to pick them up and commit them, but that was **putting another
+work item's records into the submission of the work item just started.** Changes unrelated to the work got
+mixed in and misled whoever read the submission's diff.
 
-言われたら、**どの作業単位のものかを確かめること。** いま着手したものなら、この作業の
-変更と一緒に提出してよい。別の作業単位のものなら、そちらのブランチへ載せる。
+When told, **check which work item they belong to.** If it is the one just started, they may be submitted together with this work's
+changes. If they belong to another work item, put them on that branch.
 
-他のリポジトリに取り残しがあれば、あることだけを言う。**そこでは触らない**（1つの
-作業単位が変更を書き込むリポジトリは1つに限るため）。そのリポジトリで次に着手した
-ときに乗る。
+If there are leftovers in other repositories, it only says that they exist. **Do not touch them there** (because the repositories one
+work item writes changes to are limited to one). They ride along the next time work starts in that repository.
 
 ---
 
-# 第2部　標準の部品を使うとき
+# Part 2　Using the standard parts
 
-**標準から外れたことをするとき、詰まったときの手引きである。** 触ってよいもの、
-足し方、そして**仕組みでは防げない落とし穴。**
+**A guide for doing something outside the standard, or when stuck.** What may be touched,
+how to add things, and **pitfalls machinery cannot prevent.**
 
-## 品質を確認する手法
+## Methods for checking quality
 
-**`docs/autodrive.md`「品質管理」のベースラインは、安くて効くものだけを並べてある。**
-足りないときにここから選ぶ。**並べるためではなく、選ぶために引く。**
+**The baseline in `docs/autodrive.md` "Quality management" lists only cheap, effective ones.**
+Choose from here when it is not enough. **Look it up to choose, not to line things up.**
 
-| 種類 | 手法 |
+| Kind | Methods |
 |---|---|
-| 静的（動かさずに読む） | 型検査、リンタ、静的解析（SAST）、依存の脆弱性検査（SCA）、秘密の混入検査、IaC スキャン、ライセンス検査、複雑度・重複の計測 |
-| 動的（動かして確かめる） | 単体テスト、結合テスト、契約テスト、E2E、性能・負荷・ストレス試験、DAST、ファジング、アクセシビリティの自動検査、カオステスト |
-| 読んで確かめる | 人のコードレビュー、**AIレビュー**、設計レビュー、**脅威モデリング**、セキュリティレビュー、ペネトレーションテスト |
-| 動かしながら見る | 本番監視、SLO とエラーバジェット、合成監視、カナリア・段階的公開、フィーチャーフラグ |
-| 確認の仕掛けを確かめる | **変異テスト**（壊した実装でテストが落ちるかを見る） |
+| Static (read without running) | Type checking, linters, static analysis (SAST), dependency vulnerability scanning (SCA), scanning for leaked secrets, IaC scanning, license checks, measuring complexity and duplication |
+| Dynamic (run to confirm) | Unit tests, integration tests, contract testing, E2E, performance / load / stress testing, DAST, fuzzing, automated accessibility checks, chaos testing |
+| Read to confirm | Human code review, **AI review**, design review, **threat modeling**, security review, penetration testing |
+| Watch while running | Production monitoring, SLOs and error budgets, synthetic monitoring, canary / staged rollout, feature flags |
+| Check the checking mechanism | **Mutation testing** (see whether tests fail against a broken implementation) |
 
-**最後の1つを忘れないこと。** 他の手法は「通った」を出すが、**通ったことは何も見て
-いないことと区別がつかない。** autodrive-dev-kit 自身がこれを使っている（`npm run mutate`）。
+**Do not forget the last one.** The other methods produce "passed," but **passing cannot be told apart from
+looking at nothing.** autodrive-dev-kit itself uses it (`npm run mutate`).
 
-**人のレビューも手法である。** ただし**委譲範囲の表を動かす**（定義§8）。安いから入れる、
-とはならない。
+**Human review is also a method.** However, it **moves the delegation table** (definition §8). It is not something to
+put in because it is cheap.
 
-## 委譲範囲を動かしたら、履歴に1節足す
+## When the scope of delegation moves, add a section to the history
 
-`boundaries.yaml` を動かした変更は、**`docs/boundary-changes.md` から参照されている
-必要がある**（不変条件「委譲範囲の変更が履歴に残ること」）。参照が無ければ落ちる。
+A change that moved `boundaries.yaml` **must be referenced from the history** in `docs/boundary-changes.md`
+(the invariant "Delegation changes stay in the history"). Without the reference, it fails.
 
-**表を置いただけの状態では、まだ要らない。** 置くことと動かすことは別である。
+**While the table has only been placed, it is not needed yet.** Placing and moving are different things.
 
 ```
-## 2026-09-23 実装を観察中へ
-- 根拠: 観察中12件、人の修正なし
-- 作業単位: AUT-999
-- 事後: 2026-10-05 レイアウト崩れ1件 → 観察中へ戻す
+## 2026-09-23 Implementation to under observation
+- Ground: 12 under observation, no human corrections
+- Work item: AUT-999
+- Afterwards: 2026-10-05 one broken layout → back to under observation
 ```
 
-**「根拠」の欄を省略しないこと。** 何回連続で修正が入らなかったのかが書かれて
-いなければ、緩めてよかったのかを後から確かめられない。
+**Do not omit the "Ground" field.** If it does not say how many consecutive times passed without correction,
+it cannot later be confirmed whether loosening was right.
 
-### 何で指すか
+### What to point with
 
-**作業単位のIDで指すこと。** コミットのIDでも通るが、**統合の仕方に依存する。**
+**Point with the work item ID.** A commit ID also passes, but **it depends on how things are integrated.**
 
-| 指し方 | merge commit | squash / rebase |
+| Pointing with | merge commit | squash / rebase |
 |---|---|---|
-| 作業単位のID（`AUT-999`） | 通る | **通る** |
-| コミットのID（`commit 5014785`） | 通る | **落ちる** |
+| Work item ID (`AUT-999`) | Passes | **Passes** |
+| Commit ID (`commit 5014785`) | Passes | **Fails** |
 
-squash と rebase は既定ブランチ上の ID を作り直す。**履歴が指しているのは
-ブランチ側の ID であり、統合後は存在しない。**
+Squash and rebase recreate the IDs on the default branch. **The history points at the IDs on
+the branch side, which no longer exist after integration.**
 
-**落ちるのは統合の後である。** 提出の時点では通る。**通ったものが、統合した
-瞬間に落ちる。** 原因に辿り着きにくい。
+**It fails after integration.** It passes at submission time. **What passed fails the moment
+it is integrated.** The cause is hard to trace.
 
-**判定は、統合の仕方を見ていない。** GitHub の設定（squash を許可しているか）は
-判定用の資格情報からは読めず、読むには権限を広げることになる。**読むだけの鍵を
-広げるのは、判定する側と判定される側を分けている意味を薄める。**
+**The checks do not look at how things are integrated.** GitHub's settings (whether squash is allowed) cannot be read
+with the credentials used for checks, and reading them would mean widening permissions. **Widening a read-only key
+dilutes the point of separating the side that checks from the side being checked.**
 
-したがって**気づけるのは、統合したあとに落ちたときである。** 作業単位のIDで
-書いておけば、そもそも踏まない。
+Therefore **it is noticed only when it fails after integration.** Written with the work item ID,
+you never step on it in the first place.
 
-## サンドボックスの定義は、直接編集してよい
+## The sandbox definition may be edited directly
 
-**ここは `sandbox` に `devcontainer` を選んだプロジェクトの話である。** 別のものを
-選んだなら `.devcontainer/` は置かれず、隔離の判定も走らない。用意するのはそちらで
-あり、何が守られているかは `docs/quality.md` に書く（autodrive-dev-kit の [ADR 0012](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0012-sandbox-is-declared-not-built.md)）。
+**This applies to projects that chose `devcontainer` for `sandbox`.** If something else was
+chosen, `.devcontainer/` is not placed and the isolation checks do not run. Preparing it is up to that choice,
+and what is protected is written in `docs/quality.md` (autodrive-dev-kit [ADR 0012](https://github.com/hajime-hashino/autodrive-dev-kit/blob/main/docs/adr/0012-sandbox-is-declared-not-built.md)).
 
-`.devcontainer/devcontainer.json` は**このプロジェクトのものである。** 機能を足す、
-ポートを転送する、環境変数を置く——**そのファイルへ直接書くこと。** 構成に設定項目は
-無い。`update` はこのファイルを書き換えない。
+`.devcontainer/devcontainer.json` **belongs to this project.** Adding features,
+forwarding ports, setting environment variables — **write them directly in that file.** The configuration has no setting for
+them. `update` does not rewrite this file.
 
-**`.devcontainer/` の他のファイルは違う。** `init-firewall.sh`・`post-create.sh`・
-`check-setup.sh`・`allowed-domains.txt` は kit が管理しており、手で変えると `update` が
-止まる。**隔離のロジックであり、直す先は autodrive-dev-kit である。**
+**The other files in `.devcontainer/` are different.** `init-firewall.sh`, `post-create.sh`,
+`check-setup.sh`, and `allowed-domains.txt` are managed by the kit, and changing them by hand makes `update`
+stop. **They are the isolation logic, and the place to fix them is autodrive-dev-kit.**
 
-| ファイル | 誰のものか |
+| File | Whose |
 |---|---|
-| `devcontainer.json` | **このプロジェクト。** 直接編集してよい |
-| `devcontainer-lock.json` | このプロジェクト。作り直すたびに CLI が書き換える |
-| `init-firewall.sh` / `post-create.sh` / `check-setup.sh` | kit。手で変えない |
-| `allowed-domains.txt` | kit。`app.destinations` に書く（下記） |
+| `devcontainer.json` | **This project.** May be edited directly |
+| `devcontainer-lock.json` | This project. The CLI rewrites it on every rebuild |
+| `init-firewall.sh` / `post-create.sh` / `check-setup.sh` | The kit. Do not change by hand |
+| `allowed-domains.txt` | The kit. Write in `app.destinations` (below) |
 
-##### ただし、外すと隔離が消える行がある
+##### But some lines remove the isolation if taken out
 
 ```jsonc
-"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],   // 規則を置くのに要る
-// 起動のたびに規則を置き直し、そのあとで閉じたことを確かめる
+"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],   // needed to place the rules
+// re-place the rules on every start, then confirm it is closed
 "postStartCommand": "sudo bash .devcontainer/init-firewall.sh && { bash .devcontainer/check-setup.sh || true; }",
-"remoteUser": "vscode",                                     // root で動かさない
+"remoteUser": "vscode",                                     // do not run as root
 ```
 
-**この3つは判定が見ている。** 外すと `invariants` が落ち、CI で止まる。
+**The checks look at these three.** Take them out and `invariants` fails, and CI stops.
 
-**`postCreateCommand` へ移さないこと。** あれは作ったときにしか走らない。iptables の
-規則はコンテナのネットワーク名前空間にあるため停止すると消えるので、**2回目以降の
-起動で隔離が無くなる。** 中からは何も変わって見えない。**気づけるのは判定のほうである。**
+**Do not move it to `postCreateCommand`.** That runs only when the container is created. iptables
+rules live in the container's network namespace and disappear when it stops, so **from the second
+start onward the isolation is gone.** From inside, nothing looks different. **What notices is the checks.**
 
-**確認も、同じ理由で postCreateCommand に置かない。** postCreate → postStart の順に
-走るため、**確認の時点では必ず規則が無く、毎回「効いていない」と報告する。**
-誤って出る警告は、本物の警告を「また誤りだろう」で流させる。
+**For the same reason, do not put the confirmation in postCreateCommand either.** postCreate runs before postStart,
+so **at the time of confirmation the rules are always absent, and it reports "not in effect" every time.**
+Warnings that fire by mistake make real warnings get dismissed as "probably another false alarm."
 
-**判定は、書いてあるかしか見ない。** 実際に出られるかどうかは `init-firewall.sh` が
-起動のたびに両方向で確かめる。**どちらも要る。**
+**The checks only look at whether it is written.** Whether traffic can actually get out is confirmed by `init-firewall.sh`
+in both directions on every start. **Both are needed.**
 
-##### 作り直すと lock が変わる
+##### Rebuilding changes the lock
 
-`.devcontainer/devcontainer-lock.json` は、サンドボックスを作り直すたびに Dev Containers CLI が
-解決したバージョンを書き込む。**こちら側の変更ではない。手で変えられたものとして
-扱わない。** 差分に出てきても、直す対象ではない。
+`.devcontainer/devcontainer-lock.json` gets the versions the Dev Containers CLI resolved written into it every time the sandbox is rebuilt.
+**It is not a change on our side. Do not treat it as something changed
+by hand.** Even if it shows up in a diff, it is not something to fix.
 
-##### 中でコンテナを動かす機能は、出口制限を迂回する
+##### Features that run containers inside bypass the egress restriction
 
-**足す前に知っておくこと。** 出口制限が絞っているのは、この機械が出す通信
-（`OUTPUT`）だけである。**通り抜ける通信（`FORWARD`）は絞っていない。**
+**Know this before adding one.** The egress restriction only narrows the traffic this machine sends out
+(`OUTPUT`). **Traffic passing through (`FORWARD`) is not narrowed.**
 
-中で動かしたコンテナの通信は `FORWARD` を通る。**したがって、許可一覧に無い宛先へ
-出られる。** 出口制限の外側に、絞られていない経路がもう1つできることになる。
+Traffic from containers run inside goes through `FORWARD`. **Therefore it can reach destinations
+not on the allowlist.** Outside the egress restriction, one more unrestricted path appears.
 
-`docker-in-docker` のような機能を足すときは、**そこを承知のうえで足すこと。**
-出口制限を「通信を遮断している」と読んでいると、開いていることに気づけない。
+When adding a feature like `docker-in-docker`, **add it knowing that.**
+Read the egress restriction as "cutting off traffic," and you cannot notice it is open.
 
-隔離された場所は、**一覧（`.devcontainer/allowed-domains.txt`）に無い宛先の多くを塞ぐ。**
-一覧は autodrive-dev-kit のために要る宛先しか持っていない。作っているものが叩く先、配布した先の
-疎通確認はそこに入っていない。
+The isolated place **blocks most destinations not on the list (`.devcontainer/allowed-domains.txt`).**
+The list holds only the destinations autodrive-dev-kit needs. Destinations what you are building calls, and connectivity checks
+against where you deploy, are not in it.
 
-`autodrive.json` の `app.destinations` に足して、**更新を打つこと**
-（「autodrive-dev-kit を更新する」）。**許可一覧を直接編集しないこと。** そのファイルは autodrive-dev-kit が管理している。
+Add them to `app.destinations` in `autodrive.json` and **run the update**
+("Updating autodrive-dev-kit"). **Do not edit the allowlist directly.** That file is managed by autodrive-dev-kit.
 
 ```json
 {
   "app": {
     "destinations": [
-      { "host": "example.workers.dev", "why": "配布先の疎通確認" }
+      { "host": "example.workers.dev", "why": "connectivity check of the deployment target" }
     ]
   }
 }
 ```
 
-**`why` を省略できない。** 許可一覧は「なぜ要るのか書けないなら要らない」を前提に
-している。省略すると `update` が止まる。
+**`why` cannot be omitted.** The allowlist assumes "if you cannot write why it is needed, it is not needed."
+Omit it and `update` stops.
 
-**ワイルドカードは書けない。** 規則は名前解決した IP に対して置かれるため、
-`*.example.com` のような書き方はできない。宛先ごとに1行が要る。
+**Wildcards cannot be written.** Rules are placed against resolved IPs, so
+something like `*.example.com` cannot be written. Each destination needs its own line.
 
 
-## アプリ自身の資格情報は、構成に書く
+## The app's own credentials go in the configuration
 
-autodrive-dev-kit のために要るもの（`GH_TOKEN` など）は `.env.example` に並んでいる。**作っている
-ものが自分で要るキーは、そこに入っていない。** モデルを呼び出すキー、外部サービスのキーなど。
+What autodrive-dev-kit needs (such as `GH_TOKEN`) is listed in `.env.example`. **Keys that what you are building
+needs for itself are not in it.** Keys for calling a model, keys for external services, and so on.
 
-`autodrive.json` の `app.credentials` に足して、**更新を打つこと**
-（「autodrive-dev-kit を更新する」）。**`.env.example` へ直接書かないこと。** そのファイルは autodrive-dev-kit が管理している。
+Add them to `app.credentials` in `autodrive.json` and **run the update**
+("Updating autodrive-dev-kit"). **Do not write directly into `.env.example`.** That file is managed by autodrive-dev-kit.
 
 ```json
 {
   "app": {
     "credentials": [
-      { "name": "ANTHROPIC_API_KEY", "why": "モデルを叩く。無いと会話が成立しない", "lost": "再発行する。古い値は使えなくなる" }
+      { "name": "ANTHROPIC_API_KEY", "why": "calls the model. without it the conversation cannot happen", "lost": "reissue it. the old value stops working" }
     ]
   }
 }
 ```
 
-**`why` と `lost` を省略できない。** 名前だけ並べても、人は何を取りに行けばよいか
-分からず、失ったときの扱いの重さも判断できない。省略すると `update` が止まる。
+**`why` and `lost` cannot be omitted.** With names alone, the human does not know what to go and get,
+and cannot judge how serious losing it would be. Omit them and `update` stops.
 
-**書かないと、静かに壊れる。** `.env` に値が残っている限りアプリは動き続けるので、
-消えたことに誰も気づかない。**新しく入った人がテンプレートを見ても、そのキーの存在を知れない。**
+**If not written, it breaks silently.** As long as the value remains in `.env`, the app keeps running, so
+nobody notices it is gone. **Someone new looking at the template cannot learn that the key exists.**
 
 
-## autodrive-dev-kit を更新する
+## Updating autodrive-dev-kit
 
 ```sh
 npx github:hajime-hashino/autodrive-dev-kit update
 ```
 
-**これは人が打つものではない。作業単位にして、こちらが行う。**
+**This is not something the human runs. Make it a work item, and we do it.**
 
-**外から取ってくる。** `{{KIT}}/` にあるコピーからは打てない。テンプレートが入って
-いないためである。
+**Fetch it from outside.** It cannot be run from the copy in `{{KIT}}/`, because the templates are not
+included there.
 
-更新は**このプロジェクトの追跡ファイルを書き換える変更**である
-（`{{KIT}}/`・この文書・CI 定義・`.devcontainer/`・`.env.example`）。すべての変更は
-提出を経て統合される。**既定ブランチで打って直接コミットしないこと。**
+Updating is **a change that rewrites files this project tracks**
+(`{{KIT}}/`, this document, the CI definitions, `.devcontainer/`, `.env.example`). Every change is
+integrated through a submission. **Do not run it on the default branch and commit directly.**
 
-1. 起票し、`begin` で着手する。対象リポジトリはこのプロジェクト
-2. `update` を打つ
-3. 判定とテストを走らせ、提出する
+1. File it and start with `begin`. The target repository is this project
+2. Run `update`
+3. Run the checks and tests, and submit
 
-**構成を変えたときも、これで反映する。** `autodrive.json` に書いただけでは、
-`.devcontainer/` も `.env.example` も作り直されない。
+**Configuration changes are applied this way too.** Writing in `autodrive.json` alone does not
+recreate `.devcontainer/` or `.env.example`.
 
-**このとき kit のバージョンも上がる。** 取ってくるのは最新であり、構成の変更だけを
-反映する打ち方は無い。上がった分の差分も、同じ作業単位の中で確かめること。
+**The kit version goes up at the same time.** What is fetched is the latest, and there is no way to run it that applies only
+the configuration change. Check the diff from the version bump within the same work item as well.
 
-### バージョンを指して入れ替える
+### Replacing with a specific version
 
-**最新でなくてよい。** 名前の後ろに `#` とバージョンを付けると、その版が来る。
+**It need not be the latest.** Append `#` and a version after the name, and that version is used.
 
 ```sh
 npx github:hajime-hashino/autodrive-dev-kit#v0.1.1 update
 ```
 
-**人が版を指したときだけ、こう打つ。** 指されていなければ最新を取る。どの版があるかは
-autodrive-dev-kit のタグにある。
+**Run it this way only when the human names a version.** If none is named, fetch the latest. Which versions exist is
+in autodrive-dev-kit's tags.
 
-**いま何で動いているかは `{{KIT}}/VERSION` にある。** 推測しないで、そこを読むこと。
-記録に付く `kit_version` も、この値である。
+**What it is running on now is in `{{KIT}}/VERSION`.** Do not guess; read it.
+The `kit_version` attached to records is this value as well.
 
-### 止まったら、人へ返す
+### If it stops, hand it back to the human
 
-**管理下のファイルが手で変えられていると、`update` は消さずに止まる。** そのまま
-入れ替えると、手で入れた内容が消えるためである。
+**If managed files were changed by hand, `update` stops without deleting them.** Replacing them
+as-is would erase what was put in by hand.
 
-止まったら、勝手にどちらかへ寄せないこと。**手で変えられていた事実は、autodrive-dev-kit へ
-起票する起票する理由になる。** その必要があってそう変えられている。
+If it stops, do not settle it one way or the other on your own. **The fact that they were changed by hand is a reason to file with
+autodrive-dev-kit.** They were changed that way because there was a need.
 
-### 資格情報が増えていたら、発行を頼む
+### If credentials were added, ask for them to be issued
 
-`.env.example` に項目が増えることがある。**発行はこちらにはできない。** 何に使う
-もので、無いと何が動かないかを添えて人に頼むこと。
+Items may be added to `.env.example`. **We cannot issue them.** Ask the human, along with what each
+is used for and what does not work without it.
 
-### ポートを変える
+### Changing a port
 
-「作業単位の置き場を GitHub Issues にしたい」「サンドボックスを変えたい」と言われたら、
-**`autodrive.json` の `ports` を書き換えて、`update` を打つ。** 専用の打ち方は無い。
+When asked "I want to keep work items in GitHub Issues" or "I want to change the sandbox,"
+**rewrite `ports` in `autodrive.json` and run `update`.** There is no dedicated way to run it.
 
-**どれにするかは人が決める。** 書き換えて打つのはこちらである。選べる実装は `init` が
-聞くものと同じ。
+**Which one to use is the human's decision.** Rewriting and running is ours. The implementations available are the same as those `init`
+asks about.
 
-**変える前に、失うものを人に伝えること。** 変えたあとでは取り返せない。
+**Before changing, tell the human what is lost.** It cannot be recovered after the change.
 
-| 変えるもの | 変える前に伝えること |
+| What changes | What to tell before changing |
 |---|---|
-| Tracker | **それまでの作業単位は移らない。** 記録とブランチ名は前のIDのまま残る。着手中のものは前の置き場で閉じる必要がある |
-| Tracker を `github-issues` へ | 接頭辞（`AIEP-123` の `AIEP`）を決めてもらう。**後から変えると、それまでの記録が追えなくなる** |
-| Tracker を `linear` へ | 統合されたら完了になるよう、Linear の設定画面で GitHub と連携してもらう |
-| Sandbox | 開き直しが要る。`devcontainer` から外すと、置いた一式は消えずに残る |
+| Tracker | **Existing work items do not move.** Records and branch names keep the old IDs. Anything started must be closed in the old place |
+| Tracker to `github-issues` | Have them decide the prefix (the `AIEP` in `AIEP-123`). **Changing it later breaks the trail of earlier records** |
+| Tracker to `linear` | Have them connect GitHub in Linear's settings, so that items complete when integrated |
+| Sandbox | Reopening is needed. Moving away from `devcontainer` leaves the placed set behind rather than deleting it |
 
-**バージョンを上げずに変えるなら、いまの版を指して打つ。** 指さないと最新が来て、
-ポートの変更と kit の入れ替えが1つの変更に混ざる。
+**To change without raising the version, run it naming the current version.** Without naming it, the latest comes, and
+the port change and the kit replacement get mixed into one change.
 
 ```sh
-npx github:hajime-hashino/autodrive-dev-kit#v<{{KIT}}/VERSION の値> update
+npx github:hajime-hashino/autodrive-dev-kit#v<value of {{KIT}}/VERSION> update
 ```
 
-`update` は次のものを出す。**人に関わるものは、そのまま伝えること。**
+`update` prints the following. **Pass on what concerns the human as it is.**
 
-- 変えたポートと、前の値
-- 新しく要る資格情報（発行を頼む）
-- 前の構成で置いたが、いまは置かないもの（要らなければ消す）
+- The ports that changed, and their previous values
+- Newly needed credentials (ask for them to be issued)
+- What was placed for the previous configuration but is no longer placed (delete if not needed)
 
-**接頭辞が決まっていなければ、`update` は置かずに止まる。** 案が出るので、人に
-確かめてから `autodrive.json` に書いて打ち直す。**案をそのまま書かないこと。**
+**If the prefix has not been decided, `update` stops without placing anything.** It suggests one, so confirm with the human
+and then write it in `autodrive.json` and run it again. **Do not write the suggestion as-is.**
 
 
-## 出口制限は、通信を遮断する仕組みではない
+## Egress restriction is not a mechanism that cuts off traffic
 
-**「一覧に無い宛先へは出られない」と思わないこと。** 規則は名前解決した IP に対して
-置かれるため、**許可した宛先と同じ IP を共有する宛先へは、一覧に無くても出られる。**
-同じ CDN やホスティングの背後にあるものが該当する。
+**Do not assume "destinations not on the list cannot be reached."** Rules are placed against resolved IPs,
+so **destinations sharing an IP with an allowed destination can be reached even if they are not on the list.**
+Things behind the same CDN or hosting fall into this.
 
-実際に測った。出口制限が効いている状態で:
+It was actually measured. With the egress restriction in effect:
 
-| 宛先 | 一覧 | 結果 |
+| Destination | On the list | Result |
 |---|---|---|
-| `objects.githubusercontent.com` | ある | 出られる |
-| `raw.githubusercontent.com` | **無い** | **出られる**（同じ IP） |
-| `example.com` | 無い | 塞がる（別の IP） |
+| `objects.githubusercontent.com` | Yes | Reachable |
+| `raw.githubusercontent.com` | **No** | **Reachable** (same IP) |
+| `example.com` | No | Blocked (different IP) |
 
-**出られる先を減らす仕組みであって、通信を遮断する仕組みではない。** したがって、
-**データが外へ出ないことの保証として扱わないこと。**
+**It is a mechanism that reduces where traffic can go, not one that cuts off traffic.** Therefore,
+**do not treat it as a guarantee that data does not leave.**
 
-**絞っているのは、この機械が出す通信（`OUTPUT`）だけである。** 通り抜ける通信
-（`FORWARD`）は絞っていない。**中でコンテナを動かす機能を `devcontainer.json` へ
-足すと、その通信は出口制限を通らない。**
+**What it narrows is only the traffic this machine sends out (`OUTPUT`).** Traffic passing through
+(`FORWARD`) is not narrowed. **Add a feature that runs containers inside to `devcontainer.json`,
+and that traffic does not go through the egress restriction.**
 
-本当に守っているのは別のものである。
+What actually protects is something else.
 
-- **手元に資格情報を置かないこと。** 出られても、持ち出すものが無い
-- **固定条件で止まること。** 不可逆な操作は、出口制限の有無に関わらず人を通る
-- **記録が残ること。** 何をしたかが後から読める
+- **Not keeping credentials locally.** Even if traffic gets out, there is nothing to carry out
+- **Stopping at fixed conditions.** Irreversible operations go through a human regardless of the egress restriction
+- **Records remaining.** What was done can be read afterwards
 
-これらを弱めて出口制限で補おうとしないこと。**補えない。**
+Do not weaken these and try to make up for it with the egress restriction. **It cannot make up for them.**
 
-## 許可した宛先へ、出られなくなることがある
+## Allowed destinations can become unreachable
 
-**規則は起動時に解決した IP に対して置かれる。** 宛先の側が IP を入れ替えると、
-**一覧に書いてあるのに出られなくなる。**
+**Rules are placed against the IPs resolved at start.** If the destination side swaps its IPs,
+**it becomes unreachable even though it is on the list.**
 
-静かに起きる。一覧を読めば出られると受け取るので、**宛先の不調か自分の誤りだと
-考えてしまう。** 「許可一覧の項目が用を成していない」と読むのがいちばんありがちだが、
-**たいていは項目が正しく、IP が入れ替わっただけである。**
+It happens silently. Reading the list, you take it that it is reachable, so **you end up thinking the destination is having trouble or
+that you made a mistake.** The most likely reading is "the allowlist entry is not doing its job," but
+**usually the entry is correct and the IP just changed.**
 
-許可したはずの宛先が塞がったら、まずこれを打つ。
+If a destination that should be allowed is blocked, run this first.
 
 ```sh
 {{KIT}}/bin/autodrive-dev-kit sandbox 宛先を確かめる
 ```
 
-出られない宛先が並ぶ。多くは規則を置き直せば直る。
+It lists the unreachable destinations. Most are fixed by re-placing the rules.
 
 ```sh
 sudo bash .devcontainer/init-firewall.sh
 ```
 
-**置き直しても出られない宛先がある。** 規則を置いてから使うまでの間に、また
-入れ替わるものがある（実測で約2分。`developers.google.com`）。**IP を固定する
-形では追いつかないので、その宛先は諦める。**
+**Some destinations are unreachable even after re-placing.** Some swap again between placing the rules
+and using them (about 2 minutes measured, `developers.google.com`). **A form that pins IPs
+cannot keep up, so give up on that destination.**
 
-**起動時の確認は、これを見つけられない。** 見ているのは1件だけで、しかも規則を
-置いた直後なので、まだ入れ替わっていない。
+**The check at start cannot find this.** It looks at only one entry, and right after the rules
+are placed, so nothing has swapped yet.
 
-## CI の失敗は、ログ本文まで読める
+## CI failures can be read down to the log body
 
-**`gh` から読むこと。**
-
-```sh
-gh run view <実行ID> --log-failed
-```
-
-**REST の `/actions/jobs/{id}/logs` は使えない。** Azure の blob へ転送され、その
-ホスト名が実行ごとに変わるため（`productionresultssa0` / `sa5` / `sa12` …）、
-**ワイルドカードが書けない一覧では届かない。**
-
-読めないときは、上の「出られなくなることがある」を先に確かめること。**読めない
-ことと、許可されていないことは違う。**
-
-どこで落ちたかだけなら、`actions/runs/<ID>/jobs` から取れる。**本文が要らない
-場合はこちらが速い。**
-
-## 露出は、戻せるが取り消せない
-
-**配布が可逆であることと、露出が可逆であることは別である。**
-
-配布はやり直せる。公開も、やめることはできる。しかし**公開されていた間に見られた
-ことは取り消せない。** したがって「戻せるから止まらなくてよい」は、露出には効かない。
-
-**検証環境も対象である。** 本番ではないから軽い、とはならない。検証環境は本番相当の
-資格情報とデータを持つのが普通であり、到達できる範囲まで本番と同じにする理由は無い。
-
-検証環境が公開状態で作られたという報告があり、この規約はそこから起こしている。
-**配布の可逆性だけを見て、露出を見ていなかった。**
-
-確かめること。
-
-| 確かめること | 見るもの |
-|---|---|
-| 誰が見られるか | 公開／許可したアカウントだけ／内部のみ |
-| それでよいか | **人に聞く。既定で公開しない** |
-| 閉じたままで確認できるか | 見え方の確認に公開が要るなら、**そこも含めて人に聞く** |
-
-**「見え方を確認するために公開が必要でした」は理由にならない。** 確認のために公開が
-要るなら、それ自体が人へ差し出す論点である。
-
-### 開いているかは、必ず測って言う
-
-**応答コードだけで判断しないこと。** 守られている場所も転送を返す。転送**先**まで
-見ないと、開いているのか閉じているのかは分からない。
+**Read them with `gh`.**
 
 ```sh
-curl -sS -D - -o /dev/null https://<宛先>/ | grep -i "^HTTP\|^location"
+gh run view <run ID> --log-failed
 ```
 
-| 見えたもの | 読み方 |
+**The REST `/actions/jobs/{id}/logs` cannot be used.** It redirects to an Azure blob whose
+host name changes per run (`productionresultssa0` / `sa5` / `sa12` …), so
+**a list that cannot hold wildcards cannot reach it.**
+
+If you cannot read it, first check "can become unreachable" above. **Not being able to read it
+is different from not being allowed.**
+
+If you only need where it failed, that can be taken from `actions/runs/<ID>/jobs`. **When the body is not needed,
+this is faster.**
+
+## Exposure can be reverted but not undone
+
+**Deployment being reversible and exposure being reversible are different things.**
+
+A deployment can be redone. Publication can also be stopped. But **what was seen while it was public
+cannot be undone.** Therefore "it can be reverted, so there is no need to stop" does not apply to exposure.
+
+**The verification environment is included.** Not being production does not make it lighter. A verification environment normally holds
+production-equivalent credentials and data, and there is no reason to make its reachability the same as production.
+
+There was a report that a verification environment was created in a public state, and this convention comes from that.
+**Only the reversibility of deployment was looked at, not exposure.**
+
+What to check.
+
+| What to check | What to look at |
 |---|---|
-| `200` | 開いている（アプリの手前に認証が無い） |
-| `302` で、飛び先が認証の入口 | **閉じている** |
-| `302` で、飛び先がアプリ内のログイン | アプリが守っている。手前は開いている |
+| Who can see it | Public / only allowed accounts / internal only |
+| Whether that is fine | **Ask the human. Do not publish by default** |
+| Whether it can be checked while staying closed | If checking how it looks needs publication, **ask the human including that** |
 
-**この確認を飛ばすと、閉じているものを「公開されている」と報告することになる。** 302 だけを見て
-到達できると結論すると、アプリの手前に認証が入っていても**守られている**ことが読めない。
+**"It had to be public to check how it looks" is not a reason.** If publication is needed
+for checking, that itself is a point to put to the human.
 
-**測っていないことを、測ったように書かない。** 報告を受けて調べるときも同じである。
-報告が正しいかを確かめてから、規約や設定を動かすこと。
+### Whether it is open is always measured before saying so
+
+**Do not judge by the response code alone.** Protected places also return redirects. Without looking at the redirect **target**,
+you cannot tell whether it is open or closed.
+
+```sh
+curl -sS -D - -o /dev/null https://<destination>/ | grep -i "^HTTP\|^location"
+```
+
+| What you see | How to read it |
+|---|---|
+| `200` | Open (no authentication in front of the app) |
+| `302`, and the redirect target is the entrance to authentication | **Closed** |
+| `302`, and the redirect target is a login inside the app | The app protects it. The front is open |
+
+**Skip this check and you will report something closed as "public."** Concluding it is reachable from a 302
+alone means that even with authentication in front of the app, you cannot read that it is **protected**.
+
+**Do not write what was not measured as if it had been.** The same goes when investigating a report.
+Confirm the report is correct before moving conventions or settings.

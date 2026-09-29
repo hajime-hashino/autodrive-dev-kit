@@ -198,7 +198,7 @@ test("置かれた文書が、どこから始めるかを言っている", () =>
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
 
   assert.ok(rules.includes("docs/what-why.md"), "始まりの判断材料を指していない");
-  assert.ok(rules.includes("聞き返さない"), rules.slice(0, 400));
+  assert.ok(rules.includes("Do not ask back"), rules.slice(0, 400));
 });
 
 // **始まりの合図が、機械的に決まること。** 「テンプレートのまま」を目で判断させると、
@@ -209,7 +209,7 @@ test("始まりの合図が、指した先に実在する", () => {
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
 
   // 判断の表の行から、見る先と目印を読む。**本文の他の言及ではなく、表の行から取る。**
-  const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("テンプレートのまま"));
+  const row = rules.split("\n").find((l) => l.startsWith("| `") && l.includes("still the template"));
   assert.ok(row, "どこから始めるかの表が無い");
 
   const [, path, marker] = row.match(/`([^`]+)`.*`([^`]+)`/) ?? [];
@@ -234,14 +234,14 @@ test("配る規約に、振る舞いとスタンスが入っている", () => {
 
   // 節が揃っていること。**1つでも欠けると、その判断だけが配られない。**
   for (const section of [
-    "振る舞いとスタンス",
-    "停止するときの作法",
-    "意思決定は代行しない",
-    "制約かどうかを、出所で確かめる",
-    "確認の手段は、作った時点で検証する",
-    "立ち止まる合図",
-    "人の承認が必要なもの",
-    "ポート語彙",
+    "Behavior and stance",
+    "How to stop",
+    "Do not make decisions on the human's behalf",
+    "Check whether it is a constraint by its source",
+    "Verify a means of checking when you build it",
+    "Signs to stop and reconsider",
+    "What needs human approval",
+    "Port vocabulary",
   ]) {
     assert.ok(rules.includes(section), `配る規約に「${section}」が無い`);
   }
@@ -253,11 +253,11 @@ test("停止の作法が、4点そろっている", () => {
   // **節の切り方に依らない。** 毎回読むほうに4点、引くほうに細かい作法がある。
   const section = placedRules(initialized());
 
-  for (const point of ["なぜ必要か", "何をすればよいか", "判断の材料", "詰まったとき"]) {
+  for (const point of ["Why it is needed", "What to do", "Material for the judgment", "A fallback if they get stuck"]) {
     assert.ok(section.includes(point), `停止の作法に「${point}」が無い`);
   }
   // **例を添えること。** 4点を並べるだけでは、何が悪い問いかけかが伝わらない。
-  assert.ok(section.includes("悪い例") && section.includes("良い例"), "例が無い");
+  assert.ok(section.includes("Bad example") && section.includes("Good example"), "例が無い");
 });
 
 // **出所の表が、配られた先の出所を指すこと。** 参照実装のものをそのまま配ると、
@@ -265,19 +265,19 @@ test("停止の作法が、4点そろっている", () => {
 test("制約の出所が、配られた先から見て正しい", () => {
   const rules = placedRules(initialized());
   const section = rules.slice(
-    rules.indexOf("制約かどうかを、出所で確かめる"),
-    rules.indexOf("設計上の欠陥"),
+    rules.indexOf("Check whether it is a constraint by its source"),
+    rules.indexOf("Do not trade a design defect"),
   );
 
-  assert.ok(section.includes("この文書"), "配られたこの文書が、出所として挙がっていない");
+  assert.ok(section.includes("This document"), "配られたこの文書が、出所として挙がっていない");
   assert.ok(section.includes("CLAUDE.md"), "プロジェクト固有の規約が、出所として挙がっていない");
   // **自分の推論を制約として扱わないこと。** ここが要である。
   // 本文で触れているだけでは足りない。**表に、制約ではないものとして並ぶこと。**
   const row = section
     .split("\n")
-    .find((l) => l.startsWith("|") && l.includes("自分の推論"));
+    .find((l) => l.startsWith("|") && l.includes("Your own reasoning"));
   assert.ok(row, "出所の表に「自分の推論」が無い");
-  assert.ok(row.includes("制約ではない"), `制約ではないと書かれていない: ${row}`);
+  assert.ok(row.includes("Not a constraint"), `制約ではないと書かれていない: ${row}`);
 });
 
 // **このワークディレクトリに固有のものは配らない**（BOOTSTRAP 段階5の仕分け）。

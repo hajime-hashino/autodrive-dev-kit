@@ -173,13 +173,13 @@ test("autodrive-dev-kit の入れ替えは、人が打つものではないと�
   // 分け方をしている。**どちらに書いてあっても、配られていればよい**（AUT-196）。
   const sections = rules
     .split("\n## ")
-    .filter((s) => s.startsWith("autodrive-dev-kit を更新する"));
+    .filter((s) => s.startsWith("Updating autodrive-dev-kit"));
   assert.notEqual(sections.length, 0, "配布物に手順が無い");
   const section = sections.join("\n");
   for (const [pattern, what] of [
-    [/作業単位にして/, "作業単位にすること"],
-    [/既定ブランチで打って直接コミットしないこと/, "直接コミットしないこと"],
-    [/止まったら、人へ返す/, "止まったときの扱い"],
+    [/Make it a work item/, "作業単位にすること"],
+    [/Do not run it on the default branch and commit directly/, "直接コミットしないこと"],
+    [/If it stops, hand it back to the human/, "止まったときの扱い"],
     [/\.env\.example/, "資格情報が増える場合"],
   ]) {
     assert.match(section, pattern, `配布物の手順に、${what}が無い`);
@@ -481,28 +481,28 @@ const rules = () =>
 // 実際に、検証環境が誰でも到達できる状態で作られた。
 test("外から見える状態にするなら人へ確かめる、と配る", () => {
   const text = rules();
-  assert.ok(text.includes("既定で公開しない"), "既定を公開にしないと言っていない");
-  assert.ok(text.includes("検証環境も対象である"), "検証環境が対象だと言っていない");
+  assert.ok(text.includes("Do not publish by default"), "既定を公開にしないと言っていない");
+  assert.ok(text.includes("The verification environment is included"), "検証環境が対象だと言っていない");
 });
 
 // **配布の可逆性を根拠に、露出の停止を省かせない。** それが今回の原因だった。
 test("配布が戻せることと、露出が戻せることを分けて書く", () => {
   const text = rules();
-  assert.ok(text.includes("露出は、戻せるが取り消せない"), "区別を書いていない");
+  assert.ok(text.includes("Exposure can be reverted but not undone"), "区別を書いていない");
   assert.ok(
-    text.includes("公開されていた間に見られたことは取り消せない"),
+    text.includes("what was seen while it was public"),
     "なぜ取り消せないのかを書いていない",
   );
 });
 
 test("承認が要るものの一覧に、露出が載っている", () => {
-  const approvals = rules().split("## 人の承認が必要なもの")[1] ?? "";
-  assert.ok(approvals.includes("外から見える状態にする"), "一覧に無い");
+  const approvals = rules().split("## What needs human approval")[1] ?? "";
+  assert.ok(approvals.includes("Making what was built visible from outside"), "一覧に無い");
 });
 
 // **「確認のために公開が必要だった」を通さない。** 通すと規約が空文になる。
 test("確認のための公開も、人へ差し出す論点だと書く", () => {
-  assert.ok(rules().includes("理由にならない"), "抜け道を塞いでいない");
+  assert.ok(rules().includes("is not a reason"), "抜け道を塞いでいない");
 });
 
 // -------------------------------------- プレビューの置き場（AUT-125）
@@ -538,12 +538,12 @@ test("閉じたまま見せる手段があることを書く", () => {
 test("配布物が、一つの構成の仕組みを決まりとして配らない", () => {
   const text = rules();
   assert.equal(
-    text.includes("プレビューは検証環境の上に出る"),
+    text.includes("プレビューは検証環境の上に出る") || text.includes("Previews appear on the verification environment"),
     false,
     "一つの構成の仕組みを、決まりとして配っている",
   );
   // **構成を読むことは、文書の冒頭で一度だけ言う。** 節ごとに繰り返さない。
-  assert.ok(text.includes("推測しないで、そこを読むこと"), "構成を読ませていない");
+  assert.ok(text.includes("Do not guess"), "構成を読ませていない");
 });
 
 // ------------------------------------- 測ってから言う（AUT-129）
@@ -553,34 +553,34 @@ test("配布物が、一つの構成の仕組みを決まりとして配らな�
 test("露出の根拠を、報告として書く。測った結果として書かない", () => {
   const text = rules();
   assert.equal(
-    text.includes("実際に、検証環境が誰でも到達できる状態で作られた"),
+    text.includes("verification environment was actually created in a state anyone could reach"),
     false,
     "測っていないことを、測ったように書いている",
   );
-  assert.ok(text.includes("報告があり"), "報告であることが分からない");
+  assert.ok(text.includes("There was a report"), "報告であることが分からない");
 });
 
 // **応答コードだけで開閉を判断させない。** それで誤報を出した。
 test("開いているかの確かめ方を、具体的に配る", () => {
   const text = rules();
-  assert.ok(text.includes("応答コードだけで判断しないこと"), "落とし穴を書いていない");
+  assert.ok(text.includes("Do not judge by the response code alone"), "落とし穴を書いていない");
   assert.ok(text.includes("curl -sS -D -"), "確かめ方が具体的でない");
-  assert.ok(text.includes("飛び先が認証の入口"), "どう読むかを書いていない");
+  assert.ok(text.includes("the redirect target is the entrance to authentication"), "どう読むかを書いていない");
 });
 
 // --------------------------- 出口制限の限界（AUT-122）
 
 test("配布物が、出口制限を通信の遮断として書いていない", () => {
   const text = rules();
-  assert.equal(text.includes("許可した宛先へしか出られない"), false, "嘘が残っている");
-  assert.ok(text.includes("出口制限は、通信を遮断する仕組みではない"), "限界を書いていない");
+  assert.equal(text.includes("can only reach allowed destinations"), false, "嘘が残っている");
+  assert.ok(text.includes("Egress restriction is not a mechanism that cuts off traffic"), "限界を書いていない");
 });
 
 // **弱めて出口制限で補う、をさせない。** そこが一番危ない読み方である。
 test("本当に守っているものを挙げ、補えないと書く", () => {
   const text = rules();
-  assert.ok(text.includes("手元に資格情報を置かないこと"), "何が守っているかが無い");
-  assert.ok(text.includes("補えない"), "補えないと言っていない");
+  assert.ok(text.includes("Not keeping credentials locally"), "何が守っているかが無い");
+  assert.ok(text.includes("cannot make up for them"), "補えないと言っていない");
 });
 
 // ------------------------- サンドボックスの定義は、プロジェクトのもの（AUT-157）
@@ -589,7 +589,7 @@ test("本当に守っているものを挙げ、補えないと書く", () => {
 // 聞きに来る。
 test("サンドボックスの定義を直接編集してよいと、配ってある", () => {
   const text = rules();
-  assert.ok(text.includes("直接編集してよい"), "触ってよいと言っていない");
+  assert.ok(text.includes("may be edited directly"), "触ってよいと言っていない");
   assert.ok(text.includes("devcontainer.json"), "どのファイルかが無い");
   // **kit のものと混ぜない。** 隔離のロジックは手で変えるものではない。
   assert.ok(text.includes("init-firewall.sh"), "kit が持つものを挙げていない");
@@ -615,15 +615,15 @@ test("外してはいけない行が、同じ場所に書いてある", () => {
   //
   // **そして、いまは気づけないが誤りである。** `isolation.js` が postCreateCommand への
   // 移動を名指しで検出する。捕まえられるものを「気づけない」と書かない。
-  assert.ok(text.includes("2回目以降の起動で隔離が無くなる"), "どう壊れるかを言っていない");
-  assert.ok(text.includes("気づけるのは判定のほうである"), "何が捕まえるのかを言っていない");
-  assert.equal(text.includes("誰も気づかなかった"), false, "過去の報告として書いている");
+  assert.ok(text.includes("the isolation is gone"), "どう壊れるかを言っていない");
+  assert.ok(text.includes("What notices is the checks"), "何が捕まえるのかを言っていない");
+  assert.equal(text.includes("nobody noticed"), false, "過去の報告として書いている");
 });
 
 // **足すと穴が開くことを、足し方と同じ場所に書く。** 別の場所だと読まれない。
 test("中でコンテナを動かすと出口制限を迂回することを、警告している", () => {
   const text = rules();
-  assert.ok(text.includes("出口制限を迂回する"), "迂回することを言っていない");
+  assert.ok(text.includes("bypass the egress restriction"), "迂回することを言っていない");
   assert.ok(text.includes("FORWARD"), "どこが絞られていないかを言っていない");
 });
 
@@ -650,6 +650,9 @@ test("配る規約が、書き方の規約としてポート語彙を配らな�
     "動くものは、ポート語彙で書く",
     "手順も文書も、定義§16のポート語彙で書く",
     "実装名を直接扱ってよいのはアダプタ層のみ",
+    "Write what runs in the port vocabulary",
+    "Procedures and documents are also written in the port vocabulary",
+    "Only the adapter layer may handle implementation names directly",
   ]) {
     assert.equal(text.includes(spread), false, `作る側の規約が配られている: ${spread}`);
   }
@@ -973,6 +976,7 @@ test("参照実装の文書が、言い換えた語を使っていない", () =>
 test("配布物が、作る側の呼び名を持ち込まない", () => {
   const text = rules();
   assert.equal(text.includes("参照実装"), false, "作る側の呼び名が配られている");
+  assert.equal(text.includes("reference implementation"), false, "作る側の呼び名が配られている");
   // **名前は残す。** どこへ起票すればよいかが消えると、直す先が分からなくなる。
   assert.ok(text.includes("autodrive-dev-kit"), "道具の名前が無い");
 });
@@ -1003,7 +1007,7 @@ test("毎回読むものと、引くものの関係が配ってある", () => {
   // 引っかかる前に「引く先がある」と知らせるのが、この案内の役目である。
   const head = core.split("\n").slice(0, 20).join("\n");
   assert.match(head, /autodrive-reference\.md/, "冒頭で引く先を案内していない");
-  assert.match(ref, /毎回読まなくてよい/, "毎回読むものでないことが書かれていない");
+  assert.match(ref, /does not need to be read every time/, "毎回読むものでないことが書かれていない");
   assert.match(ref, /autodrive\.md/, "戻る先が案内されていない");
 });
 
@@ -1021,9 +1025,9 @@ test("毎回読むものと、引くものの関係が配ってある", () => {
 test("検証環境を経てから本番へ出す、と配ってある", () => {
   const text = rules();
   for (const [pattern, what] of [
-    [/検証環境で確かめてから統合する/, "確かめてから統合すること"],
-    [/統合が本番への引き金である/, "統合が引き金であること"],
-    [/不可逆/, "不可逆であること"],
+    [/Confirm in the verification environment before integrating/, "確かめてから統合すること"],
+    [/Integration is the trigger for production/, "統合が引き金であること"],
+    [/irreversible/i, "不可逆であること"],
   ]) {
     assert.match(text, pattern, `配っていない: ${what}`);
   }
@@ -1039,10 +1043,10 @@ test("検証環境を経てから本番へ出す、と配ってある", () => {
 // **観点と箇所が、先に並んでいること。** 何を見るかが決まらないと、手法は選べない。
 test("品質の観点と、確認する箇所が配ってある", () => {
   const text = rules();
-  for (const view of ["ビジネス目的の達成", "機能", "性能", "セキュリティ", "信頼性", "保守性"]) {
+  for (const view of ["Achieving the business purpose", "Functionality", "Performance", "Security", "Reliability", "Maintainability"]) {
     assert.ok(text.includes(view), `観点が無い: ${view}`);
   }
-  for (const where of ["静的", "単体", "結合", "システム", "受入", "本番監視"]) {
+  for (const where of ["Static", "Unit", "Integration", "System", "Acceptance", "Production monitoring"]) {
     assert.ok(text.includes(where), `確認する箇所が無い: ${where}`);
   }
 });
@@ -1052,26 +1056,26 @@ test("品質の観点と、確認する箇所が配ってある", () => {
 // **混ぜると、どちらも中途半端になる。**
 test("プロセスの品質は、この軸に含めないと書いてある", () => {
   const text = rules();
-  assert.ok(text.includes("プロセスの品質は、ここに含めない"), "切り分けが書かれていない");
-  assert.ok(text.includes("作ったものそのものである"), "何を見る軸なのかが書かれていない");
+  assert.ok(text.includes("Process quality is not included here"), "切り分けが書かれていない");
+  assert.ok(text.includes("the thing that was built itself"), "何を見る軸なのかが書かれていない");
 });
 
 // **ベースラインが実物であること。** 「考えよ」では立ち上げで1から考えることになる。
 test("ベースラインが、手法と範囲まで示されている", () => {
   const text = rules();
-  assert.ok(text.includes("主要なビジネスケース"), "ビジネス目的の既定が無い");
-  assert.ok(text.includes("依存の脆弱性検査"), "セキュリティの既定が無い");
+  assert.ok(text.includes("The main business cases"), "ビジネス目的の既定が無い");
+  assert.ok(text.includes("Dependency vulnerability scanning"), "セキュリティの既定が無い");
   // **空けたものも示す。** 何を見ないかが書いていないと、全部見ていると読まれる。
-  assert.ok(text.includes("既定では見ない"), "空けた観点が示されていない");
+  assert.ok(text.includes("Not looked at by default"), "空けた観点が示されていない");
 });
 
 // **人に品質の知識を求めない。** 白紙で聞くと、非エンジニアは答えられない。
 test("白紙で聞かず、案を出せと指示している", () => {
   const text = rules();
-  assert.ok(text.includes("人に品質の知識を求めない"), "知識を求めるなと言っていない");
-  assert.ok(text.includes("こちらが案を出し、人が選ぶ"), "案を出せと言っていない");
+  assert.ok(text.includes("do not ask the human for knowledge of quality"), "知識を求めるなと言っていない");
+  assert.ok(text.includes("we propose options and the human chooses"), "案を出せと言っていない");
   assert.ok(
-    text.includes("入れない場合に何が見られなくなるかを添える"),
+    text.includes("add what can no longer be seen if it is not put in"),
     "欠ける範囲を添えることが書かれていない",
   );
 });
@@ -1079,11 +1083,11 @@ test("白紙で聞かず、案を出せと指示している", () => {
 // **実装の前に検出を作る。** 順番が逆だと、テストが実装に合わせて書かれる。
 test("守ることが、動きの指示になっている", () => {
   const text = rules();
-  assert.ok(text.includes("実装より先に検出を作る"), "順番の指示が無い");
-  assert.ok(text.includes("戻せないものは、検出が無いまま通さない"), "通さないと言っていない");
+  assert.ok(text.includes("Build detection before implementation"), "順番の指示が無い");
+  assert.ok(text.includes("Do not let what cannot be undone through without detection"), "通さないと言っていない");
   // **通ったのは書いたものだけである。**
   assert.ok(
-    text.includes("確かめた手段と、誰も見ていない範囲を添える"),
+    text.includes("the means used to confirm it, and the range nobody looked at"),
     "提出に添えるものが書かれていない",
   );
 });
@@ -1092,14 +1096,14 @@ test("守ることが、動きの指示になっている", () => {
 // **長さはハルシネーションの元になる。** 一覧は引く側に置く。
 test("手法の一覧が、引く側に配ってある", () => {
   const ref = readFileSync(join(KIT, "src", "templates", "autodrive-reference.md"), "utf8");
-  for (const how of ["AIレビュー", "脅威モデリング", "契約テスト", "合成監視", "変異テスト"]) {
+  for (const how of ["AI review", "threat modeling", "contract testing", "synthetic monitoring", "Mutation testing"]) {
     assert.ok(ref.includes(how), `手法が無い: ${how}`);
   }
   // **人のレビューは委譲範囲を動かす。** 安いから入れる、とはならない。
-  assert.ok(ref.includes("委譲範囲の表を動かす"), "人のレビューの扱いが書かれていない");
+  assert.ok(ref.includes("moves the delegation table"), "人のレビューの扱いが書かれていない");
   // **毎回読む側には並べない。**
   const core = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8");
-  assert.equal(core.includes("ファジング"), false, "毎回読む側に手法を並べている");
+  assert.equal(core.toLowerCase().includes("fuzzing"), false, "毎回読む側に手法を並べている");
 });
 
 // **会話で決めて終わりにしない。** 置き場が無ければ、次の作業単位では読めない。
@@ -1163,7 +1167,7 @@ test("品質を決める段が、立ち上げにある", () => {
   const steps = readFileSync(join(KIT, "src", "templates", "autodrive.md"), "utf8")
     .split("\n")
     .filter((l) => l.startsWith("| ") && l.includes("**"));
-  const step = steps.find((l) => l.includes("品質で確認することを決めてもらう"));
+  const step = steps.find((l) => l.includes("Have them decide what to check for quality"));
   assert.ok(step !== undefined, `立ち上げの段取りに品質が無い:\n${steps.slice(0, 12).join("\n")}`);
   // **成果物はファイルである。** 会話で消えるものを成果物にしない。
   assert.ok(step.includes("docs/quality.md"), `成果物がファイルになっていない: ${step}`);
@@ -1181,25 +1185,25 @@ function project() {
 // （定義§8）と、出口に残す場合の受け入れ確認（定義§10）であり、どちらも別物である。
 test("品質の表が、すべて自動で回るものだと書いてある", () => {
   const text = rules();
-  assert.ok(text.includes("この表は、すべて自動で回すものである"), "自動だと言っていない");
+  assert.ok(text.includes("This table is all run automatically"), "自動だと言っていない");
   assert.ok(
-    text.includes("ビジネスケースを通すのは E2E であり、人ではない"),
+    text.includes("What runs the business cases is E2E, not a human"),
     "誰が通すのかが書かれていない",
   );
   // **人が見るものは、別だと言う。** 言わないと、この表に混ぜて読まれる。
-  assert.ok(text.includes("どちらもこの表には入らない"), "人が見るものとの切り分けが無い");
+  assert.ok(text.includes("Neither goes in this table"), "人が見るものとの切り分けが無い");
 });
 
 // **箇所と環境が繋がっていること**（人の確認）。テストレベルだけを並べても、
 // どこで動かすかが決まらない。**「環境の考え方」と別々に置いていた。**
 test("確認する箇所と、動かす環境が対応づけてある", () => {
   const text = rules();
-  assert.ok(text.includes("どの環境で動かすかは、箇所で決まる"), "対応が書かれていない");
+  assert.ok(text.includes("Which environment it runs in is determined by the stage"), "対応が書かれていない");
   // **システムと受入は検証環境。** 手元で通しても、本番に近い構成を確かめたことにならない。
-  assert.match(text, /システム・受入 \| \*\*検証環境\*\*/, "システム・受入の環境が無い");
+  assert.match(text, /System, acceptance \| \*\*Verification environment\*\*/, "システム・受入の環境が無い");
   // **手元で外部の実物を叩かない。**
   assert.ok(
-    text.includes("外部サービスの実物が要る結合は、検証環境で行う"),
+    text.includes("Integration that needs the real external service is done in the verification environment"),
     "外部依存の扱いが書かれていない",
   );
 });
@@ -1210,19 +1214,19 @@ test("確認する箇所と、動かす環境が対応づけてある", () => {
 // 記録が、前の作業単位へ向かう（AUT-221 と同じ形）。
 test("中断して戻る道が、配ってある", () => {
   const text = rules();
-  assert.ok(text.includes("中断して戻れる"), "戻れることが書かれていない");
+  assert.ok(text.includes("You can pause and come back"), "戻れることが書かれていない");
   // **手で切り替えさせない。** 入口を通らない経路を残さない。
   assert.ok(
-    text.includes("手で `git checkout` しないこと"),
+    text.includes("Do not `git checkout` by hand"),
     "手で切り替えるなと言っていない",
   );
   // **なぜかまで言う。** 理由が無いと、面倒なときに飛ばされる。
   assert.ok(
-    text.includes("戻ったあとに書いた記録が、そちらへ向かう"),
+    text.includes("records written after returning go there"),
     "手で切り替えると何が起きるかが書かれていない",
   );
   // **未コミットのまま戻さない。**
-  assert.ok(text.includes("未コミットの変更があれば止まる"), "未コミットの扱いが無い");
+  assert.ok(text.includes("If there are uncommitted changes, it stops"), "未コミットの扱いが無い");
 });
 
 // ---------------------------------- 人の発言を、そのまま引かない（AUT-228）
