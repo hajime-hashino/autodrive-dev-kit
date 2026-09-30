@@ -1,6 +1,6 @@
 /** 判定結果の出力。 */
 
-import { say } from "./messages.js";
+import { say, DEFAULT_LANGUAGE } from "./messages.js";
 import { ACTIVE, NOT_IN_SCOPE, SUBSTITUTED, UNSUBSTITUTED } from "./state.js";
 
 
@@ -20,7 +20,7 @@ const STATE_KEY = {
 
 /** 状態の記号。**判定と文書で同じものを見るために出す。** */
 export const MARK = Object.fromEntries(
-  Object.entries(STATE_KEY).map(([state, key]) => [state, say("ja", key)]),
+  Object.entries(STATE_KEY).map(([state, key]) => [state, say(DEFAULT_LANGUAGE, key)]),
 );
 
 /** 不変条件の名前。**言語ごとに `messages.js` が持つ。** */
@@ -29,7 +29,7 @@ export const labelOf = (key, language) => say(language, `invariant.${key}`);
 /**
  * @param {import("./messages.js").Language} language
  */
-export function renderText(results , repos , scope , language = "ja") {
+export function renderText(results , repos , scope , language = DEFAULT_LANGUAGE) {
   const t = (key, values) => say(language, key, values);
   const lines = [
     t("report.title"),
@@ -60,7 +60,7 @@ export function renderText(results , repos , scope , language = "ja") {
   return lines.join("\n");
 }
 
-export function renderJson(results , repos , scope , language = "ja", forbidden = [], isolation = []) {
+export function renderJson(results , repos , scope , language = DEFAULT_LANGUAGE, forbidden = [], isolation = []) {
   return JSON.stringify(
     {
       scope,

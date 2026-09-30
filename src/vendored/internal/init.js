@@ -43,7 +43,7 @@ import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { allowedDomains } from "./sandbox.js";
 import { envExample } from "./credentials.js";
-import { say } from "./messages.js";
+import { say, DEFAULT_LANGUAGE } from "./messages.js";
 import { defaults, retired } from "./config.js";
 
 
@@ -521,7 +521,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   const claude = join(root, "CLAUDE.md");
   const pointer =
     existsSync(claude) && !readFileSync(claude, "utf8").includes("docs/autodrive.md")
-      ? say(config?.language ?? "ja", "todo.pointer")
+      ? say(config?.language ?? DEFAULT_LANGUAGE, "todo.pointer")
       : null;
   seeded(root, "CLAUDE.md", template(kitRoot, "CLAUDE.md"), placed);
 
@@ -530,7 +530,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **済んでいることを頼まない。** 毎回同じ一覧を出すと、読まれなくなる。読まれ
   // なくなった一覧は、本当に要るものが出たときにも読まれない。
   const todo = [];
-  const t = (key) => say(config?.language ?? "ja", key);
+  const t = (key) => say(config?.language ?? DEFAULT_LANGUAGE, key);
 
   // **AIにできることを、ここに書かない。** この一覧は Claude Code を開く前に
   // 読まれるため、書いたものはすべて人の作業になる。置き場所の作成もシークレットの
@@ -565,7 +565,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // 無いものを頼むと、人は何をすればよいか分からないまま止まる（AUT-249）。
   if (config !== null && config !== undefined && !CLOSED_BY_REPO.has(config.ports.tracker)) {
     todo.push(
-      say(config.language ?? "ja", "todo.trackerLink", {
+      say(config.language ?? DEFAULT_LANGUAGE, "todo.trackerLink", {
         tracker: config.ports.tracker,
         repo: config.ports.repo,
       }),
@@ -596,7 +596,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   const left = leftBehind(root, previous, plan.writes);
   if (left.length > 0) {
     notes.push(
-      say(config?.language ?? "ja", "note.leftBehind", { paths: left.map((p) => `  ${p}`).join("\n") }),
+      say(config?.language ?? DEFAULT_LANGUAGE, "note.leftBehind", { paths: left.map((p) => `  ${p}`).join("\n") }),
     );
   }
 

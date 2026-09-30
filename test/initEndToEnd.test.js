@@ -71,7 +71,7 @@ test("autodrive-dev-kit がプロジェクトの中に置かれ、そこから�
   }
 
   const { out } = run(root, ["--root", ".", "--scope", "self"]);
-  assert.ok(out.includes("不変条件"), `判定が動いていない: ${out.slice(0, 200)}`);
+  assert.ok(out.includes("Invariant status"), `判定が動いていない: ${out.slice(0, 200)}`);
 });
 
 test("複製した時点のバージョンが、置かれた先に残る", () => {
@@ -134,7 +134,7 @@ test("記録が無い状態でも、判定は落ちずに何が足りないか�
   const root = initialized();
   const { out } = run(root, ["--root", ".", "--scope", "self"]);
 
-  assert.ok(out.includes("テレメトリが記録されること"), out.slice(0, 300));
+  assert.ok(out.includes("Telemetry is being recorded"), out.slice(0, 300));
   // 資格情報が無い状態で、それと分かること。**黙って通らない。**
   assert.ok(out.length > 0);
 });
@@ -393,9 +393,9 @@ function committedAndJudged(extra = () => {}) {
 test("init した一式をコミットしただけでは、委譲範囲の判定が落ちない", () => {
   const { out } = committedAndJudged();
 
-  const section = out.slice(out.indexOf("委譲範囲の変更が履歴に残ること"));
+  const section = out.slice(out.indexOf("Delegation changes stay in the history"));
   assert.ok(
-    out.includes("[有効] 委譲範囲の変更が履歴に残ること"),
+    out.includes("[active] Delegation changes stay in the history"),
     `置いただけで落ちている:\n${section.slice(0, 400)}`,
   );
   // **何を見てそう言っているかを出す。** 通ったことだけでは、見ていないのと区別できない。
@@ -416,8 +416,8 @@ test("委譲範囲を動かした変更は、履歴が無ければ落ちる", ()
   });
 
   assert.ok(
-    out.includes("[要対応] 委譲範囲の変更が履歴に残ること"),
-    `動かしたのに落ちていない:\n${out.slice(out.indexOf("委譲範囲"), out.indexOf("委譲範囲") + 400)}`,
+    out.includes("[unresolved] Delegation changes stay in the history"),
+    `動かしたのに落ちていない:\n${out.slice(out.indexOf("Delegation changes"), out.indexOf("Delegation changes") + 400)}`,
   );
 });
 
@@ -444,7 +444,7 @@ test("動かした変更を履歴に書けば、通る", () => {
   });
 
   assert.ok(
-    out.includes("[有効] 委譲範囲の変更が履歴に残ること"),
-    `履歴を書いても通らない:\n${out.slice(out.indexOf("委譲範囲"), out.indexOf("委譲範囲") + 400)}`,
+    out.includes("[active] Delegation changes stay in the history"),
+    `履歴を書いても通らない:\n${out.slice(out.indexOf("Delegation changes"), out.indexOf("Delegation changes") + 400)}`,
   );
 });

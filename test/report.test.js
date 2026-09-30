@@ -36,6 +36,7 @@ test("状態の名前が、定義のとおりに出る", () => {
     ],
     repos,
     "self",
+    "ja",
   );
 
   assert.match(out, /\[有効\] {4}テレメトリが記録されること|\[有効\] テレメトリが記録されること/);
@@ -52,24 +53,24 @@ test("状態の名前が、定義のとおりに出る", () => {
 // **状態の不在ではなく、いま何であるかを言う。** 「未有効」は4つの状態のどれでも
 // ない（定義 v0.12 の CHANGELOG）。
 test("状態の不在を名前にしない", () => {
-  const out = renderText([resultWith(SUBSTITUTED, "何か")], repos, "self");
+  const out = renderText([resultWith(SUBSTITUTED, "何か")], repos, "self", "ja");
   assert.equal(out.includes("未有効"), false, out);
   assert.ok(out.includes("[代替]"), out);
 });
 
 // **失敗は要対応だけである**（定義§9の立ち上げ期の例外）。
 test("代替は失敗として出さない", () => {
-  const ok = renderText([resultWith(SUBSTITUTED, "何か")], repos, "self");
+  const ok = renderText([resultWith(SUBSTITUTED, "何か")], repos, "self", "ja");
   assert.equal(ok.includes("失敗:"), false, ok);
 
-  const ng = renderText([resultWith(UNSUBSTITUTED, "何か")], repos, "self");
+  const ng = renderText([resultWith(UNSUBSTITUTED, "何か")], repos, "self", "ja");
   assert.ok(ng.includes("失敗:"), ng);
   // 何が失敗なのかを言い添える。**状態の名前だけでは、何をすればよいか分からない。**
   assert.ok(ng.includes("肩代わりの記録が無い"), ng);
 });
 
 test("見出しが、何を判定したかを言う", () => {
-  const out = renderText([resultWith(ACTIVE, "何か")], repos, "self");
+  const out = renderText([resultWith(ACTIVE, "何か")], repos, "self", "ja");
   assert.ok(out.startsWith("不変条件の状態"), out.slice(0, 40));
 });
 
@@ -83,10 +84,12 @@ test("英語の設定なら、判定の出力も英語になる", () => {
   assert.ok(!/不変条件|有効/.test(out.split("observed")[0]), `枠が日本語のまま: ${out}`);
 });
 
-test("既定は日本語のまま", () => {
+// **既定は英語**（AUT-270、人の判断）。定義と kit を全面英語にしたため、選んでいない
+// 場所には英語で出す。日本語は、選んだときにだけ出す。
+test("既定は英語", () => {
   const out = renderText([resultWith(ACTIVE, "telemetry_recorded")], repos, "self");
-  assert.match(out, /^不変条件の状態/);
-  assert.match(out, /\[有効\] テレメトリが記録されること/);
+  assert.match(out, /^Invariant status/, out.slice(0, 80));
+  assert.match(out, /\[active\] Telemetry is being recorded/, out);
 });
 
 // **観測の中身は英語である**（AUT-264）。日本語の出力では、黙って混ぜずにそう断る。
@@ -108,7 +111,7 @@ test("観測が英語であることを、日本語の出力では断る", () =>
 
 // **名前の出どころは1つ。** 2か所に置くと、片方だけ古くなる。
 test("不変条件の名前が、定義の語彙と揃っている", () => {
-  const out = renderText([resultWith(UNSUBSTITUTED, "boundary_change_logged")], repos, "self");
+  const out = renderText([resultWith(UNSUBSTITUTED, "boundary_change_logged")], repos, "self", "ja");
   assert.match(out, /委譲範囲の変更が履歴に残ること/, "定義 v0.14 の語彙になっていない");
   assert.ok(!out.includes("境界変更"), `旧名が残っている: ${out}`);
 });

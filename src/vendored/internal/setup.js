@@ -17,7 +17,7 @@ import { basename, join, resolve } from "node:path";
 import { TEMPLATES_DIR, VENDOR_DIR, init } from "./init.js";
 import { manifestPath, readPlacedPorts } from "./manifest.js";
 import { credentialsFor } from "./credentials.js";
-import { LANGUAGES, say } from "./messages.js";
+import { LANGUAGES, say, DEFAULT_LANGUAGE } from "./messages.js";
 
 import {
   CONFIG_FILE,
@@ -106,11 +106,11 @@ export const LANGUAGE_QUESTION = {
   ask: `${say("ja", "ask.language")} / ${say("en", "ask.language")}`,
   why: `${say("ja", "ask.language.why")}\n  ${say("en", "ask.language.why")}`,
   choices: LANGUAGES.map((l) => ({ value: l, label: say(l, `ask.language.${l}`) })),
-  recommended: "ja",
+  recommended: DEFAULT_LANGUAGE,
 };
 
 /** 既定の言語で聞くこと。**古い呼び出しのために残す。** */
-export const QUESTIONS = questionsFor("ja");
+export const QUESTIONS = questionsFor(DEFAULT_LANGUAGE);
 
 
 /**

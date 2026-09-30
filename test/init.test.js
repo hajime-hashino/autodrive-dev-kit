@@ -197,7 +197,7 @@ test("前のバージョンの CI 定義が残っていたら、消さずに知�
   const r = init(root, KIT);
   assert.ok(existsSync(stale), "人の判断を経ずに消している");
   assert.ok(
-    r.todo.some((t) => t.includes("verify.yml") && t.includes("削除")),
+    r.todo.some((t) => t.includes("verify.yml") && t.includes("Delete")),
     r.todo.join(" / "),
   );
   assert.ok(existsSync(join(root, ".github", "workflows", "invariants.yml")), "新しい定義を置いていない");

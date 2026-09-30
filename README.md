@@ -71,7 +71,7 @@ export PATH="$PATH:<where you keep this reference implementation>/bin"
 autodrive-dev-kit init
 ```
 
-It asks about your setup. **The first question is your language** (日本語 / English). Each question shows its options and a recommendation, so type a number or just press Enter. Answers are saved to `autodrive.json` and you are not asked again.
+It asks about your setup. **The first question is your language** (日本語 / English; English by default). Each question shows its options and a recommendation, so type a number or just press Enter. Answers are saved to `autodrive.json` and you are not asked again.
 
 **That language setting only affects setup.** During development the AI speaks whatever language you speak.
 

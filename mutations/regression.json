@@ -63,8 +63,8 @@
   {
     "name": "AUT-135 英語の設定を読まない",
     "file": "src/vendored/internal/main.js",
-    "from": "readConfig(values.root).config?.language ?? \"ja\"",
-    "to": "\"ja\""
+    "from": "readConfig(values.root).config?.language ?? DEFAULT_LANGUAGE",
+    "to": "DEFAULT_LANGUAGE"
   },
   {
     "name": "AUT-135 観測が日本語だと断らない",
@@ -937,5 +937,12 @@
     "from": "  if (renamedTo === undefined) return result;",
     "to": "  if (renamedTo === undefined || true) return result;",
     "why": "2つの名前が生き続ける"
+  },
+  {
+    "name": "AUT-270 既定の言語を日本語に戻す",
+    "file": "src/vendored/internal/messages.js",
+    "from": "export const DEFAULT_LANGUAGE = \"en\";",
+    "to": "export const DEFAULT_LANGUAGE = \"ja\";",
+    "why": "何も選ばなかった人、構成を持たない場所に日本語が出る。定義と kit は英語が正である"
   }
 ]
