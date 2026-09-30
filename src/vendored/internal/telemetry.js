@@ -1,5 +1,7 @@
 /** テレメトリ（JSONL）の読取。 */
 
+import { canonicalValue } from "./ports/telemetry.js";
+
 
 /** 帰属できなかった記録の置き場。作業単位を解決できない場合だけここへ落ちる。 */
 export const UNATTRIBUTED_FILE = "unattributed.jsonl";
@@ -27,7 +29,12 @@ export function loadEvents(repos) {
         if (line.trim() === "") return;
         try {
           const parsed = JSON.parse(line);
-          events.push({ ...parsed, source: `${repo.name}/telemetry/${name}` });
+          // **前の版の日本語の値を、英語へ揃えて読む**（AUT-267）。書き直さずに読み替える。
+          // 記録そのものは遡って書き換えない（定義§6）。
+          const read = { ...parsed, source: `${repo.name}/telemetry/${name}` };
+          if ("stop_type" in read) read.stop_type = canonicalValue(read.stop_type);
+          if ("cause" in read) read.cause = canonicalValue(read.cause);
+          events.push(read);
         } catch (error) {
           const why = error instanceof Error ? error.message : String(error);
           broken.push(`${repo.name}/${name}:${index + 1} cannot be read as JSON (${why})`);

@@ -53,7 +53,8 @@ test("停止を記録すると、必須属性がアダプタ側で付く", () =>
   assert.equal(event.type, "stop");
   assert.equal(event.stop_kind, "approval_required");
   // **種別と別に持つ。** 種別は「何について」、これは「減らす対象か」（定義§6 v0.11）。
-  assert.equal(event.stop_type, "手戻り");
+  // **前の版の日本語の値で打っても、英語で書く**（AUT-267）。
+  assert.equal(event.stop_type, "rework");
   assert.equal(event.work_item_id, "AUT-12");
   assert.equal(event.model, "claude-opus-5");
   // **固定の値と比べない。** バージョンはファイルから読むようになった。ここに literal を
@@ -82,7 +83,7 @@ test("発見された工程が無ければ手戻りとして記録し、原因�
   );
   const [event] = readEvents(join(r, "kit", "telemetry", "AUT-12.jsonl"));
   assert.equal(event.type, "rework");
-  assert.equal(event.cause, "設計のズレ");
+  assert.equal(event.cause, "design-drift");
 });
 
 test("定義に無い原因は受け付けない", () => {
@@ -205,6 +206,34 @@ test("作業ログは、ID を省くと着手中の作業単位へ書く", async
   const res = await trackerRun(["作業ログを追記する", "--text", "問い: A か B か / 答え: B"], r, t);
   assert.equal(res.code, 0, res.output);
   assert.deepEqual(notes, [["AUT-31", "問い: A か B か / 答え: B"]]);
+});
+
+// **英語の名前が正であり、前の版の日本語の名前も受ける**（AUT-267）。日本語で
+// 呼ばれたら、新しい名前を出す。黙って受けると、2つの名前が生き続ける。
+test("英語の名前で動き、日本語の名前なら新しい名前を案内する", async () => {
+  const r = withWorkItem("AUT-31", "kit");
+  const notes = [];
+  const t = { ...fakeTracker(), async note(id, text) { notes.push([id, text]); } };
+  const en = await trackerRun(["append-to-work-log", "--text", "a"], r, t);
+  assert.equal(en.code, 0, en.output);
+  assert.equal(en.output.includes("renamed"), false, "正の名前で案内を出している");
+  const ja = await trackerRun(["作業ログを追記する", "--text", "b"], r, t);
+  assert.equal(ja.code, 0, ja.output);
+  assert.match(ja.output, /has been renamed to "append-to-work-log"/, ja.output);
+  assert.deepEqual(notes.map(([, text]) => text), ["a", "b"]);
+
+  const tr = root();
+  const stop = telemetryRun(["record-stop", "--kind", "k", "--type", "input", "--detail", "d", "--root", tr], tr);
+  assert.equal(stop.output.includes("renamed"), false, stop.output);
+  const old = telemetryRun(["停止を記録する", "--kind", "k", "--type", "入力", "--detail", "d", "--root", tr], tr);
+  assert.match(old.output, /has been renamed to "record-stop"/, old.output);
+});
+
+// **前の版の日本語の値は、英語へ直して受ける。知らない値は受けない。**
+test("日本語の原因は英語へ直して受け、知らない原因は受けない", () => {
+  const r = root();
+  assert.equal(telemetryRun(["record-rework", "--target", "x", "--detail", "y", "--cause", "implementation-bug", "--root", r], r).code === 2, false);
+  assert.equal(telemetryRun(["record-rework", "--target", "x", "--detail", "y", "--cause", "思いつき", "--root", r], r).code, 2);
 });
 
 test("着手中の作業単位が無ければ、どこにも書かずに止まる", async () => {
@@ -354,7 +383,7 @@ for (const state of ["started", "done", "canceled"]) {
     assert.equal(res.code, 2, res.output);
     assert.deepEqual(t.revised, [], "断ったのに書き換えている");
     // **行き先まで出す。** 断るだけでは、訂正のしようが分からない。
-    assert.match(res.output, /作業ログを追記する/, res.output);
+    assert.match(res.output, /append-to-work-log/, res.output);
   });
 }
 
@@ -379,6 +408,6 @@ test("作業単位が無ければ、そう言う", async () => {
 test("使い方に、本文を直す操作と着手前の制限が出る", async () => {
   const { output } = await trackerRun([], root(), fakeTracker());
 
-  assert.match(output, /本文を直す/);
+  assert.match(output, /edit-work-item-body/);
   assert.match(output, /before work starts/, output);
 });

@@ -1,0 +1,1 @@
+{"ts":"2026-09-30T03:47:32.572Z","work_item_id":"AUT-267","model":"claude-opus-5-5","kit_version":"0.12.25","emitter":"adapter","type":"stop","stop_kind":"記録の値の言語","stop_type":"入力","detail":"AUT-267 記録に書き込む値（停止の種類・手戻りの原因）を英語に切り替えるかを人に求めた。記録は遡って書き換えられないため、切り替えると混在が戻せない。推奨は日本語のまま","resolved":false}

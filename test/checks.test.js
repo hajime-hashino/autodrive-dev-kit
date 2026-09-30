@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { loadEvents } from "../src/vendored/internal/telemetry.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
@@ -758,10 +759,10 @@ function observed(events) {
 
 test("停止は2種類に分けて数える", () => {
   const lines = observed(
-    stopped(["入力", "見え方の決定"], ["手戻り", "承認で差し戻し"], ["入力", "見え方の決定"]),
+    stopped(["input", "見え方の決定"], ["rework", "承認で差し戻し"], ["input", "見え方の決定"]),
   );
-  assert.ok(lines[0]?.includes("入力 input 2"), lines.join(" / "));
-  assert.ok(lines[0]?.includes("手戻り rework 1"), lines.join(" / "));
+  assert.ok(lines[0]?.includes("input 2"), lines.join(" / "));
+  assert.ok(lines[0]?.includes("rework 1"), lines.join(" / "));
 });
 
 // **繰り返し出ている種別が上に来る。** 定義§6の「繰り返し出る種別はスキル化・
@@ -769,7 +770,7 @@ test("停止は2種類に分けて数える", () => {
 test("同じ種別が繰り返し出ていることが分かる", () => {
   // **先に出た順ではなく、多い順。** 挿入順と件数順をわざと食い違わせる。
   const lines = observed(
-    stopped(["手戻り", "1回だけ"], ["入力", "多いほう"], ["入力", "多いほう"]),
+    stopped(["rework", "1回だけ"], ["input", "多いほう"], ["input", "多いほう"]),
   );
   const body = lines.slice(1);
   assert.ok(body[0]?.includes("多いほう") && body[0]?.includes(": 2"), body.join(" / "));
@@ -778,15 +779,37 @@ test("同じ種別が繰り返し出ていることが分かる", () => {
 // **区別の無い記録を欠陥として扱わない。** 種類は後から足したものであり、
 // 遡って分類すると解釈が入る（定義§6は遡及付与を禁じる）。
 test("種類を持たない古い記録は「区別なし」として残す", () => {
-  const lines = observed(stopped([undefined, "昔の記録"], ["入力", "いまの記録"]));
+  const lines = observed(stopped([undefined, "昔の記録"], ["input", "いまの記録"]));
   assert.ok(lines[0]?.includes("unclassified 1"), lines.join(" / "));
   assert.ok(lines.some((l) => l.includes("unclassified / 昔の記録")), lines.join(" / "));
 });
 
 // 区別が要らないときに、要らない言葉を出さない。
 test("すべてに種類が付いていれば、区別なしは出さない", () => {
-  const lines = observed(stopped(["入力", "a"], ["手戻り", "b"]));
+  const lines = observed(stopped(["input", "a"], ["rework", "b"]));
   assert.equal(lines[0]?.includes("unclassified"), false, lines[0]);
+});
+
+// **前の版の日本語の値を、英語と同じものとして数える**（AUT-267）。記録は遡って
+// 書き換えられないため、読む側で揃える。揃えないと同じ種類が2つに分かれる。
+test("日本語の値の記録を、英語の値と同じものとして読む", () => {
+  const lines = [
+    { type: "stop", stop_type: "入力", stop_kind: "a" },
+    { type: "stop", stop_type: "input", stop_kind: "a" },
+    { type: "rework", cause: "実装バグ" },
+    { type: "rework", cause: "implementation-bug" },
+    { type: "rework", cause: "自由に書いた原因" },
+  ].map((e) => JSON.stringify(e)).join("\n");
+  const repo = { name: "app", telemetryFiles: () => ["telemetry/AUT-1.jsonl"], read: () => lines };
+  const { events } = loadEvents([repo]);
+
+  assert.deepEqual(events.filter((e) => e.type === "stop").map((e) => e.stop_type), ["input", "input"]);
+  assert.deepEqual(
+    events.filter((e) => e.type === "rework").map((e) => e.cause),
+    ["implementation-bug", "implementation-bug", "自由に書いた原因"],
+    "知らない値まで書き換えている、または揃えていない",
+  );
+  assert.ok(observed(events)[0]?.includes("input 2"), observed(events).join(" / "));
 });
 
 test("停止が1件も無ければ、何も言わない", () => {

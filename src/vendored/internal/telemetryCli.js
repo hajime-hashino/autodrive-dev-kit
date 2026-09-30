@@ -10,34 +10,36 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
 import { defaultRoot, resolveWorkItem } from "./workItem.js";
-import { STOP_TYPES } from "./ports/telemetry.js";
+import { CAUSES, STOP_TYPES, canonicalValue } from "./ports/telemetry.js";
 
 
 const USAGE = `Leave records
 
-  telemetry 停止を記録する   --kind <kind> --type <入力|手戻り> --detail <details> [--resolved]      Record stop
-  telemetry 手戻りを記録する   --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]      Record rework
-  telemetry 抜き取り確認を記録する --area <area> --looked <range looked at> --not-looked <range not looked at>
-                                 --detail <details> [--fixed]      Record spot check
-  telemetry 委譲範囲の変更を記録する   --area <area> --from <state> --to <state> --detail <details> [--basis <ground>]      Record delegation change
+  telemetry record-stop               --kind <kind> --type <input|rework> --detail <details> [--resolved]
+  telemetry record-rework             --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]
+  telemetry record-spot-check         --area <area> --looked <range looked at> --not-looked <range not looked at>
+                                      --detail <details> [--fixed]
+  telemetry record-delegation-change  --area <area> --from <state> --to <state> --detail <details> [--basis <ground>]
 
   --root  Where records start from. Defaults to CLAUDE_PROJECT_DIR or the current directory
 
-The kind of stop (--type) is 「入力」 (input) or 「手戻り」 (rework). **Not every stop is something to reduce.**
+The kind of stop (--type) is input or rework. **Not every stop is something to reduce.**
 Stops to obtain input (hearing requirements, deciding how it looks, issuing credentials) are evidence that the method
 is working correctly. **Asking the same thing again is rework, not input.**
 
-The cause is one of 「要件のズレ」 (requirements drift), 「設計のズレ」 (design drift), 「実装バグ」 (implementation bug) (definition §6).
+The cause is one of requirements-drift, design-drift, implementation-bug (definition §6).
+The Japanese names and values of earlier versions (停止を記録する, 入力, 実装バグ, ...) are still accepted.
 Always record spot checks, even when nothing was corrected (definition §8).
 A fix with --found-in is recorded as a missed detection (definition §16).
 The work item ID, model, autodrive-dev-kit version, and write path are attached automatically. Do not pass them.`;
 
-// 語彙は定義§16の操作名で受ける。英語の別名も受けるが、正は日本語の操作名とする。
+// 語彙は定義§16の操作名で受ける。**英語の操作名をハイフンでつないだ形を正とする**
+// （AUT-267）。空白を含む名前は、打つたびに引用符が要る。
 export const OPERATIONS = {
-  停止を記録する: "stop",
-  手戻りを記録する: "fix",
-  抜き取り確認を記録する: "sampling",
-  委譲範囲の変更を記録する: "boundary",
+  "record-stop": "stop",
+  "record-rework": "fix",
+  "record-spot-check": "sampling",
+  "record-delegation-change": "boundary",
   stop: "stop",
   fix: "fix",
   sampling: "sampling",
@@ -57,11 +59,16 @@ export const OPERATIONS = {
  * いまの配布先は2つ（agent-playground / enaction-platform）。
  */
 export const RENAMED = {
-  修正を記録する: "手戻りを記録する",
-  境界変更を記録する: "委譲範囲の変更を記録する",
+  // 定義 v0.19 で英語になった（AUT-267）。既に配った先の autodrive.md と記録の手順が
+  // これらの名前で書かれている。
+  停止を記録する: "record-stop",
+  手戻りを記録する: "record-rework",
+  抜き取り確認を記録する: "record-spot-check",
+  委譲範囲の変更を記録する: "record-delegation-change",
+  // 定義 v0.14 より前の名前（AUT-133）。
+  修正を記録する: "record-rework",
+  境界変更を記録する: "record-delegation-change",
 };
-
-const CAUSES = ["要件のズレ", "設計のズレ", "実装バグ"];
 
 export function run(argv , root) {
   const given = argv[0] ?? "";
@@ -91,6 +98,10 @@ export function run(argv , root) {
     strict: true,
   });
 
+  // **前の版の日本語の値も受け、英語へ直して書く**（AUT-267）。
+  values.type = canonicalValue(values.type);
+  values.cause = canonicalValue(values.cause);
+
   const detail = values.detail ?? "";
   if (detail.trim() === "") return { output: "--detail is required", code: 2 };
   if (values.cause !== undefined && !CAUSES.includes(values.cause)) {
@@ -107,10 +118,10 @@ export function run(argv , root) {
       return {
         output:
           `--type must be one of ${STOP_TYPES.join(" / ")}\n\n` +
-          "  入力 (input)     hearing what to build, deciding how it looks, agreeing on the order, issuing credentials\n" +
-          "                   the method is working correctly. Not something to reduce\n" +
-          "  手戻り (rework)  the understanding was different, something has to be rebuilt, it was sent back at approval\n" +
-          "                   something to reduce\n\n" +
+          "  input   hearing what to build, deciding how it looks, agreeing on the order, issuing credentials\n" +
+          "          the method is working correctly. Not something to reduce\n" +
+          "  rework  the understanding was different, something has to be rebuilt, it was sent back at approval\n" +
+          "          something to reduce\n\n" +
           "**Asking the same thing again is rework, not input.**",
         code: 2,
       };

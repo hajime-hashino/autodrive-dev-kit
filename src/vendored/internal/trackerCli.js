@@ -18,26 +18,29 @@ import { STATE_DIR, defaultRoot, resolveWorkItem } from "./workItem.js";
 
 const USAGE = `Handle work items
 
-  tracker 作業単位を取得する [<ID>]                     Get work item
-  tracker 作業単位を起票する --title <title> --body <body>   File work item
-  tracker ステータスを進める <ID> --to <state> [--repo <target repository>]   Advance status
-  tracker 作業ログを追記する [<ID>] --text <text>        Append to work log. Without an ID, to the work item currently started
-  tracker 本文を直す <ID> --body <body>                  Edit work item body
+  tracker get-work-item [<ID>]
+  tracker file-work-item --title <title> --body <body>
+  tracker advance-status <ID> --to <state> [--repo <target repository>]
+  tracker append-to-work-log [<ID>] --text <text>   Without an ID, to the work item currently started
+  tracker edit-work-item-body <ID> --body <body>
 
   States: backlog / todo / started / done / canceled
   The body can be edited only before work starts (backlog / todo). Corrections after
-  work starts are made with "作業ログを追記する" (Append to work log).
+  work starts are made with append-to-work-log.
   --repo is required when advancing to started. It is where records are written.
 
 Credentials are read from the environment variable LINEAR_API_KEY. If there are several targets,
-specify one with AUTODRIVE_TRACKER_TEAM.`;
+specify one with AUTODRIVE_TRACKER_TEAM.
 
+The Japanese names of earlier versions (作業単位を起票する, 作業ログを追記する, ...) are still accepted.`;
+
+// **英語の操作名をハイフンでつないだ形を正とする**（AUT-267）。
 export const OPERATIONS = {
-  作業単位を取得する: "get",
-  作業単位を起票する: "create",
-  ステータスを進める: "advance",
-  作業ログを追記する: "note",
-  本文を直す: "revise",
+  "get-work-item": "get",
+  "file-work-item": "create",
+  "advance-status": "advance",
+  "append-to-work-log": "note",
+  "edit-work-item-body": "revise",
   get: "get",
   create: "create",
   advance: "advance",
@@ -47,8 +50,15 @@ export const OPERATIONS = {
 
 /** 前の名前。**当面は受け付ける。** 理由は telemetryCli.js の RENAMED に書いた。 */
 export const RENAMED = {
-  状態を進める: "ステータスを進める",
-  経過を追記する: "作業ログを追記する",
+  // 定義 v0.19 で英語になった（AUT-267）。
+  作業単位を取得する: "get-work-item",
+  作業単位を起票する: "file-work-item",
+  ステータスを進める: "advance-status",
+  作業ログを追記する: "append-to-work-log",
+  本文を直す: "edit-work-item-body",
+  // さらに前の名前。
+  状態を進める: "advance-status",
+  経過を追記する: "append-to-work-log",
 };
 
 export function markerPath(root) {
@@ -84,7 +94,19 @@ export function clearMarker(root , workItemId) {
   return true;
 }
 
-export async function run(
+/**
+ * **古い名前で呼ばれたら、新しい名前を出す**（AUT-267）。黙って受け入れると、いつまでも
+ * 2つの名前が生き続ける。telemetry と同じ扱いにする。
+ */
+export async function run(argv , root , tracker ) {
+  const given = argv[0] ?? "";
+  const result = await dispatch(argv, root, tracker);
+  const renamedTo = RENAMED[given];
+  if (renamedTo === undefined) return result;
+  return { ...result, output: `${result.output}\n("${given}" has been renamed to "${renamedTo}". Use that from now on)` };
+}
+
+async function dispatch(
   argv ,
   root ,
   tracker ,
@@ -154,7 +176,7 @@ export async function run(
           `${current.id} is ${current.state}, so its body cannot be edited` +
           ` (it can be edited in ${REVISABLE_STATES.join(" / ")}).\n` +
           "**After work starts, the body is the record of \"what was asked for.\"**\n" +
-          `Put corrections in the work log: tracker 作業ログを追記する ${current.id} --text "..."`,
+          `Put corrections in the work log: tracker append-to-work-log ${current.id} --text "..."`,
         code: 2,
       };
     }

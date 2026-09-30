@@ -15,9 +15,31 @@
  * **すべての停止が減らす対象ではない。** 一括りにすると、必要な対話まで削られる。
  * 実際にその誤読が起きた（AUT-77）。
  */
-export const STOP_TYPES = ["入力", "手戻り"];
+export const STOP_TYPES = ["input", "rework"];
 
-/** @typedef {"入力" | "手戻り"} StopType */
+/** @typedef {"input" | "rework"} StopType */
+
+/** 手戻りの原因の内訳（定義§6）。 */
+export const CAUSES = ["requirements-drift", "design-drift", "implementation-bug"];
+
+/**
+ * 前の版の日本語の値。
+ *
+ * **受け付けて、英語へ揃える**（AUT-267、人の判断）。記録は遡って書き換えられない
+ * （定義§6）ため、過去の記録には日本語の値が残る。**読む側でも同じ表で揃える。**
+ * 揃えないと、同じ種類が2つの名前に分かれて数えられる。
+ */
+export const LEGACY_VALUES = {
+  入力: "input",
+  手戻り: "rework",
+  要件のズレ: "requirements-drift",
+  設計のズレ: "design-drift",
+  実装バグ: "implementation-bug",
+};
+
+/** 前の版の値なら英語へ直す。それ以外はそのまま返す。 */
+export const canonicalValue = (value) =>
+  typeof value === "string" && Object.hasOwn(LEGACY_VALUES, value) ? LEGACY_VALUES[value] : value;
 
 
 /**
@@ -26,8 +48,8 @@ export const STOP_TYPES = ["入力", "手戻り"];
  * **記録の時点で種類を区別する**（定義§6）。後から分類し直すと、分類した側の
  * 解釈が入る。手戻りの原因の内訳を記録時に付けるのと同じ理由。
  *
- *   入力    何を作るかのヒアリング、見え方の決定、順序の合意、資格情報の発行
- *   手戻り  認識が違っていた、作り直しが要る、承認で差し戻された
+ *   input   何を作るかのヒアリング、見え方の決定、順序の合意、資格情報の発行
+ *   rework  認識が違っていた、作り直しが要る、承認で差し戻された
  *
  * **同じことを繰り返し聞くのは、入力ではなく手戻りである**（定義§6）。
  */

@@ -788,7 +788,7 @@
   {
     "name": "AUT-209 断るときに、訂正の行き先を出さない",
     "file": "src/vendored/internal/trackerCli.js",
-    "from": "          `Put corrections in the work log: tracker 作業ログを追記する ${current.id} --text \"...\"`,",
+    "from": "          `Put corrections in the work log: tracker append-to-work-log ${current.id} --text \"...\"`,",
     "to": "          \"\","
   },
   {
@@ -916,5 +916,26 @@
     "from": "if (!(section.includes(\"根拠\") || /\\bGround\\b/.test(section))) {",
     "to": "if (!section.includes(\"根拠\")) {",
     "why": "配布物の記入例は英語（Ground）。案内どおりに書いたプロジェクトで、外側ループが一周したことにならない"
+  },
+  {
+    "name": "AUT-267 読むときに、前の版の日本語の値を揃えない",
+    "file": "src/vendored/internal/telemetry.js",
+    "from": "          if (\"stop_type\" in read) read.stop_type = canonicalValue(read.stop_type);\n",
+    "to": "",
+    "why": "過去の記録の 入力 と、これからの input が別の種類として数えられる"
+  },
+  {
+    "name": "AUT-267 打たれた日本語の値を、英語へ直さない",
+    "file": "src/vendored/internal/telemetryCli.js",
+    "from": "  values.type = canonicalValue(values.type);\n",
+    "to": "",
+    "why": "配った先の手順（--type 入力）で記録が落ちる。記録は遡って付け直せない"
+  },
+  {
+    "name": "AUT-267 旧い名前で呼ばれても、新しい名前を案内しない",
+    "file": "src/vendored/internal/trackerCli.js",
+    "from": "  if (renamedTo === undefined) return result;",
+    "to": "  if (renamedTo === undefined || true) return result;",
+    "why": "2つの名前が生き続ける"
   }
 ]

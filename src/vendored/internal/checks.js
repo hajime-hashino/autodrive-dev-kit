@@ -306,7 +306,7 @@ export function observeStops(r , events) {
 
   const byType = (t) => stops.filter((e) => (e.stop_type ?? "unclassified") === t).length;
   r.observe(
-    `Stops: ${stops.length} (入力 input ${byType("入力")} / 手戻り rework ${byType("手戻り")}` +
+    `Stops: ${stops.length} (input ${byType("input")} / rework ${byType("rework")}` +
       `${byType("unclassified") > 0 ? ` / unclassified ${byType("unclassified")}` : ""})`,
   );
   // 多い順に出す。**繰り返し出ている種別が上に来る。**
