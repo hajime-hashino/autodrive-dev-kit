@@ -125,13 +125,13 @@ test("構成から作られていることを、テンプレートの中で伝�
 // 合わなくなる。**両方向で確かめる。**
 test("置かれたテンプレートが、構成に従う", () => {
   const without = project();
-  setup("init", without, KIT, { answer: (q) => (q.ask.includes("動くもの") ? NONE : null) });
+  setup("init", without, KIT, { answer: (q) => (q.port === "preview" ? NONE : null) });
   const a = readFileSync(join(without, ".env.example"), "utf8");
   assert.equal(a.includes("CLOUDFLARE_API_TOKEN"), false, "使わない配布先を求めている");
   assert.ok(a.includes("GH_TOKEN"));
 
   const with_ = project();
-  setup("init", with_, KIT, { answer: (q) => (q.ask.includes("動くもの") ? "cloudflare-workers" : null) });
+  setup("init", with_, KIT, { answer: (q) => (q.port === "preview" ? "cloudflare-workers" : null) });
   const b = readFileSync(join(with_, ".env.example"), "utf8");
   assert.ok(b.includes("CLOUDFLARE_API_TOKEN"), "使う配布先の資格情報を求めていない");
 

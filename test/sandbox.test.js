@@ -229,8 +229,11 @@ test("サンドボックスを置いたなら、開き直せと言う", () => {
   assert.ok(said.includes("Reopen in Container"), said);
   // **`.env` の後に言う。** 支度は環境を作るときに .env を読む。先に開き直すと、
   // 資格情報が入らないままサンドボックスができる。
-  assert.ok(said.indexOf(".env を作り") < said.indexOf("Reopen in Container"), said);
-  assert.ok(said.includes(".env を作ってから"), "順序の理由が書かれていない");
+  // **見つからない文言で比べない。** indexOf が -1 を返すと、比べる前に通ってしまう。
+  const env = said.indexOf("Create .env and fill in");
+  assert.notEqual(env, -1, said);
+  assert.ok(env < said.indexOf("Reopen in Container"), said);
+  assert.ok(said.includes("Create .env first"), "順序の理由が書かれていない");
 });
 
 // **Claude Code を開くのは、開き直した後である。**

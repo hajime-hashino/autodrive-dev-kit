@@ -7,6 +7,7 @@
  * 使い方は README.md、判定基準の全文は docs/invariants.md を参照。
  */
 
+import { DEFAULT_LANGUAGE } from "./messages.js";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.js";
@@ -201,7 +202,7 @@ export async function run(argv) {
 
   // **セットアップと同じ設定を使う。** 言語の設定が2つに割れると、片方だけ英語と
   // いう状態ができる（AUT-135）。構成が読めなければ日本語のまま出す。
-  const language = readConfig(values.root).config?.language ?? "ja";
+  const language = readConfig(values.root).config?.language ?? DEFAULT_LANGUAGE;
 
   // **追跡してはいけないものが追跡されていないか。**
   //

@@ -22,6 +22,14 @@
 /** @type {Language[]} */
 export const LANGUAGES = ["ja", "en"];
 
+/**
+ * 選ばれていないときの言語。
+ *
+ * **英語にする**（AUT-270、人の判断）。定義と kit を全面英語にしたため、何も選ばなかった人、
+ * 構成を持たない場所には英語で出す。日本語を選んだプロジェクトは、構成に残った値で日本語のまま。
+ */
+export const DEFAULT_LANGUAGE = "en";
+
 /** @typedef {"ja" | "en"} Language */
 
 /**
@@ -262,8 +270,8 @@ const MESSAGES = {
  * @returns {string}
  */
 export function say(language, key, values = {}) {
-  const table = MESSAGES[language] ?? MESSAGES.ja;
-  const text = table[key] ?? MESSAGES.ja[key] ?? `[${key}]`;
+  const table = MESSAGES[language] ?? MESSAGES[DEFAULT_LANGUAGE];
+  const text = table[key] ?? MESSAGES[DEFAULT_LANGUAGE][key] ?? `[${key}]`;
   return Object.entries(values).reduce((out, [k, v]) => out.replaceAll(`{${k}}`, v), text);
 }
 

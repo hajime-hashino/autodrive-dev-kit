@@ -42,7 +42,7 @@ test("node_modules の中からでも動く", () => {
   const { root, entry } = installed();
   const out = execFileSync(process.execPath, [entry, "init"], { cwd: root, encoding: "utf8" });
 
-  assert.ok(out.includes("土台を置いた"), out.slice(0, 300));
+  assert.ok(out.includes("Set up the foundation"), out.slice(0, 300));
   assert.ok(statSync(join(root, "autodrive")).isDirectory(), "autodrive-dev-kit が置かれていない");
 });
 
@@ -62,7 +62,7 @@ test("node_modules の中からでも、判定が動く", () => {
   } catch (error) {
     out = `${error.stdout ?? ""}${error.stderr ?? ""}`;
   }
-  assert.ok(out.includes("不変条件"), out.slice(0, 300));
+  assert.ok(out.includes("Invariant status"), out.slice(0, 300));
 });
 
 // **配るものに型注釈を残さない。** 1つでも残ると、その経路を通った瞬間に落ちる。

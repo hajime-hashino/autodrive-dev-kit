@@ -18,6 +18,7 @@
  * 行き先を作るためである（ADR 0004）。
  */
 
+import { DEFAULT_LANGUAGE } from "./messages.js";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -227,7 +228,7 @@ export function defaults() {
   return {
     version: 1,
     // **セットアップの表示だけに効く。** 開発の会話はAIが相手の言語で行う。
-    language: "ja",
+    language: DEFAULT_LANGUAGE,
     ports: {
       tracker: "linear",
       repo: "github",

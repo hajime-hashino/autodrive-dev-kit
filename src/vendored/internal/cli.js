@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { setup } from "./setup.js";
 
 import { terminalInterview } from "./adapters/interviewTerminal.js";
-import { say } from "./messages.js";
+import { say, DEFAULT_LANGUAGE } from "./messages.js";
 
 
 /**
@@ -71,7 +71,7 @@ export function renderSetup(mode , result) {
   if (result.message !== null) return { output: result.message, code: result.code };
 
   // **決まった言語で出す。** 決まっていなければ既定で出す。
-  const language = result.config?.language ?? "ja";
+  const language = result.config?.language ?? DEFAULT_LANGUAGE;
   const t = (key, values) => say(language, key, values);
 
   const lines = [t(`headline.${mode}`, { version: result.version ?? "?" }), ""];

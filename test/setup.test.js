@@ -119,9 +119,9 @@ test("init は聞いて、答えのとおりに構成を残す", () => {
   // **選んだことと、推奨のまま進んだことを見分けられる。** 混ぜると、選んだ
   // 覚えのないものが選んだように見える。
   const chosenLine = r.decisions.find((d) => d.startsWith(`${ask("preview").port}: `));
-  assert.ok(chosenLine?.includes("選んだもの"), chosenLine ?? "");
+  assert.ok(chosenLine?.includes("you chose this"), chosenLine ?? "");
   const notChosen = r.decisions.find((d) => d.startsWith(`${ask("sandbox").port}: `));
-  assert.equal(notChosen?.includes("選んだもの"), false, notChosen ?? "");
+  assert.equal(notChosen?.includes("you chose this"), false, notChosen ?? "");
 });
 
 // **選択肢が1つしか無いものは聞かない。** 答えを持たない問いに人の時間を使わせない。
@@ -151,14 +151,14 @@ test("聞かなかったものも、何になったかを出す", () => {
   for (const p of PORT_NAMES) {
     assert.ok(shown.includes(`${p}: `), `${p} が構成の出力に無い`);
   }
-  assert.ok(shown.includes("選択肢が1つ"), shown);
+  assert.ok(shown.includes("only one option"), shown);
 });
 
 // **黙って既定に倒れない。** 決めていないものが決めたものに見える。
 test("聞けなかったときは、推奨で進めたことを出す", () => {
   const r = run("init", project(), useRecommended);
   assert.ok(
-    r.decisions.some((d) => d.includes("推奨のまま")),
+    r.decisions.some((d) => d.includes("kept the recommendation")),
     r.decisions.join(" / "),
   );
 });
@@ -305,14 +305,14 @@ test("済んでいる手続きを、もう一度頼まない", () => {
 
   // **頼んでいる項目そのものを見る。** 部分一致で見ると、別の項目に同じ語が
   // 出てきたときに当たる。実際に「.env を作ってから開き直す」に当たった。
-  const asksForEnv = (r) => r.todo.some((t) => t.startsWith(".env を作り"));
+  const asksForEnv = (r) => r.todo.some((t) => t.startsWith("Create .env"));
   assert.equal(asksForEnv(first), true, first.todo.join(" / "));
 
   writeFileSync(join(root, ".env"), "LINEAR_API_KEY=x\n", "utf8");
   const again = run("update", root);
   assert.equal(asksForEnv(again), false, again.todo.join(" / "));
   // 入れ替えは、既に動いているプロジェクトに打つ。始め方の案内も要らない。
-  assert.equal(again.todo.some((t) => t.includes("はじめる")), false, again.todo.join(" / "));
+  assert.equal(again.todo.some((t) => t.includes("はじめる") || t.includes("let's start")), false, again.todo.join(" / "));
 });
 
 // **言語が en でも、始め方の案内を入れ替えで出さない**（AUT-264）。日本語の語で
@@ -413,7 +413,7 @@ test("問いは、理由と推奨を添えて出す", () => {
   for (const q of QUESTIONS) {
     const out = render(q);
     assert.ok(out.includes(q.why), `理由が出ていない: ${q.ask}`);
-    assert.ok(out.includes("← 推奨"), `推奨が見えない: ${q.ask}`);
+    assert.ok(out.includes("<- recommended"), `推奨が見えない: ${q.ask}`);
     assert.ok(q.why.length > 0, `理由が空: ${q.ask}`);
     assert.ok(q.choices.some((c) => c.value === q.recommended), `推奨が選択肢に無い: ${q.ask}`);
   }
@@ -759,7 +759,7 @@ test("GitHub Issues を選ぶと、接頭辞が構成に入る", () => {
   // **どう決まったかを出す。** 聞けたのか、案のままなのかが読めること。
   const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
   assert.ok(line !== undefined, r.decisions.join(" / "));
-  assert.ok(line.includes("推奨のまま"), `聞けなかったことが出ていない: ${line}`);
+  assert.ok(line.includes("kept the recommendation"), `聞けなかったことが出ていない: ${line}`);
 });
 
 // **聞く。** 案を書いておいて人が直す形にしない。ブランチ名と記録のファイル名に
@@ -772,7 +772,7 @@ test("接頭辞を聞き、答えを採る", () => {
 
   assert.equal(configOf(root)?.tracker.prefix, "APP", "答えを採っていない");
   const line = r.decisions.find((d) => d.startsWith("tracker.prefix: "));
-  assert.ok(line?.includes("選んだもの"), `選んだことが出ていない: ${line}`);
+  assert.ok(line?.includes("you chose this"), `選んだことが出ていない: ${line}`);
 });
 
 // **問いが形を持つこと。** 受け取る側に判断を残すと、そこが解釈になる。
@@ -792,7 +792,7 @@ test("接頭辞の問いは、形と案を持っている", () => {
   assert.equal(seen[0].pattern.test("too-long"), false, "何でも通る形になっている");
   assert.equal(seen[0].suggested, "AIEP", "案を出していない");
   // **何に使われるかを言う。** 後から変えられないものを、断りなく聞かない。
-  assert.ok(seen[0].why.includes("ブランチ名"), seen[0].why);
+  assert.ok(seen[0].why.includes("branch name"), seen[0].why);
 });
 
 // **Linear では聞かない。** 要らないことを聞かない。
@@ -959,12 +959,12 @@ test("変えたポートは、前の値を添えて出す", () => {
 
   const r = run("update", root);
   assert.equal(r.code, 0, r.message ?? "");
-  assert.ok(r.decisions.includes("preview: cloudflare-workers（変えた。前は none）"), r.decisions.join(" / "));
-  assert.ok(r.decisions.includes("tracker: linear（記録されたもの）"), r.decisions.join(" / "));
+  assert.ok(r.decisions.includes("preview: cloudflare-workers (changed; was none)"), r.decisions.join(" / "));
+  assert.ok(r.decisions.includes("tracker: linear (from the recorded configuration)"), r.decisions.join(" / "));
 
   // 2回目は、もう変わっていない。
   const again = run("update", root);
-  assert.ok(again.decisions.includes("preview: cloudflare-workers（記録されたもの）"), again.decisions.join(" / "));
+  assert.ok(again.decisions.includes("preview: cloudflare-workers (from the recorded configuration)"), again.decisions.join(" / "));
 });
 
 test("Tracker を変えたら、それまでの作業単位が移らないことを言う", () => {
@@ -974,11 +974,11 @@ test("Tracker を変えたら、それまでの作業単位が移らないこと
 
   const r = run("update", root);
   const said = r.notes.join("\n");
-  assert.ok(said.includes("linear から github-issues へ"), said);
-  assert.ok(said.includes("移っていない"), said);
+  assert.ok(said.includes("from linear to github-issues"), said);
+  assert.ok(said.includes("were not moved"), said);
 
   // 変えていなければ言わない。
-  assert.equal(run("update", root).notes.some((n) => n.includes("移っていない")), false);
+  assert.equal(run("update", root).notes.some((n) => n.includes("were not moved")), false);
 });
 
 test("変えて新しく要る資格情報だけを、発行してもらう", () => {
@@ -987,14 +987,14 @@ test("変えて新しく要る資格情報だけを、発行してもらう", ()
   writeFileSync(join(root, ".env"), "LINEAR_API_KEY=x\n", "utf8");
   rewritePorts(root, { preview: "cloudflare-workers" });
 
-  const asked = run("update", root).todo.find((t) => t.includes("新しく要る"));
+  const asked = run("update", root).todo.find((t) => t.includes("newly needed"));
   assert.notEqual(asked, undefined, "増えた資格情報を頼んでいない");
   assert.ok(asked.includes("CLOUDFLARE"), asked);
   // **既に持っているものまで取りに行かせない。**
   assert.equal(asked.includes("LINEAR_API_KEY"), false, asked);
   assert.equal(asked.includes("GH_TOKEN"), false, asked);
 
-  assert.equal(run("update", root).todo.some((t) => t.includes("新しく要る")), false);
+  assert.equal(run("update", root).todo.some((t) => t.includes("newly needed")), false);
 });
 
 test("前の構成で置いたものが残ったら、消さずに知らせる", () => {
@@ -1021,5 +1021,5 @@ test("前の構成の記録が無ければ、確かめていないと言う", ()
   writeFileSync(path, JSON.stringify(raw), "utf8");
 
   const r = run("update", root);
-  assert.ok(r.notes.some((n) => n.includes("確かめていない")), r.notes.join(" / "));
+  assert.ok(r.notes.some((n) => n.includes("were not checked")), r.notes.join(" / "));
 });

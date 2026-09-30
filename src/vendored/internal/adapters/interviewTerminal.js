@@ -12,7 +12,7 @@
  */
 
 import { closeSync, openSync, readSync } from "node:fs";
-import { say } from "../messages.js";
+import { say, DEFAULT_LANGUAGE } from "../messages.js";
 
 /**
  * 端末を、待てる形で開く。
@@ -135,7 +135,7 @@ export function accepted(question, line) {
  * **形を先に見せる。** 見せずに聞き直すと、何が悪かったのかが分からない。
  */
 export function renderValue(question) {
-  const language = question.language ?? "ja";
+  const language = question.language ?? DEFAULT_LANGUAGE;
   const lines = [``, question.ask, `  ${question.why}`, ``, `  ${question.shape}`];
   if (question.suggested !== null) {
     lines.push(`  ${say(language, "ask.suggested", { value: question.suggested })}`);
@@ -153,7 +153,7 @@ export function renderValue(question) {
 export function render(question) {
   // **言語は問いが持つ。** 出す側が決めると、言語を選ぶ前の問い（言語そのものを
   // 聞くもの）を出せない。
-  const language = question.language ?? "ja";
+  const language = question.language ?? DEFAULT_LANGUAGE;
   const lines = [``, question.ask, `  ${question.why}`, ``];
   question.choices.forEach((c, i) => {
     const mark = c.value === question.recommended ? say(language, "ask.recommended") : "";
@@ -207,7 +207,7 @@ export function terminalInterview(
 
   return {
     answer(question) {
-      const language = question.language ?? "ja";
+      const language = question.language ?? DEFAULT_LANGUAGE;
       return askUntilAccepted(
         () => render(question),
         (line) => chosen(question, line),
@@ -216,7 +216,7 @@ export function terminalInterview(
     },
 
     value(question) {
-      const language = question.language ?? "ja";
+      const language = question.language ?? DEFAULT_LANGUAGE;
       return askUntilAccepted(
         () => renderValue(question),
         (line) => accepted(question, line),
