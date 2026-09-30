@@ -478,7 +478,7 @@ that you made a mistake.** The most likely reading is "the allowlist entry is no
 If a destination that should be allowed is blocked, run this first.
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit sandbox 宛先を確かめる
+{{KIT}}/bin/autodrive-dev-kit sandbox check-destinations
 ```
 
 It lists the unreachable destinations. Most are fixed by re-placing the rules.

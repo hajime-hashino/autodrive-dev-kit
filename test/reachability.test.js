@@ -90,6 +90,17 @@ test("一覧を読んで測り、出られないものがあれば失敗で返�
   assert.match(output, /塞がる\.example/);
 });
 
+// **英語の名前が正であり、前の版の日本語の名前も受ける**（AUT-267）。
+test("英語の名前で動き、日本語の名前なら新しい名前を案内する", async () => {
+  const root = workspace("api.example\n");
+  const en = await run(["check-destinations"], root, async (h) => ok(h));
+  assert.equal(en.code, 0, en.output);
+  assert.equal(en.output.includes("renamed"), false, en.output);
+  const ja = await run(["宛先を確かめる"], root, async (h) => ok(h));
+  assert.equal(ja.code, 0, ja.output);
+  assert.match(ja.output, /has been renamed to "check-destinations"/, ja.output);
+});
+
 // **無いことを、出られないことと混ぜない。** 直す先が違う。
 test("一覧が無ければ、出られないとは言わない", async () => {
   const root = tempDir("autodrive-reach-none-");

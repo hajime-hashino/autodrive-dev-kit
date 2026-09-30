@@ -91,7 +91,7 @@ Keep two things.
 **The fact of stopping** is kept as a stop event (definition §6). The kind is `design_agreement`.
 
 ```sh
-telemetry 停止を記録する --kind design_agreement --type 入力 --detail "<what they were asked to decide>"
+telemetry record-stop --kind design_agreement --type input --detail "<what they were asked to decide>"
 ```
 
 **This is an "input" stop.** Having them decide how it looks is evidence that the method is working correctly, not something to reduce (definition §6 v0.11). What to reduce is rebuilding after they decided.

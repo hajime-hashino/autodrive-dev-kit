@@ -133,22 +133,24 @@ Picked up records left behind and put them on this branch:
 The vocabulary of definition §16 is used as the names of the entry points as it is. **Callers do not know implementation names.** When swapping, replace only what is inside `src/adapters/`.
 
 ```sh
-autodrive-dev-kit tracker 作業単位を取得する [<ID>]
-autodrive-dev-kit tracker 作業単位を起票する --title <title> --body <body>
-autodrive-dev-kit tracker ステータスを進める <ID> --to started --repo <target repository>
-autodrive-dev-kit tracker 作業ログを追記する <ID> --text <text>
-autodrive-dev-kit tracker 本文を直す <ID> --body <body>
+autodrive-dev-kit tracker get-work-item [<ID>]
+autodrive-dev-kit tracker file-work-item --title <title> --body <body>
+autodrive-dev-kit tracker advance-status <ID> --to started --repo <target repository>
+autodrive-dev-kit tracker append-to-work-log <ID> --text <text>
+autodrive-dev-kit tracker edit-work-item-body <ID> --body <body>
 
-autodrive-dev-kit telemetry 停止を記録する     --kind <kind> --type <入力|手戻り> --detail <details>
-autodrive-dev-kit telemetry 手戻りを記録する     --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]
-autodrive-dev-kit telemetry 抜き取り確認を記録する --area <area> --looked <range looked at> \
-                                     --not-looked <range not looked at> --detail <details> [--fixed]
-autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <area> --from <state> --to <state> --detail <details>
+autodrive-dev-kit telemetry record-stop              --kind <kind> --type <input|rework> --detail <details>
+autodrive-dev-kit telemetry record-rework            --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]
+autodrive-dev-kit telemetry record-spot-check        --area <area> --looked <range looked at> \
+                                                      --not-looked <range not looked at> --detail <details> [--fixed]
+autodrive-dev-kit telemetry record-delegation-change --area <area> --from <state> --to <state> --detail <details>
 ```
 
-**The commands still use the Japanese operation names of the definition before v0.19.** The mapping to the English names is in the definition's CHANGELOG (v0.19).
+**The operation names are joined with hyphens** (`record-stop` for "Record stop"), since names with spaces would need quoting every time (AUT-267). The Japanese names of the definition before v0.19 are still accepted; when one is used, the command says what it has been renamed to. The mapping is in the definition's CHANGELOG (v0.19).
 
-**The body can be edited only before work starts (`backlog` / `todo`)** (definition §16). After work starts, the body is the record of "what was asked for," and making it rewritable **makes it impossible to confirm "whether it was built as asked."** Corrections after work starts are made with "作業ログを追記する" (Append to work log). When it refuses, it also says where to go instead.
+**The values are in English too** (`--type input|rework`, `--cause requirements-drift|design-drift|implementation-bug`). Japanese values of earlier versions are accepted and written in English. **Records already written keep their Japanese values** (records are not rewritten retroactively, definition §6); the checks and the quality evidence read them as the same values.
+
+**The body can be edited only before work starts (`backlog` / `todo`)** (definition §16). After work starts, the body is the record of "what was asked for," and making it rewritable **makes it impossible to confirm "whether it was built as asked."** Corrections after work starts are made with `append-to-work-log`. When it refuses, it also says where to go instead.
 
 **There are two ways of stopping** (`--type`). Do not lump them together. Stops to obtain input (asking what to build, having them decide how it looks, asking for credentials to be issued) are **evidence that the method is working correctly, not something to reduce.** What to reduce is the rework side. **Asking the same thing again is rework, not input.**
 
@@ -160,7 +162,7 @@ Whether something was corrected is held as a boolean, not a count. As a count, a
 
 ### Starting is where linking begins
 
-`ステータスを進める --to started` writes the work item marker. Records from then on are linked to that work item. **If a record is produced without having started, `work_item_id` becomes `null` and `invariants` fails.** The fact of working without filing is detected without erasing it from the records.
+`advance-status --to started` writes the work item marker. Records from then on are linked to that work item. **If a record is produced without having started, `work_item_id` becomes `null` and `invariants` fails.** The fact of working without filing is detected without erasing it from the records.
 
 `--to done` / `--to canceled` removes the marker, so that records of another work item do not slip in.
 

@@ -244,15 +244,15 @@ it becomes unreadable which work they belong to.
 
 | What to record | When | Command |
 |---|---|---|
-| Stop events | When stopping to ask the human for a decision | `telemetry 停止を記録する` |
-| Rework and its cause | When redoing occurs | `telemetry 手戻りを記録する` |
-| Missed detections | When an error is found in a later stage or in production | `telemetry 手戻りを記録する --found-in` |
-| Spot checks | When the human looked at the working thing. **Record even if nothing was corrected** | `telemetry 抜き取り確認を記録する` |
-| Delegation changes | When `boundaries.yaml` was moved | `telemetry 委譲範囲の変更を記録する` |
+| Stop events | When stopping to ask the human for a decision | `telemetry record-stop` |
+| Rework and its cause | When redoing occurs | `telemetry record-rework` |
+| Missed detections | When an error is found in a later stage or in production | `telemetry record-rework --found-in` |
+| Spot checks | When the human looked at the working thing. **Record even if nothing was corrected** | `telemetry record-spot-check` |
+| Delegation changes | When `boundaries.yaml` was moved | `telemetry record-delegation-change` |
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit telemetry 停止を記録する   --kind <kind> --type <入力|手戻り> --detail <details>
-{{KIT}}/bin/autodrive-dev-kit telemetry 手戻りを記録する   --target <target> --detail <details> --cause <cause>
+{{KIT}}/bin/autodrive-dev-kit telemetry record-stop     --kind <kind> --type <input|rework> --detail <details>
+{{KIT}}/bin/autodrive-dev-kit telemetry record-rework   --target <target> --detail <details> --cause <cause>
 ```
 
 **Running `telemetry` alone prints the arguments.**
@@ -261,20 +261,20 @@ it becomes unreadable which work they belong to.
 
 | `--type` | What happened | Treatment |
 |---|---|---|
-| 入力 (input) | Asking what to build, having them decide the design and how it looks, agreeing on the order, asking for credentials to be issued | The method is working correctly. **Not something to reduce** |
-| 手戻り (rework) | The understanding was different, something has to be rebuilt, it was sent back at approval | **Something to reduce** |
+| input | Asking what to build, having them decide the design and how it looks, agreeing on the order, asking for credentials to be issued | The method is working correctly. **Not something to reduce** |
+| rework | The understanding was different, something has to be rebuilt, it was sent back at approval | **Something to reduce** |
 
 **Asking the same thing again is rework, not input.** Input obtained once is not being
 carried forward.
 
-The cause is one of 「要件のズレ」 (requirements drift), 「設計のズレ」 (design drift), or 「実装バグ」 (implementation bug). For errors found in a later stage,
+The cause is one of `requirements-drift`, `design-drift`, or `implementation-bug`. For errors found in a later stage,
 add `--found-in` (it is recorded as a missed detection).
 
 **When the human answers, leave the question and the answer on the work item.** The same goes for options tried and discarded (definition §16).
 Telemetry does not keep answers.
 
 ```sh
-{{KIT}}/bin/autodrive-dev-kit tracker 作業ログを追記する --text "Q: … / A: …"
+{{KIT}}/bin/autodrive-dev-kit tracker append-to-work-log --text "Q: … / A: …"
 ```
 
 ## Keeping design decisions
@@ -311,8 +311,8 @@ Command names use the words of the ports in definition §16. **Which implementat
 for each port is in `autodrive.json`.**
 If asked to change one, look up "Changing a port" in [autodrive-reference.md](autodrive-reference.md).
 
-**The commands still use the Japanese operation names** (such as `telemetry 停止を記録する` for "Record stop").
-The definition is now in English; the mapping is in its CHANGELOG (v0.19).
+The operation names of definition §16 are joined with hyphens (`record-stop` for "Record stop"). The Japanese
+names and values of earlier versions are still accepted, and the command says so when they are used.
 
 | Port | What it does |
 |---|---|

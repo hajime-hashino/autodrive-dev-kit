@@ -269,7 +269,7 @@ export async function run(
   if (item === null) {
     return fail([
       `Work item ${id} not found.`,
-      "File it before starting. Filing is done with `tracker 作業単位を起票する`.",
+      "File it before starting. Filing is done with `tracker file-work-item`.",
     ]);
   }
 
