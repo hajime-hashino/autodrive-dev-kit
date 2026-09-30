@@ -2,53 +2,53 @@
   "name": "{{NAME}}",
   "image": "mcr.microsoft.com/devcontainers/base:debian",
 
-  // このファイルはプロジェクトのものである。**足したいものは直接書いてよい。**
-  // kit は上書きしない（テンプレート側が変わったときは update が差分を言う）。
+  // This file belongs to the project. **Write what you want to add directly here.**
+  // The kit does not overwrite it (when the template changes, update reports the difference).
   //
-  // ただし下の3つ（runArgs / postStartCommand / remoteUser）は、外向き通信を
-  // 絞るのに要る。**外すと invariants が落ちる**（AUT-121、AUT-157）。
+  // But the three below (runArgs / postStartCommand / remoteUser) are needed to
+  // narrow outbound traffic. **Remove them and invariants fails** (AUT-121, AUT-157).
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
 
-  // 外向き通信を絞るために要る。これが無いと出口を閉じられない。
+  // Needed to narrow outbound traffic. Without it, the egress cannot be closed.
   "runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
 
-  // 環境を作り直しても認証と設定が残るようにする。
-  // ${devcontainerId} を含めることで、他のプロジェクトと混ざらない。
+  // Keep authentication and settings across rebuilds of the environment.
+  // Including ${devcontainerId} keeps it from mixing with other projects.
   "mounts": [
     "source=claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
   ],
 
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
-    // 機能フラグの取得を止める。許可する宛先を減らせる。
+    // Stop fetching feature flags. Reduces the destinations to allow.
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   },
 
-  // 支度は作ったときだけでよい。rc への追記も git の設定も、残る。
-  // **確認はここに置かない。** 出口を閉じるより前に走るため、必ず「効いていない」
-  // と誤って報告することになる（下記）。
+  // Setup only needs to run on creation. Additions to rc files and git settings persist.
+  // **Do not put the check here.** It runs before the egress is closed, so it would always
+  // falsely report "not in effect" (below).
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
-  // **出口を閉じるのは、起動のたびに行う。** iptables の規則はコンテナの
-  // ネットワーク名前空間に置かれるため、停止すると消える。postCreateCommand は
-  // 作ったときにしか走らないので、そこへ置くと**1回目の起動以降は隔離が無い。**
-  // 実際にそうなっていた（AUT-121）。
+  // **The egress is closed on every start.** iptables rules live in the container's
+  // network namespace, so they disappear when it stops. postCreateCommand runs only
+  // on creation, so placing it there means **no isolation from the first restart onward.**
+  // That is what actually happened (AUT-121).
   //
-  // 出口を閉じるには root が要る。エージェントは root では動かさない。
+  // Closing the egress needs root. The agent does not run as root.
   //
-  // **準備の確認は、閉じたあとに続けて走らせる。** postCreateCommand に置いて
-  // いた間、確認は毎回「出口制限が効いていない」と報告していた。**devcontainer は
-  // postCreate → postStart の順に走るため、確認の時点では必ず閉じていない。**
-  // 確認自身が「init-firewall.sh が走らなかったことに気づくための最後の網」と
-  // 書いているのに、閉じる前に置かれていた（AUT-169）。
+  // **The setup check runs right after closing.** While it sat in postCreateCommand,
+  // the check reported "the egress restriction is not in effect" every time. **devcontainer
+  // runs postCreate → postStart, so at check time it is always not yet closed.**
+  // The check itself says it is "the last net for noticing that init-firewall.sh did not run,"
+  // yet it was placed before closing (AUT-169).
   //
-  // **`|| true` を外さないこと。** 初回は .env がまだ無いのが正常であり、そこで
-  // 起動を失敗扱いにすると、中に入って直すより先に赤が出る。出口が閉じられな
-  // かった場合は init-firewall.sh 自身が 1 で落ちるので、そちらは隠れない。
+  // **Do not remove `|| true`.** On first start having no .env yet is normal, and treating
+  // the start as failed there shows red before you can get in and fix it. If the egress
+  // could not be closed, init-firewall.sh itself fails with 1, so that is not hidden.
   "postStartCommand": "sudo bash .devcontainer/init-firewall.sh && { bash .devcontainer/check-setup.sh || true; }",
   "remoteUser": "vscode",
 

@@ -72,7 +72,7 @@ test("ADR の索引を置き、既にあれば触らない", () => {
   const root = project();
   const r = init(root, KIT);
   assert.equal(placementOf(r, "docs/adr/README.md"), "seeded");
-  assert.ok(readFileSync(join(root, "docs", "adr", "README.md"), "utf8").includes("着手したら"));
+  assert.ok(readFileSync(join(root, "docs", "adr", "README.md"), "utf8").includes("when you start work"));
 
   writeFileSync(join(root, "docs", "adr", "README.md"), "# うちの索引\n", "utf8");
   const again = init(root, KIT);
