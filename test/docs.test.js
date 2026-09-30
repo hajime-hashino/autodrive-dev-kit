@@ -190,7 +190,7 @@ test("autodrive-dev-kit の入れ替えは、人が打つものではないと�
 // 失われる。README から外したものは docs/commands.md にある。
 test("参照実装を触る人向けの内容が、移した先にある", () => {
   const commands = readFileSync(join(KIT, "docs", "commands.md"), "utf8");
-  for (const kept of ["--enact", "--substitute", "終了コード", "作業単位マーカー", "record-tokens"]) {
+  for (const kept of ["--enact", "--substitute", "Exit codes", "work item marker", "record-tokens"]) {
     assert.ok(commands.includes(kept), `docs/commands.md に ${kept} が無い`);
   }
 });
@@ -512,19 +512,19 @@ const design = () => readFileSync(join(KIT, "docs", "design.md"), "utf8").replac
 // **どこで動くのかを書く。** 書いていなかったため、別環境だと読まれた。
 test("プレビューが検証環境の上に出ることを書く", () => {
   const text = design();
-  assert.ok(text.includes("プレビューは検証環境の上に出る"), "どこで動くのかが無い");
+  assert.ok(text.includes("Previews appear on top of the verification environment"), "どこで動くのかが無い");
   assert.ok(text.includes("--env staging"), "実際の出し方が無い");
 });
 
 // **見え方の確認を、公開の口実にしない。**
 test("確認のために公開しない、と書く", () => {
-  assert.ok(design().includes("見え方の確認のために公開しない"), "口実を塞いでいない");
+  assert.ok(design().includes("Do not publish just to check how it looks"), "口実を塞いでいない");
 });
 
 // **独自ドメインが要ると思わせない。** 要らないことを確かめてある。
 test("閉じたまま見せる手段があることを書く", () => {
   const text = design();
-  assert.ok(text.includes("独自ドメインを用意しなくても閉じられる"), "手段が無いと読める");
+  assert.ok(text.includes("keep it closed without preparing a custom domain"), "手段が無いと読める");
   assert.ok(text.includes("WebSocket"), "使えない場合の条件を書いていない");
 });
 
@@ -664,7 +664,7 @@ test("配る規約が、書き方の規約としてポート語彙を配らな�
 // **作る側の規約は、作る側の文書にある。** 消したのではなく、混ぜるのをやめただけ。
 test("差し替えられる形の規約は、参照実装の文書にある", () => {
   const commands = readFileSync(join(KIT, "docs", "commands.md"), "utf8");
-  assert.ok(commands.includes("呼び出し側は実装名を知らない"), "作る側の規約が無い");
+  assert.ok(commands.includes("Callers do not know implementation names"), "作る側の規約が無い");
   assert.ok(commands.includes("src/adapters/"), "どこを置き換えるのかが無い");
 });
 
@@ -698,11 +698,14 @@ test("2つの README が、同じものを指している", () => {
   assert.deepEqual(only(drop(links(ja)), drop(links(en))), [], "日本語版にだけあるリンク");
 });
 
-// **英語の読み手を、日本語の文書の前で放置しない。**
-test("日本語の文書しか無いことを、英語版が断っている", () => {
-  const en = READMES[0].text();
-  assert.ok(en.includes("written in Japanese"), "日本語であることを言っていない");
-  assert.ok(en.includes("in your language"), "どうすればよいかを言っていない");
+// **日本語の読み手を、英語の文書の前で放置しない**（AUT-265）。文書を英語にしたため、
+// 断る向きが逆になった。
+test("英語の文書しか無いことを、日本語版が断っている", () => {
+  const ja = READMES[1].text();
+  assert.ok(ja.includes("英語で書かれている"), "英語であることを言っていない");
+  assert.ok(ja.includes("日本語で説明する"), "どうすればよいかを言っていない");
+  // **英語版には、もう断ることが無い。** 残すと嘘になる。
+  assert.equal(READMES[0].text().includes("written in Japanese"), false, "英語版に古い断り書きが残っている");
 });
 
 test("互いを指している", () => {
@@ -813,10 +816,10 @@ test("図が、出口制限を閉じる仕掛けとして見せない", () => {
   const svg = readFileSync(join(KIT, "docs", "environment.svg"), "utf8");
   assert.ok(svg.includes("GUARDRAIL"), "図の該当箇所が読めていない。判定が空回りしている");
 
-  assert.equal(svg.includes("書き換えられない"), false, "**嘘が残っている**");
-  assert.ok(svg.includes("閉じる仕掛けではない"), "限界を書いていない");
+  assert.equal(svg.includes("書き換えられない") || svg.includes("cannot be rewritten"), false, "**嘘が残っている**");
+  assert.ok(svg.includes("not a mechanism that closes it"), "限界を書いていない");
   // 規約であって強制ではないことまで言う。**言わないと、有効だと読まれる。**
-  assert.ok(svg.includes("機械的な強制ではない"), "規約と強制の区別が無い");
+  assert.ok(svg.includes("not mechanical enforcement"), "規約と強制の区別が無い");
 });
 
 /**
@@ -957,7 +960,9 @@ test("参照実装の文書が、言い換えた語を使っていない", () =>
       if (!/\.(md|js)$/.test(entry.name)) continue;
       if (quoting.some((q) => rel.endsWith(q))) continue;
       for (const [n, line] of readFileSync(join(KIT, rel), "utf8").split("\n").entries()) {
-        if (line.includes("枝")) found.push(`${rel}:${n + 1}  ${line.trim().slice(0, 60)}`);
+        // **英語の言い換えも見る**（AUT-265）。文書を英語にしたため、「枝」だけを見ると
+        // 何も見ていない判定になる。
+        if (line.includes("枝") || /\btwigs?\b/i.test(line)) found.push(`${rel}:${n + 1}  ${line.trim().slice(0, 60)}`);
       }
     }
   };
@@ -1238,11 +1243,11 @@ test("中断して戻る道が、配ってある", () => {
 // 決めたのかが読めなくなる。**これから書くものに適用する。**
 test("ADR の書き方に、人の発言を引かないことが書いてある", () => {
   const body = readFileSync(join(KIT, "docs", "adr", "README.md"), "utf8");
-  assert.ok(body.includes("人の発言を、そのまま引かない"), "規約が書かれていない");
+  assert.ok(body.includes("Do not quote people's words verbatim"), "規約が書かれていない");
   // **数と事実は引いてよい。** 論拠を丸めると根拠が弱まる。
-  assert.ok(body.includes("数と事実は引いてよい"), "引いてよい範囲が書かれていない");
+  assert.ok(body.includes("Numbers and facts may be quoted"), "引いてよい範囲が書かれていない");
   // **過去は直さない。** 記録を書き換えない。
-  assert.ok(body.includes("過去の ADR は直さない"), "過去の扱いが書かれていない");
+  assert.ok(body.includes("Past ADRs are not rewritten for this"), "過去の扱いが書かれていない");
 });
 
 // **決めた回の ADR 自身が、それを守っていること。** 守っていない規約は配らない。

@@ -1,69 +1,69 @@
-# 品質管理
+# Quality management
 
-**この道具が、何を、どの手法で、どこまで確認するかを決めた記録である。**
+**This is the record of what this tool decided to check, by which method, and how far.**
 
-観点と箇所の一覧、ベースライン、決め方は `src/templates/autodrive.md`「品質管理」にある。
-**ここは決めた結果を置く場所。**
+The list of aspects and stages, the baseline, and how to decide are in `src/templates/autodrive.md` "Quality management."
+**This is where the decided results go.**
 
-## この道具が他と違うところ
+## How this tool differs from others
 
-**利用者は、この道具を入れるプロジェクトである。** 壊れた道具は、入れた先の全部に効く。
+**Its users are the projects that adopt this tool.** A broken tool affects everything it is put into.
 
-**本番で動くものが無い。** 配られた先で動く。したがって「本番監視」に当たるのは、
-**実物の作業場を毎日判定することである**（`.github/workflows/invariants.yml` の定期実行）。
+**Nothing runs in production.** It runs where it is distributed. So what corresponds to "production monitoring" is
+**judging the real workspace every day** (the scheduled run in `.github/workflows/invariants.yml`).
 
-**依存がゼロである**（[ADR 0001](adr/0001-implementation-language.md)）。依存の脆弱性検査は
-対象そのものが無い。
+**It has zero dependencies** ([ADR 0001](adr/0001-implementation-language.md)). For dependency vulnerability scanning,
+there is nothing to scan.
 
 ---
 
-## 確認していること
+## What is checked
 
-| 観点 | 箇所 | 手法 | どこまで見ているか |
+| Aspect | Stage | Method | How far it looks |
 |---|---|---|---|
-| ビジネス目的の達成 | 受入 | `initEndToEnd.test.js`、`packaging.test.js` | **素のディレクトリに置いて、判定が動くところまで。** `node_modules` の下からも動くことを見る（npx の経路） |
-| 機能 | 単体・結合 | `node --test`（565件） | 判定・配置・記録・着手・サンドボックス・配布物の記述 |
-| 機能 | **確認の仕掛け** | **変異テスト**（84件、`npm run mutate`） | **壊した実装でテストが落ちるか。** 通るテストは、何も見ていなくても通る |
-| セキュリティ | 静的 | 依存ゼロ（ADR 0001）、`tracked.js`（判定に組み込み） | **依存の脆弱性検査は、対象が無い。** 秘密の混入で見るのは2つ。ファイルとして置かれた場合（名前・ELF）と、**この道具が実際に使う鍵が値で書かれた場合。** それ以外の「それらしい文字列」は `tracked.js` では見ない（既製品の領分）。**このリポジトリでは、その既製品が動いている。** GitHub の Push protection が push の時点で止め、Secret Protection が履歴も含めて知らせる |
-| 信頼性 | 本番監視 | **毎日の横断判定**（06:00 JST） | 実物の4リポジトリを見る。記録・委譲範囲・提出の経路・記録の仕掛けが生きているか |
-| 保守性 | 静的 | **型検査**（`npm run typecheck`） | **実装のみ。** 暗黙の any は許している（引数の型が無い箇所が425ある）。**テストは対象外**（実行器の型が無く312件出る） |
-| 性能 | 手元 | **変異テストの所要時間**（`npm run mutate` が出す） | **全体と1件あたりを出すだけ。** 閾値は置かない。手元で 334 秒／1件 3.6 秒（89件、論理コア2）。**速くする手は打っていない** |
+| Achieving the business purpose | Acceptance | `initEndToEnd.test.js`, `packaging.test.js` | **Placing it in a bare directory, up to the checks running.** Also checks that it runs from under `node_modules` (the npx path) |
+| Functionality | Unit, integration | `node --test` (565 tests) | Checks, placement, records, starting work, sandbox, and the wording of what is distributed |
+| Functionality | **The checking mechanism** | **Mutation testing** (84, `npm run mutate`) | **Whether tests fail against a broken implementation.** A passing test passes even if it looks at nothing |
+| Security | Static | Zero dependencies (ADR 0001), `tracked.js` (built into the checks) | **For dependency vulnerability scanning, there is nothing to scan.** For leaked secrets, it looks at two things: when placed as files (names, ELF), and **when keys this tool actually uses are written as values.** Other "plausible strings" are not looked at by `tracked.js` (that is the job of off-the-shelf tools). **In this repository, those off-the-shelf tools are running.** GitHub's Push protection stops them at push time, and Secret Protection reports them including history |
+| Reliability | Production monitoring | **The daily cross-repository check** (06:00 JST) | Looks at the real four repositories. Whether records, the scope of delegation, the submission path, and the recording machinery are alive |
+| Maintainability | Static | **Type checking** (`npm run typecheck`) | **Implementation only.** Implicit any is allowed (425 places have no argument types). **Tests are excluded** (there are no types for the runner, producing 312 errors) |
+| Performance | Local | **Time taken by mutation testing** (printed by `npm run mutate`) | **Only prints the total and per-mutation time.** No threshold. Locally 334 seconds / 3.6 seconds each (89, 2 logical cores). **Nothing has been done to make it faster** |
 
-**「どこまで」を省略しないこと。** 手法の名前だけでは、全体を見ているのか1本だけなのかが
-分からない。**読む人は、書いていない範囲まで見ていると受け取る。**
+**Do not omit "how far."** The name of a method alone does not say whether it looks at everything or at a single path.
+**Readers take it that ranges not written are being looked at too.**
 
-## 確認しないと決めたこと
+## What was decided not to check
 
-| 何を | なぜ空けたか | 見直す条件 |
+| What | Why it was left open | Condition for revisiting |
 |---|---|---|
-| 依存の脆弱性検査 | **配られるものの依存がゼロである**（ADR 0001）。開発時の依存は4つで、発行元は2つ、どれもリーフ | `dependencies` を1つでも入れるとき |
-| 引数の型（暗黙の any） | 425箇所ある。**一度に揃えると、型注釈を書くだけの作業になる。** 本当の不整合は残り68件のほうにあった | 新しく書くところから揃えていく |
-| テストの型検査 | 575件出るうち312件は**テスト実行器の型が無い**ことによる。**実装の不整合が埋もれる** | 実装側が落ち着いてから |
-| 配られた先での動作監視 | 配られた先はプロジェクトのものであり、こちらから見えない。**見えないものを見ていると書かない** | 配布の記録を集める仕組みを持ったとき |
+| Dependency vulnerability scanning | **What is distributed has zero dependencies** (ADR 0001). There are 4 development-time dependencies, from 2 publishers, all leaves | When even one `dependencies` entry is added |
+| Argument types (implicit any) | There are 425 places. **Fixing them all at once becomes an exercise in writing type annotations.** The real mismatches were in the remaining 68 | Align them starting from newly written code |
+| Type checking of tests | Of 575 errors, 312 come from **the test runner having no types.** **Mismatches in the implementation get buried** | Once the implementation side has settled |
+| Monitoring behavior where it is distributed | Where it is distributed belongs to the project and cannot be seen from here. **Do not write that something is watched when it cannot be seen** | When there is a mechanism to collect records from where it is distributed |
 
-## 戻せないもの
+## What cannot be undone
 
-| 何が起きうるか | 検出しているもの | 誰が発火するか |
+| What could happen | What detects it | Who triggers |
 |---|---|---|
-| 資格情報が漏れる | `.env`・鍵ファイル・コアダンプが追跡されれば止まる。**この道具が使う鍵（`ghp_`・`lin_api_`・`sk-ant-` など）が値で書かれた場合も止まる。** ただし**知らない形の鍵は捕まえない** | — |
-| 壊れた版が配られる | 提出のたびに全テストと変異テスト。**タグは統合のあとに CI が打つ**（ADR 0006） | 人（統合が引き金） |
-| 配られた先の設定を壊す | 管理下のファイルは手で変えられていれば**何も書かずに止まる**（`manifest.js`） | — |
-| 判定を緩める変更が入る | **規約で人の承認を要するとしているだけ。** 機械的な検出は無い | 人 |
+| Credentials leak | It stops if `.env`, key files, or core dumps are tracked. **It also stops if keys this tool uses (`ghp_`, `lin_api_`, `sk-ant-`, etc.) are written as values.** But **keys of unknown shapes are not caught** | — |
+| A broken version is distributed | All tests and mutation tests on every submission. **Tags are cut by CI after integration** (ADR 0006) | Human (integration is the trigger) |
+| Settings where it is distributed get broken | If managed files were changed by hand, it **writes nothing and stops** (`manifest.js`) | — |
+| A change that loosens the checks gets in | **Only the convention that it requires human approval.** There is no mechanical detection | Human |
 
-**無いなら「無い」と書くこと。** 空欄は「問題なし」と読まれる。
+**If there is none, write "none."** A blank is read as "no problem."
 
-**「無い」と「確認しないと決めた」は違う。** 上の表の「無い」は、
-**やると決めたが、まだ作っていないものである。** 意図して見ないことにしたものは、
-ひとつ上の節にある。
+**"None" and "decided not to check" are different.** "None" in the table above means
+**decided to do but not built yet.** What was deliberately left unwatched is in
+the section above.
 
-## 決めた水準
+## Levels decided
 
-**案を出したのはAI、選んだのは人。** どちらが決めたかが読めること。
+**It was the AI that proposed and the human that chose.** It must be readable who decided.
 
-| 項目 | 決めた水準 | いつ決めたか |
+| Item | Level decided | When decided |
 |---|---|---|
-| 型検査 | **入れた**（AUT-226）。`tsc --noEmit`、暗黙の any は許す。ADR 0001 を改訂し、**確認の手段に限って開発時の依存を認めた** | 2026-09-21 |
-| 秘密の混入検査 | **狭く入れた**（AUT-225）。`tracked.js` が既に「広くパターンを探さない」と決めていたため、**この道具が実際に使う鍵の接頭辞だけに限った。** 広げると既製品の劣化版になり、誤検出で本物が流される | 2026-09-23 |
-| 性能 | **時間を出すだけにした**（AUT-227）。絞って走らせる形は採らない。**全体なら捕まえていた変異を「通った」と誤報し、不要な判定を足させて信用を削る** | 2026-09-23 |
-| 依存の脆弱性検査 | **確認しない。** 依存がゼロで、対象が無い | 2026-09-21 |
-| GitHub の秘密情報の検出 | **有効にした**（AUT-253）。公開したため無料で使える。案はAI、有効にしたのは人。**有効であることは判定では見ていない**（エージェントのトークンに読む権限が無い）。**配布先では使えるとは限らない。** 非公開＋Free では使えず、そこは `tracked.js` だけになる | 2026-09-26 |
+| Type checking | **Put in** (AUT-226). `tsc --noEmit`, implicit any allowed. ADR 0001 was revised to **allow development-time dependencies only for means of checking** | 2026-09-21 |
+| Scanning for leaked secrets | **Put in narrowly** (AUT-225). Since `tracked.js` had already decided "not to search broadly for patterns," **it was limited to the prefixes of keys this tool actually uses.** Widening it would make an inferior copy of off-the-shelf tools, and false positives would wash out the real ones | 2026-09-23 |
+| Performance | **Only print the time** (AUT-227). Running a narrowed subset is not adopted. **It would falsely report as "passed" mutations the full run would have caught, prompting unnecessary checks to be added and eroding trust** | 2026-09-23 |
+| Dependency vulnerability scanning | **Not checked.** Zero dependencies; nothing to scan | 2026-09-21 |
+| GitHub secret detection | **Enabled** (AUT-253). Available for free because it was made public. The AI proposed; the human enabled it. **Whether it is enabled is not looked at by the checks** (the agent's token has no permission to read it). **It is not necessarily available where the tool is distributed.** It cannot be used on private + Free, where only `tracked.js` remains | 2026-09-26 |

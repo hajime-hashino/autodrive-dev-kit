@@ -1,88 +1,88 @@
-# ADR 0001: 参照実装は Node で動かし、型は JSDoc で書く
+# ADR 0001: The reference implementation runs on Node, with types written in JSDoc
 
-- 状態: 承認
-- 日付: 2026-08-21（2026-08-29 に改訂、AUT-97）
-- 作業単位: AUT-6、AUT-97
+- Status: Accepted
+- Date: 2026-08-21 (revised 2026-08-29, AUT-97)
+- Work items: AUT-6, AUT-97
 
-> **2026-08-29 の改訂（AUT-97）。** 当初は TypeScript の型注釈をそのまま実行する形にしていた。**`npx` で配れないことが分かったため、JSDoc で型を書く素の JS に変えた。** 経緯は末尾の「改訂」を参照。Node と依存ゼロという判断は変えていない。
+> **Revision of 2026-08-29 (AUT-97).** It originally ran TypeScript type annotations directly. **Since that turned out not to be distributable with `npx`, it was changed to plain JS with types written in JSDoc.** See "Revision" at the end for the background. The decisions on Node and zero dependencies were not changed.
 
-## 背景
+## Background
 
-段階0の成果物である `invariants` を最初 Python で実装した。人から、拡張子なしのシェバングという書き方への疑問と、この先ハーネスを育てていくことを考えると TypeScript や Bun のほうがよいのではないか、Python はサプライチェーン攻撃に弱いのではないか、という指摘があった。
+The stage 0 deliverable `invariants` was first implemented in Python. A human questioned the style of an extensionless file with a shebang, suggested that TypeScript or Bun might be better given that the harness would keep growing, and pointed out that Python might be weak against supply-chain attacks.
 
-## 検討
+## Deliberation
 
-### サプライチェーンの観点は、この判断の決め手にならない
+### The supply-chain angle does not decide this
 
-指摘の前提は逆である。npm は PyPI よりサプライチェーン攻撃が多く、規模も大きい。推移的な依存の木が桁違いに深いという構造的な理由がある。Python から npm 圏へ移ると、この観点でのリスクは上がる。
+The premise of the point is reversed. npm sees more supply-chain attacks than PyPI, at a larger scale. There is a structural reason: the tree of transitive dependencies is an order of magnitude deeper. Moving from Python into the npm world raises the risk on this axis.
 
-ただしこの軸はこの判断では効かない。**実際の防御は依存をゼロに保つことであり、それは両方でできるためである。** ゼロである限り、どちらのレジストリが攻撃されやすいかは関係しない。
+However, this axis does not bear on this decision. **The actual defense is keeping dependencies at zero, and that can be done in both.** As long as it is zero, which registry is more prone to attack does not matter.
 
-したがって、依存ゼロを保てることを制約として持ち、言語選択は別の理由で決める。
+So being able to keep zero dependencies is held as a constraint, and the language is chosen for other reasons.
 
-### 決め手は、行き先が TypeScript であること
+### What decides it: the destination is TypeScript
 
-- 題材アプリの Preview は Cloudflare Workers であり、TypeScript
-- 段階1でトークン消費を拾うエージェントのフックは Node 上で動く
-- 段階5で `/init` が配る先も TypeScript のプロジェクトになる見込み
+- The subject app's Preview is Cloudflare Workers, which is TypeScript
+- The agent hook that captures token consumption in stage 1 runs on Node
+- Where `/init` distributes to in stage 5 is also expected to be TypeScript projects
 
-参照実装だけ Python だと、アダプタを2言語で持つか、シェル越しに呼ぶことになる。
+With only the reference implementation in Python, adapters would be kept in two languages, or called through the shell.
 
-補強材料として、開発機の Python は 3.9（OS 同梱の古いもの）で、CI との間でバージョン差の管理が要る。Node は型注釈をビルド手順なしで直接実行できる。
+As supporting material, the development machine's Python is 3.9 (the old one bundled with the OS), which would require managing version differences with CI. Node can run type annotations directly without a build step.
 
-### Bun ではなく Node を選ぶ
+### Node rather than Bun
 
-参照実装は全リポジトリの CI で動き、段階5では `/init` で他のプロジェクトへ配られる。実行環境に何を要求するかが最も効くため、入っている確率の高い Node を採る。
+The reference implementation runs in the CI of every repository, and in stage 5 is distributed to other projects by `/init`. What it demands of the execution environment matters most, so Node, which is more likely to be installed, is adopted.
 
-コードは `node:` 標準モジュールだけで書く。題材アプリ側が Bun を使う場合もそのまま動く。
+The code is written using only the `node:` standard modules. It runs as-is even if the subject app uses Bun.
 
-### 実装言語を呼び出し側に漏らさない
+### Do not leak the implementation language to callers
 
-`invariants` は拡張子なしの実行ファイルのままとする。これは Unix の CLI では標準的な書き方であり（開発機の `/usr/bin` と `/opt/homebrew/bin` には拡張子なしでシェバング付きの実行ファイルが180個ある）、利用者が打つのは `invariants` であって `invariants.js` ではない。
+`invariants` remains an extensionless executable. This is the standard style for Unix CLIs (the development machine has 180 extensionless executables with shebangs in `/usr/bin` and `/opt/homebrew/bin`), and what users type is `invariants`, not `invariants.js`.
 
-この形により、**言語を差し替えても CI の呼び出しと各リポジトリの設定が壊れない**。今回の移行でそれが実証された。
+This shape means **swapping the language does not break CI invocations or each repository's settings.** This migration demonstrated that.
 
-ただし拡張子が無いとエディタが言語を判別できないため、`invariants` は起動用のスクリプトに留め、本体は `src/*.js` に置く。
+However, without an extension an editor cannot tell the language, so `invariants` is kept as a launcher script and the body is placed in `src/*.js`.
 
-## 決定
+## Decision
 
-- 実行環境は **Node**。**ビルド手順を持たない**
-- 実装は **素の JS**。型は **JSDoc** で書く
-- **`dependencies` を置かない。** テストは `node:test`、HTTP は `fetch`、いずれも標準搭載のものを使う
-- **`devDependencies` は、確認の手段に限って置いてよい**（2026-09-21 改訂。下記）
-- `invariants` は拡張子なしの起動用スクリプトとし、実装言語を呼び出し側に漏らさない
+- The execution environment is **Node**. **No build step**
+- The implementation is **plain JS**. Types are written in **JSDoc**
+- **No `dependencies`.** Tests use `node:test` and HTTP uses `fetch`, both built in
+- **`devDependencies` may be placed, limited to means of checking** (revised 2026-09-21; below)
+- `invariants` is an extensionless launcher script, and does not leak the implementation language to callers
 
-## 帰結
+## Consequences
 
-依存ゼロの制約は、段階3で `boundaries.yaml` を読む時点で試される。Node には YAML パーサが標準搭載されていない。そのとき選べるのは次の3つで、段階3で決める。
+The zero-dependency constraint is tested when `boundaries.yaml` is read in stage 3. Node has no built-in YAML parser. The options at that point are the following three, to be decided in stage 3.
 
-1. 必要な部分だけの小さいパーサを自前で持つ
-2. 依存を1つ入れる
-3. 委譲範囲の表を JSON にする
+1. Keep a small, self-built parser for only the needed parts
+2. Add one dependency
+3. Make the delegation table JSON
 
-依存ゼロが実際の防御である以上、1か3を優先して検討する。2を選ぶ場合は、この ADR を更新する。
+Since zero dependencies is the actual defense, 1 or 3 are considered first. If 2 is chosen, this ADR is updated.
 
-## 改訂（2026-09-21、AUT-226）— 確認の手段に限って `devDependencies` を置く
+## Revision (2026-09-21, AUT-226) — `devDependencies` only for means of checking
 
-**配られるものの依存はゼロのままである。** 変えたのは、確認の手段に限って開発時の依存を認めることである。
+**What is distributed still has zero dependencies.** What changed is allowing development-time dependencies only for means of checking.
 
-### なぜ変えたか
+### Why it changed
 
-**JSDoc で型を書いているのに、誰も確かめていなかった。** この ADR は「型は JSDoc で書く」と決めたが、**書いた型が実装と合っているかを見る手段を置いていなかった。**
+**Types were written in JSDoc, but nobody was checking them.** This ADR decided "types are written in JSDoc," but **placed no means of checking whether the written types matched the implementation.**
 
-実際に入れたところ、**書いた型が効いていない箇所が3つ出た。**
+When it was actually put in, **three places turned up where the written types were not taking effect.**
 
-- `RepoApi` と `TrackerPort` は、**参照先に存在しない型だった**
-- `checks.js` が `TelemetryEvent` と `Scope` を **import せずに名前だけ書いていた**
-- **Tracker の実装がポートの約束と合っていなかった。** `state` が語彙に狭まらず `string` のまま返っていた
+- `RepoApi` and `TrackerPort` **were types that did not exist where they were referenced**
+- `checks.js` **wrote the names `TelemetryEvent` and `Scope` without importing them**
+- **The Tracker implementation did not match the port's contract.** `state` was returned as `string` without being narrowed to the vocabulary
 
-**型を文書として書くだけでは、文書が嘘をついていても分からない。**
+**Writing types only as documentation cannot tell you when the documentation is lying.**
 
-### 元の論拠との関係
+### Relation to the original argument
 
-この ADR の論拠は「**推移的な依存の木が桁違いに深い**」である。
+The argument of this ADR is "**the tree of transitive dependencies is an order of magnitude deeper.**"
 
-**深さについては当てはまらない。** 実測した。
+**On depth, it does not apply.** It was measured.
 
 ```
 $ npm install typescript@7 @types/node@22
@@ -91,69 +91,69 @@ $ ls node_modules
 @types  @typescript  typescript  undici-types
 ```
 
-レジストリ上は `typescript` が同一スコープのプラットフォーム別バイナリを約20個持つが、**optional であり、実際に入るのは実行環境に合う1つだけである。** 発行元は2つ（Microsoft と Biome）に限られ、どれもリーフである。
+On the registry, `typescript` has about 20 platform-specific binaries in the same scope, but **they are optional, and only the one matching the execution environment is actually installed.** The publishers are limited to two (Microsoft and Biome), and all are leaves.
 
-**数については当てはまらないとは言えない。** ゼロが4になったことは事実である。**「ほぼ無い」と書かないこと。**
+**On count, it cannot be said not to apply.** Zero becoming four is a fact. **Do not write "almost none."**
 
-### 範囲
+### Scope
 
-置いてよいものを次に限る。
+What may be placed is limited to the following.
 
-| 何を | 扱い |
+| What | Treatment |
 |---|---|
-| **置いてよい** | 確認の手段（型検査・リンタ）。**`devDependencies` に限る** |
-| **置かない** | `dependencies`。配られるものは依存ゼロのまま |
-| **置かない** | テスト実行器。`node:test` で足りている。**置き換える理由が無い** |
+| **May be placed** | Means of checking (type checking, linters). **Limited to `devDependencies` only** |
+| **Not placed** | `dependencies`. What is distributed stays at zero dependencies |
+| **Not placed** | A test runner. `node:test` is enough. **There is no reason to replace it** |
 
-**配られる先には届かない。** `package.json` の `files` に `node_modules` は入らない。
+**It does not reach where it is distributed.** `node_modules` is not in `files` of `package.json`.
 
-### ロックファイル
+### The lock file
 
-**追跡する。** 以前は `.gitignore` が除外していたが、それは「依存がゼロで中身が無い」ためであって、コミットしない判断ではなかった。**除外したまま依存を入れると、固定されないうえ差分にも出ない。**
+**It is tracked.** `.gitignore` used to exclude it, but that was because "there are zero dependencies and nothing in it," not a decision not to commit it. **Adding dependencies while it is excluded leaves them unpinned and invisible in diffs.**
 
-### 厳しさ
+### Strictness
 
-**暗黙の any を許した状態から始める**（`noImplicitAny: false`）。
+**It starts with implicit any allowed** (`noImplicitAny: false`).
 
-`strict` を全部入れると588件出る。うち425件は「引数の型が書かれていない」で、**一度に揃えると、この作業が型注釈を書くだけの作業になる。** 残る68件のほうが、本当の不整合を含んでいた。
+Turning on all of `strict` produces 588 errors. 425 of them are "argument types are not written," and **fixing them all at once would turn this work into just writing type annotations.** The remaining 68 contained the real mismatches.
 
-**許していることは `docs/quality.md` に書く。** 見ていない範囲が読めるように。
+**What is allowed is written in `docs/quality.md`.** So that the range not looked at can be read.
 
-**テストは対象外にしてある。** 含めると575件になり、うち312件はテスト実行器の型が無いことによる。**段を分ける。**
+**Tests are excluded.** Including them makes 575, of which 312 come from the test runner having no types. **Separate the steps.**
 
-## 改訂（2026-08-29、AUT-97）
+## Revision (2026-08-29, AUT-97)
 
-### なぜ型注釈をやめたか
+### Why type annotations were dropped
 
-**`npx` で配れない。**
+**It cannot be distributed with `npx`.**
 
 ```
 ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING
 Stripping types is currently unsupported for files under node_modules
 ```
 
-**Node は `node_modules` の下にあるファイルの型注釈を、意図的に剥がさない。** 型注釈をそのまま実行する形は、`npx` で入れた瞬間に動かなくなる。
+**Node deliberately does not strip type annotations from files under `node_modules`.** Running type annotations directly stops working the moment it is installed with `npx`.
 
-これは当初の判断の誤りではない。**`npx` で配ることを想定していなかった**（当時は `/init` を打つ人が参照実装を clone している前提だった）。人から「npx で使えるようにしたほうが便利では」という提案があり、初手の摩擦がいちばん負担をかけたくない人に当たっていることが分かった（AUT-96）。
+This was not an error in the original decision. **Distributing with `npx` was not anticipated** (at the time, it was assumed that whoever ran `/init` had cloned the reference implementation). A human suggested "wouldn't it be more convenient to make it usable with npx," and it became clear that the initial friction was falling on the very people least meant to be burdened (AUT-96).
 
-### 失われた検証は無い
+### No verification was lost
 
-**型検査は、当初から一度も行われていなかった。** Node は型注釈を剥がすだけで検査しない。`tsc` はこのリポジトリに入っていない（依存ゼロのため）。テストは `node:test` である。
+**Type checking had never been done from the start.** Node only strips type annotations; it does not check them. `tsc` is not in this repository (because of zero dependencies). Tests are `node:test`.
 
-**型注釈は文書であって、検証ではなかった。** JSDoc へ移しても、失われるのは書き心地だけである。
+**The type annotations were documentation, not verification.** Moving to JSDoc loses only the writing comfort.
 
-### 却下した案
+### Rejected options
 
-- **配布用にビルドする** — 却下。`typescript` を devDependency に入れれば済むが、**配る中身が生成物になる。** ADR 0004 は「複製なら中身がそのまま読める」ことを理由に複製を選んでおり、その前提が崩れる
-- **`node_modules` の外へコピーしてから実行する** — 却下。**制約を回避する仕掛けが、新しい穴を作る**（配布物「立ち止まる合図」）
-- **`npx` を諦める** — 却下。最初の摩擦が残る
+- **Build for distribution** — Rejected. Putting `typescript` in devDependencies would do it, but **what is distributed would become generated output.** ADR 0004 chose copying because "a copy can be read as it is," and that premise would break
+- **Copy outside `node_modules` before running** — Rejected. **A mechanism for working around a constraint creates a new hole** (the distributed "Signs to stop and reconsider")
+- **Give up on distributing with `npx` at all** — Rejected. The initial friction remains
 
-### 移し方
+### How it was migrated
 
-**Node の `stripTypeScriptTypes` で、位置を保ったまま剥がした。** 型注釈は空白に置き換わるため、字下げも改行もコメントの配置も変わらない。`tsc` で出力すると整形が変わり、差分が読めなくなる。**触ったのは、剥がした行だけである。**
+**Types were stripped with Node's `stripTypeScriptTypes`, preserving positions.** Type annotations are replaced with whitespace, so indentation, line breaks, and comment placement do not change. Emitting with `tsc` would change the formatting and make the diff unreadable. **Only the stripped lines were touched.**
 
-### この改訂が残した判定
+### The check this revision left behind
 
-**`node_modules` の中で動くことを確かめる**（`test/packaging.test.js`）。
+**Confirm that it runs inside `node_modules` as well** (`test/packaging.test.js`).
 
-**手元のパスを指した確認は、この経路を通らない。** npm はローカルのパスにシンボリックリンクを張るため、実体は `node_modules` の外に残る。そちらで確かめて「動いた」と報告した（AUT-96）。**動いたのは、たまたま制約に当たらない経路だったからである。**
+**A check that points at a local path does not go through this path.** npm symlinks local paths, so the real files remain outside `node_modules`. It was checked that way and reported as "it worked" (AUT-96). **It worked only because it happened to be a path that does not hit the constraint.**

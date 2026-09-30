@@ -1,83 +1,83 @@
-# ADR 0011: アプリ向けの開発標準を、道具にどこまで適用するか
+# ADR 0011: How far to apply a development standard for apps to a tool
 
-- 状態: 承認
-- 日付: 2026-09-21
-- 作業単位: AUT-228
+- Status: Accepted
+- Date: 2026-09-21
+- Work item: AUT-228
 
-## 背景
+## Background
 
-別の取り組みで使っている開発標準がある（AI Development Standard）。ランタイムを `mise` で固定し、TypeScript には Biome と strict な `tsc --noEmit`、テストは Bun か Vitest、依存はロックファイルで固定する——といった形を、`~/.claude/CLAUDE.md` に置いて全プロジェクトへ効かせる。
+There is a development standard used in another effort (AI Development Standard). It pins the runtime with `mise`, uses Biome and strict `tsc --noEmit` for TypeScript, Bun or Vitest for tests, pins dependencies with a lock file, and so on, and is placed in `~/.claude/CLAUDE.md` to take effect across all projects.
 
-**人から「開発標準に合わせるか1回考えたい」という提起があった。**
+**A human raised "I want to think once about whether to align with the development standard."**
 
-AUT-214 で「型検査を入れる」と決めたが、**道具を選ぶ段で、この標準に寄せるかどうかが決まっていないと書けない。**
+AUT-214 decided "put in type checking," but **at the stage of choosing tools, it cannot be written unless it is decided whether to align with this standard.**
 
-## 決めたこと
+## Decision
 
-**部分的に寄せる。丸ごとは適用しない。**
+**Align partially. Do not apply it wholesale.**
 
-**適用できない理由は好みではなく構造である。標準はアプリ向けに書かれており、autodrive-dev-kit は道具である。**
+**The reason it cannot be applied is not preference but structure. The standard is written for apps, and autodrive-dev-kit is a tool.**
 
-| 標準が前提にしていること | 道具では |
+| What the standard assumes | For a tool |
 |---|---|
-| 実行環境を自分で決められる | **決められない。** `npx` で他人のプロジェクトへ入る |
-| 動かすのは自分たちだけ | **入れた先の全部で動く** |
-| 依存はロックファイルで固定すればよい | **入れた先の依存の木に乗る** |
+| You can decide the execution environment yourself | **You cannot.** It goes into other people's projects via `npx` |
+| Only you run it | **It runs everywhere it is put** |
+| Pinning dependencies with a lock file is enough | **It rides on the dependency tree of where it is put** |
 
-### 寄せるもの
+### What is aligned
 
-| 何を | なぜ |
+| What | Why |
 |---|---|
-| **型検査**（strict な `tsc --noEmit`） | JSDoc で型を書いているのに、誰も確かめていない |
-| **リンタ**（Biome） | 無い |
-| **ロックファイルを追跡する** | 依存を入れるなら固定が要る（下記） |
-| **直接依存を厳密に固定し、名前・出所・所有者・必要性を確かめる** | ADR 0001 の依存ゼロと矛盾しない。**ゼロは「最小化」の極である** |
-| **遠隔スクリプトをシェルへ流さない** | 既に守っている（該当箇所なし。確認済み） |
+| **Type checking** (strict `tsc --noEmit`) | Types are written in JSDoc, but nobody checks them |
+| **A linter** (Biome) | There is none |
+| **Track the lock file** | If dependencies are added, they need pinning (below) |
+| **Pin direct dependencies exactly, and check their name, source, owner, and necessity** | Does not contradict ADR 0001's zero dependencies. **Zero is the extreme of "minimize"** |
+| **Do not pipe remote scripts into the shell** | Already followed (no occurrences; confirmed) |
 
-### 寄せないもの
+### What is not aligned
 
-| 何を | なぜ |
+| What | Why |
 |---|---|
-| **ランタイムの固定を、要求に持ち込む** | **`engines` は下限でなければならない**（いま `>=22.18`）。入れる先に特定版を強制できない。**開発環境と CI を固定するのは別の話であり、構わない** |
-| **Bun** | `npx`（Node）で配られる。標準自身が「Node.js が要るときは pnpm」と逃げ道を書いており、衝突しない |
-| **Vitest** | `node --test` で動いている。**依存ゼロを崩してまで替える理由が無い。** 標準はゼロ依存という選択肢を想定していない |
-| **Python** | 使う理由が無い。[ADR 0001](0001-implementation-language.md) が明示的に却下している |
+| **Carrying runtime pinning into requirements** | **`engines` must be a lower bound** (currently `>=22.18`). A specific version cannot be forced on where it is put. **Pinning the development environment and CI is a separate matter, and fine** |
+| **Bun** | Distributed via `npx` (Node). The standard itself provides an escape hatch, "pnpm when Node.js is needed," so there is no conflict |
+| **Vitest** | It runs on `node --test`. **There is no reason to switch at the cost of breaking zero dependencies.** The standard does not anticipate the option of zero dependencies |
+| **Python** | No reason to use it. [ADR 0001](0001-implementation-language.md) explicitly rejects it |
 
-## 依存について、数を確かめた
+## The number of dependencies was checked
 
-**「推移的な依存がほぼ無い」と考えていたが、誤りだった**（古い知識に基づいていた）。実物を確かめた結果は次のとおり。
+**It was assumed that "there are almost no transitive dependencies," but that was wrong** (based on old knowledge). The result of checking the real thing is as follows.
 
-| | 実際（2026-09-21 に確認） |
+| | Actual (checked 2026-09-21) |
 |---|---|
-| `typescript` 7.0.2 | 同一スコープ `@typescript/*` の**プラットフォーム別バイナリ 約20個**（optional）。native 化されている |
-| `@biomejs/biome` 2.5.14 | 同一スコープ `@biomejs/cli-*` の**プラットフォーム別バイナリ 8個**（optional） |
+| `typescript` 7.0.2 | **About 20 platform-specific binaries** in the same scope `@typescript/*` (optional). It has gone native |
+| `@biomejs/biome` 2.5.14 | **8 platform-specific binaries** in the same scope `@biomejs/cli-*` (optional) |
 
-**正しい言い方は「木は浅い」であって「ほぼ無い」ではない。** 深さ1、同一スコープ、同一発行元、optional であり実際に入るのは実行環境に合う1つ。**ただし合わせて約28個がレジストリから来る。**
+**The right way to put it is "the tree is shallow," not "almost none."** Depth 1, same scope, same publisher, optional, and only the one matching the execution environment is actually installed. **But about 28 in total come from the registry.**
 
-ADR 0001 の論拠は「**推移的な依存の木が桁違いに深い**」である。**深さについては当てはまらない。数については当てはまらないとは言えない。** ADR 0001 を更新するとき（AUT-226）、この区別を保つこと。
+The argument of ADR 0001 is "**the tree of transitive dependencies is an order of magnitude deeper.**" **On depth, it does not apply. On count, it cannot be said not to apply.** When updating ADR 0001 (AUT-226), keep this distinction.
 
-**配られる先には届かない。** 開発時だけの依存であり、`package.json` の `files` に `node_modules` は入らない。
+**It does not reach where it is distributed.** They are development-time-only dependencies, and `node_modules` is not in `files` of `package.json`.
 
-## ロックファイル
+## The lock file
 
-`.gitignore` が `package-lock.json` を除外している。
+`.gitignore` excludes `package-lock.json`.
 
 ```
-# 依存は持たない方針だが、npm が作る場合に備えて除外する。
+# The policy is to have no dependencies, but exclude it in case npm creates one.
 ```
 
-**「コミットしない」という判断ではない。** 依存がゼロなので中身が無く、`npm install` がたまたま作る空のものを追跡していないだけである（AUT-6、段階0から）。
+**It is not a decision "not to commit."** With zero dependencies there are no contents, and it simply does not track the empty one `npm install` happens to create (AUT-6, since stage 0).
 
-**依存を入れた瞬間にこの除外は害になる。** 中身ができるのに固定されず、**除外されているので差分にも出ず、気づけない。** AUT-226 で外すこと。
+**The moment dependencies are added, this exclusion becomes harmful.** Contents appear but are not pinned, and **being excluded, they do not show in diffs either, so nobody notices.** Remove it in AUT-226.
 
-## この決定が生むもの
+## What this decision produces
 
-**次に同じ問いが出たときに、一から考えなくてよい。** 判断の軸は「**入れた先に何を要求するか**」と「**自分がどう開発するか**」の切り分けである。前者は寄せられない。後者は寄せてよい。
+**The next time the same question comes up, it need not be thought through from scratch.** The axis of judgment is separating "**what it demands of where it is put**" from "**how it itself is developed.**" The former cannot be aligned. The latter may be.
 
-**標準が更新されても、この線引きは変わらない。** 変わるのは、寄せる側の具体だけである。
+**Even if the standard is updated, this line does not change.** What changes is only the specifics on the aligning side.
 
-## 却下した案
+## Rejected options
 
-- **丸ごと寄せる** — 却下。`engines` を固定すると、入れる先を選ぶ道具になる。**配るものではなくなる**
-- **寄せない** — 却下。型検査もリンタも無い状態が続く。**標準が既にあるのに、別の道具を選ぶ理由が無い**
-- **標準の側を、道具でも使える形に変えてもらう** — 却下。あれは個人の全プロジェクトへ効かせるものであり、**道具1つの都合で曲げるものではない。** 適用する側が線を引く
+- **Align wholesale** — Rejected. Pinning `engines` would make it a tool that chooses where it can be put. **It would no longer be something distributed**
+- **Do not align** — Rejected. The state of no type checking and no linter continues. **There is no reason to choose different tools when a standard already exists**
+- **Ask for the standard to be changed into a form usable for tools** — Rejected. That applies to all of one person's projects, and **is not something to bend for the convenience of one tool.** The side applying it draws the line

@@ -1,129 +1,129 @@
-# ADR 0008: トークン消費はブランチに載せず、OTLP で外へ送る
+# ADR 0008: Token consumption is not put on the branch but sent out over OTLP
 
-- 状態: 承認
-- 日付: 2026-09-12
-- 作業単位: AUT-162
-- 関連: [0002](0002-token-usage-capture.md)（一部を置き換える）
+- Status: Accepted
+- Date: 2026-09-12
+- Work item: AUT-162
+- Related: [0002](0002-token-usage-capture.md) (partly superseded)
 
-## 背景
+## Background
 
-トークン消費の記録はフック（Stop / SessionEnd）が書く。**順番が決まっている。**
-
-```
-1. コミットする
-2. 提出する
-3. 人に報告して止まる → ここでフックが走り、追記される
-```
-
-**3 は必ず 1 の後に来る。** したがって最後の1件は、構造的にその作業単位のコミットに入らない（AUT-156）。
-
-ADR 0002 はこれを `begin` で拾ってコミットする形で塞いだ。**それは2つのものと引き換えだった。**
-
-### 引き換えたもの1：別の作業単位の提出に混ざる
-
-拾った記録は、**次に着手した作業単位の提出に載る。** 参照実装で数えると、トークン記録 115 行のうち **93 行（81%）が別の作業単位のコミットで入っていた。**
-
-作業と無関係の変更が提出に混ざるため、読む人に説明が要る。**説明が要る時点で、形として歪んでいる。** 提出の差分を読んだ人は、その作業単位が触ったものだと読む。
-
-### 引き換えたもの2：並列実行と両立しない
-
-拾えるのは、**同じ作業ツリーが残っている場合に限られる。** 作業単位ごとにワークツリーを作って捨てる形では、次の `begin` が無いので拾う機会そのものが消える。**並列度が上がるほど欠損が増える。**
-
-人からの指摘（AUT-156 の提出時）。
-
-> Orcaみたいな仕組みで、ワーキングツリーを作成し並列で複数のチケットの作業させる
-> ような仕組みと併用すると、どんどん欠損が発生していってしまう
-
-## 何が変わったか
-
-**定義 v0.16 で、トークン消費は必須の記録対象から任意へ降格した**（AUT-170）。根拠は、外側ループを一周させたときに判断へ使われた回数が0だったこと。
-
-これにより、**取りこぼしを補う仕掛けを持つ理由が消えた。**
-
-あわせて、ADR 0002 が置いていた前提も1つ崩れた。ADR 0002 は「記録の置き場を履歴の外へ移さない。定義§16は記録の置き場を寿命で決めており、テレメトリは集計対象として残るものである」としていた。**これは読み違いである。** §16の記録規約がテレメトリに割り当てているのは Telemetry ポートであって、**Repo ではない。** リポジトリの中にあったのは、アダプタの選択にすぎなかった。
-
-## 決定
-
-**トークン消費はリポジトリへ書かない。OTLP over HTTP で、作業ツリーの外へ送る。**
+Token consumption records are written by the hook (Stop / SessionEnd). **The order is fixed.**
 
 ```
-Stop / SessionEnd フック
-  → 前回カーソル以降の応答の usage をモデル別に合計
-  → 作業単位マーカーから作業単位IDを読む
-  → OTLP の span に組み立て、設定された宛先へ POST
-  → 成功したらカーソルを更新
+1. Commit
+2. Submit
+3. Report to the human and stop → the hook runs here and appends
 ```
 
-### なぜ OTLP か。送り先の名前で書かないため
+**3 always comes after 1.** So the last record structurally never makes it into that work item's commit (AUT-156).
 
-アダプタが話すのは OTLP であって、特定のサービスの API ではない。**宛先と認証は構成から受け取る。送り先を変えても、アダプタは変わらない。**
+ADR 0002 closed this by having `begin` pick it up and commit it. **That was in exchange for two things.**
 
-定義§16が Telemetry の実装例として挙げているのも OTLP である。
+### Traded away 1: it mixes into another work item's submission
 
-**受け側に Langfuse を選んだ**（人の判断、2026-09-12）。決め手は2つ。
+Picked-up records **ride on the submission of the next work item started.** Counting in the reference implementation, of 115 lines of token records, **93 lines (81%) went in with another work item's commit.**
 
-- **マネージドの無料枠がある。** 比較対象の Arize Phoenix はセルフホストであり、マネージドは別製品（有償）。こちらの基盤は Cloudflare Workers で Phoenix は乗らないため、置くなら VM を1台増やすことになる
-- **費用が出る。** ADR 0002 は「セッション記録に費用が無いので、保存せず読むときに算出する」としていた。受け側がモデル名とトークン数から費用を出すため、**算出の手間ごと無くなる**
+Changes unrelated to the work mix into the submission, so readers need an explanation. **Needing an explanation means the shape is distorted.** Someone reading the submission's diff reads it as what that work item touched.
 
-日本の受け口（`jp.cloud.langfuse.com`）を選んでいる。
+### Traded away 2: it is incompatible with parallel execution
 
-**取り込みの口は2つあり、新しい方を使う。** `POST /api/public/ingestion` は非推奨で、Cloud では 2026-11-16 から trace と observation を受け付けなくなる。使うのは `POST /api/public/otel/v1/traces`。
+Picking up is possible **only when the same working tree remains.** In a form that creates and discards a worktree per work item, there is no next `begin`, so the chance to pick up disappears entirely. **The higher the parallelism, the more is lost.**
 
-### SDK を入れない
+A human pointed out (at the submission of AUT-156):
 
-OTLP over HTTP/JSON は素の POST で送れる。OpenTelemetry の SDK を入れると依存とバックグラウンドの送信処理が増えるが、**フックは常に 0 で終わる短命なプロセスであり、まとめて後で送る仕組みとは噛み合わない。**
+> Combined with a mechanism like Orca that creates working trees and works on several tickets in parallel,
+> losses would keep piling up
 
-### 送るのは数だけ
+## What changed
 
-**会話の中身を送らない。** モデル名・トークン数・作業単位ID・セッション識別子に限る。受け側は入出力の本文も受け取れるが、外へ出す理由が無い。
+**In definition v0.16, token consumption was demoted from a required recording target to optional** (AUT-170). The ground was that when the outer loop was run once around, it had been used for a decision 0 times.
 
-### 送り先が無い構成を、壊れているとしない
+With this, **the reason to have a mechanism that compensates for what is missed disappeared.**
 
-トークン消費は任意の記録対象である（定義§6 v0.16）。**設定しなければ、記録しない。** 黙らずに理由は出す。不変条件「テレメトリが記録されること」は、トークンの有無では落ちない。
+In addition, one premise ADR 0002 had placed also broke. ADR 0002 said "the place for records is not moved outside the history. Definition §16 decides where records go by lifetime, and telemetry is something that remains as a subject of aggregation." **That was a misreading.** What §16's recording conventions assign telemetry to is the Telemetry port, **not the Repo.** Being in the repository was merely a choice of adapter.
 
-### モデル識別子は、ここで止めない
+## Decision
 
-**送り先の有無に関わらず、セッションの状態は必ず書く。** §6の他の5つの記録が持つ `model` は、この経路が出どころである。**モデル識別子は必須属性のままであり**（定義§6・§16補足）、束ねて止めると必須のものまで落ちる。
+**Token consumption is not written to the repository. It is sent outside the working tree over OTLP over HTTP.**
 
-定義側でも、トークン消費とモデル識別子を束ねていた記述をほどいた（v0.16）。
+```
+Stop / SessionEnd hook
+  → sum usage per model for responses after the previous cursor
+  → read the work item ID from the work item marker
+  → build an OTLP span and POST it to the configured destination
+  → on success, update the cursor
+```
 
-### 送れなかった分を捨てない
+### Why OTLP: so as not to write in terms of a destination's name
 
-送信に失敗したらカーソルを進めない。次に走ったときに、まとめて送り直される。
+What the adapter speaks is OTLP, not a particular service's API. **The destination and authentication are received from the configuration. Changing the destination does not change the adapter.**
 
-**ただし送り先が設定されていない場合は進める。** 記録しないことを選んでいる以上、貯めて後で送る相手が居ない。進めないと、後で設定したときに過去の全量がその時点の作業単位へ付く。
+OTLP is also what definition §16 gives as an example implementation of Telemetry.
 
-### 拾うのをやめ、気づく形にする
+**Langfuse was chosen as the receiving side** (human decision, 2026-09-12). Two things decided it.
 
-`begin` は取り残された記録を**言うだけにする。コミットしない。**
+- **There is a managed free tier.** The comparison, Arize Phoenix, is self-hosted, and its managed offering is a separate (paid) product. Our platform is Cloudflare Workers, which Phoenix does not run on, so placing it would mean adding one more VM
+- **Cost comes out.** ADR 0002 said "the session record has no cost, so it is not stored but computed when read." The receiving side computes cost from the model name and token counts, so **the work of computing disappears entirely**
 
-トークン消費が外へ出た以上、`telemetry/` へ書くのは**その作業単位で動いているAI自身**に限る。自分で書いたものは、自分でコミットできる。**拾う相手が居ない。**
+The Japan endpoint (`jp.cloud.langfuse.com`) is chosen.
 
-それでも残ることはあるので、あることだけを言う。**拾って隠すと、混ざったことにも気づけない。**
+**There are two ingestion endpoints, and the newer one is used.** `POST /api/public/ingestion` is deprecated, and Cloud stops accepting traces and observations from 2026-11-16. What is used is `POST /api/public/otel/v1/traces`.
 
-## 実測（AUT-174）
+### No SDK
 
-実際に送って、受け側で読み返した。
+OTLP over HTTP/JSON can be sent with a plain POST. Adding the OpenTelemetry SDK adds dependencies and background sending, but **the hook is a short-lived process that always exits 0, which does not mesh with a mechanism that batches and sends later.**
 
-| 見たもの | 値 |
+### Only numbers are sent
+
+**Conversation contents are not sent.** Limited to the model name, token counts, work item ID, and session identifier. The receiving side can accept input and output bodies too, but there is no reason to send them out.
+
+### A configuration with no destination is not treated as broken
+
+Token consumption is an optional recording target (definition §6 v0.16). **If not configured, it is not recorded.** It does not stay silent; it states the reason. The invariant "Telemetry is recorded" does not fail on the presence or absence of tokens.
+
+### The model identifier is not stopped here
+
+**Regardless of whether there is a destination, the session state is always written.** The `model` that the other five §6 records carry comes from this path. **The model identifier remains a required attribute** (definition §6, supplementary notes to §16), and stopping them as a bundle would drop even what is required.
+
+The definition side also untied the text that had bundled token consumption and the model identifier (v0.16).
+
+### What could not be sent is not thrown away
+
+If sending fails, the cursor is not advanced. The next time it runs, they are resent together.
+
+**But if no destination is configured, it is advanced.** Having chosen not to record, there is no one to accumulate and send to later. Not advancing would attach the whole past amount to whatever work item is current when it is configured later.
+
+### Stop picking up; make it noticeable
+
+`begin` **only says that records were left behind. It does not commit them.**
+
+With token consumption sent out, what is written to `telemetry/` is limited to **the AI working in that work item itself.** What it wrote itself, it can commit itself. **There is no one to pick up after.**
+
+Still, some may remain, so it only says that they exist. **Picking them up and hiding them makes it impossible even to notice they got mixed in.**
+
+## Measurement (AUT-174)
+
+It was actually sent and read back on the receiving side.
+
+| What was looked at | Value |
 |---|---|
-| 種別 | `GENERATION` |
-| モデル | `claude-opus-5`（受け側の単価表に載っていた） |
-| 費用 | **$4.60**（キャッシュの作成と読取が別単価で計算されている） |
-| 属性 | `work_item_id` / `kit_version` / `repo` が付いている |
+| Type | `GENERATION` |
+| Model | `claude-opus-5` (it was in the receiving side's price table) |
+| Cost | **$4.60** (cache creation and reads computed at separate prices) |
+| Attributes | `work_item_id` / `kit_version` / `repo` are attached |
 
-**ADR 0002 の「費用は保存せず、読むときに算出する」は、この経路では不要である。**
+**ADR 0002's "cost is not stored but computed when read" is unnecessary on this path.**
 
-### 設定で1つ詰まった
+### One thing got stuck in the setup
 
-`AUTODRIVE_OTLP_HEADERS` の値には空白が入る（`Basic` と base64 の間）。**`.env` で引用符に囲まないと、シェルが読んだ時点で切れる。** 切れても静かに通り、認証だけが 401 で落ちるため、キーを疑うことになる。
+The value of `AUTODRIVE_OTLP_HEADERS` contains a space (between `Basic` and the base64). **Unless it is quoted in `.env`, it is cut off when the shell reads it.** Cut off, it passes silently and only authentication fails with 401, so the key gets suspected.
 
-資格情報の説明に書いた。
+This was written in the credentials' description.
 
-## 帰結
+## Consequences
 
-- **提出に、その作業単位と無関係な記録が混ざらなくなった。** 誤認の原因が1つ減る
-- **並列実行と両立する。** 作業ツリーが捨てられても、記録は既に外へ出ている
-- 送り先を1つ増やした。ただし**設定しない構成も成立するので**、`/init` を打った先に必須の前提は増えない
-- 費用が受け側で出る。ADR 0002 の「読むときに算出する」は、この経路では不要になった
-- **過去の記録は動かしていない。** リポジトリにある既存のトークン記録はそのまま残る。遡って移すと、いつ何を記録していたかが読めなくなる
+- **Records unrelated to the work item no longer mix into submissions.** One source of misreading is gone
+- **Compatible with parallel execution.** Even if the working tree is discarded, the records have already gone out
+- One more destination was added. But **a configuration without it also works**, so no required premise is added for where `/init` is run
+- Cost comes out on the receiving side. ADR 0002's "compute when read" became unnecessary on this path
+- **Past records were not moved.** Existing token records in the repositories remain as they are. Moving them retroactively would make it unreadable what was being recorded when

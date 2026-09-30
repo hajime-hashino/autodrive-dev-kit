@@ -1,91 +1,91 @@
-# ADR 0007: ポートの実装が既に持っている自動化に載る。載らない部分だけを作る
+# ADR 0007: Ride the automation the port implementations already have. Build only what does not ride on it
 
-- 状態: 承認
-- 日付: 2026-09-09
-- 作業単位: AUT-165
+- Status: Accepted
+- Date: 2026-09-09
+- Work item: AUT-165
 
-## 背景
+## Background
 
-作業単位を完了へ動かす仕組みを、ハーネスが自前で持っていた。`reconcile` である。統合済みの提出がある作業単位を探し、着手中なら完了へ進める。
+The harness had its own mechanism for moving work items to done: `reconcile`. It looked for work items with integrated submissions and advanced them to done if started.
 
-これは AUT-114 で作られた。当時の問題はこう書かれている。
+It was built in AUT-114. The problem at the time was written like this.
 
-> 34件が着手中のうち、**30件は提出が統合済みだった。** 未統合は4件だけ。
-> `begin` が着手時に started へ進めるが、**出口が無い。**
+> Of 34 started, **30 had integrated submissions.** Only 4 were unintegrated.
+> `begin` advances to started when starting, **but there is no exit.**
 
-作った仕組みは正しく動いた。**それでも同じことが再発した。** AUT-163 / AUT-148 / AUT-145 / AUT-142 の4件が、統合済みのまま数日 In Progress で残った。
+The mechanism built worked correctly. **Still, the same thing recurred.** Four items — AUT-163 / AUT-148 / AUT-145 / AUT-142 — stayed In Progress for days while integrated.
 
-原因は仕組みの欠陥ではない。**発火の条件だった。** `reconcile` は `begin` のついでにしか走らず、しかも着手するリポジトリ1つ分しか見ない。4リポジトリを渡り歩く作業の仕方と噛み合っていない。
+The cause was not a defect in the mechanism. **It was the firing condition.** `reconcile` ran only as a side effect of `begin`, and looked at only the one repository being started in. It did not mesh with a way of working that moves across four repositories.
 
-### 見落としていたこと
+### What was overlooked
 
-**Tracker の実装（Linear）は、この機能を最初から持っていた。** GitHub 連携を有効にすれば、PR がマージされた瞬間に作業単位が完了へ動く。ブランチ名かPRの題に作業単位IDが含まれていれば紐づく。設定はチェックボックス数個で、コードは要らない。
+**The Tracker implementation (Linear) had this feature from the start.** Enabling the GitHub integration moves a work item to done the moment its PR is merged. It is linked if the branch name or PR title contains the work item ID. The setup is a few checkboxes, and no code is needed.
 
-**AUT-114 は、この選択肢を検討していない。** 起票の記述に言及が無く、問題の指摘から「作る」へ直行している。**却下された案ではなく、見ていない案だった。**
+**AUT-114 did not consider this option.** The filing makes no mention of it, going straight from pointing out the problem to "build." **It was not a rejected option but an option not looked at.**
 
-そして人からこう指摘された。
+And a human pointed out:
 
-> 車輪の再発明をしたいわけではない。ポートの先に自動連携があり、それがこの開発プロセスにマッチするのであれば使うべきです。
+> I don't want to reinvent the wheel. If there is an automatic integration beyond the port and it fits this development process, we should use it.
 
-### 定義は、これを妨げていない
+### The definition does not prevent this
 
-定義§16のポート語彙の規約は、対象を**スキル**に限っている。
+The port vocabulary convention in definition §16 limits its target to **skills.**
 
-> スキルはポート語彙のみを使い、実装名を書かない。実装名を知るのはアダプタだけとする。
+> Skills use only the port vocabulary and do not write implementation names. Only adapters know implementation names.
 
-**Tracker の実装が自分で Repo を見に行くかどうかは、この規約の射程外である。** 連携は実装の設定であり、アダプタ境界の内側にある。
+**Whether the Tracker implementation goes to look at the Repo by itself is outside the reach of this convention.** The integration is a setting of the implementation, inside the adapter boundary.
 
-むしろ定義は逆向きのことを言っている。
+If anything, the definition says the opposite.
 
-> **承認の記録を別に持たない。** 統合の事実は Repo が保持しており、二重に持つと片方だけが更新されて食い違う
+> **Do not keep a separate record of approval.** Repo holds the fact of integration, and holding it twice means only one side gets updated and they disagree
 
-## 決定
+## Decision
 
-**ポートの実装が既に持っている自動化には載る。載らない部分だけをハーネスが作る。**
+**Ride the automation the port implementations already have. The harness builds only what does not ride on it.**
 
-判断の順序を次のとおりとする。
+The order of judgment is as follows.
 
-1. **その機能を、ポートの実装が既に持っていないかを確かめる。** 確かめずに作らない
-2. 持っているなら載る。**設定手順は `/init` が人へ依頼する**（ファイルは配れるが、画面の設定は押せない）
-3. 持っていない、または開発プロセスに合わない場合にだけ作る。**そのときは、なぜ載らないのかを記録に残す**
+1. **Check whether the port implementation already has the feature.** Do not build without checking
+2. If it has it, ride on it. **`/init` asks the human to do the setup** (files can be distributed, but screen settings cannot be clicked)
+3. Build only if it does not have it, or it does not fit the development process. **In that case, record why it does not ride on it**
 
-### 載せた結果として、何が消えるか
+### What disappears as a result of riding on it
 
-- `reconcile` は削除する。`begin` からの自動実行も外す
-- 手で閉じる経路は `tracker <ID> --to done` が持ち、これは残る
+- `reconcile` is deleted. Automatic execution from `begin` is removed too
+- The path to close by hand is held by `tracker <ID> --to done`, which remains
 
-### 載せた結果として、何が要るようになるか
+### What becomes needed as a result of riding on it
 
-**外部の仕組みに載るなら、それが効いていないことに気づける必要がある。** 載せた側は、動かなくなっても静かに動かなくなる。
+**If riding on an external mechanism, it must be possible to notice when it is not working.** What you ride on stops silently when it stops.
 
-したがって `invariants` に観測を2つ足す。
+So two observations are added to `invariants`.
 
-| 観測 | なぜ要るか |
+| Observation | Why it is needed |
 |---|---|
-| 統合済みなのに着手中の作業単位 | 連携が設定されていない、または外れたことに気づく |
-| 完了済みの作業単位を指したままの作業単位マーカー | **連携では届かない。** マーカーは手元のファイルであり、Tracker が状態を動かしても残る |
+| Work items still started though integrated | To notice the integration is not set up, or has come off |
+| A work item marker still pointing at a completed work item | **The integration does not reach it.** The marker is a local file and remains even when the Tracker moves the state |
 
-**どちらも失敗にはしない。観測に留める。** 不変条件は定義§9のものであり、Tracker 側の設定はその範囲外にある。連携の設定漏れで「テレメトリが記録されること」が落ちるのは、判定の意味が合わない。
+**Neither is made a failure. They stay observations.** The invariants are those of definition §9, and the Tracker-side settings are outside that scope. Failing "Telemetry is recorded" because the integration was not configured does not fit what the judgment means.
 
-これは BOOTSTRAP が「AIが無効化できないことは検出で代替する」と決めた方針と同じ形である。**防ぐのではなく、見えるようにする。**
+This is the same shape as the policy BOOTSTRAP decided: "that the AI cannot disable them is substituted by detection." **Not preventing, but making visible.**
 
-## この判断が及ぶ範囲
+## How far this decision reaches
 
-Tracker の完了だけの話ではない。**他のポートでも同じ順序で判断する。**
+It is not only about Tracker completion. **Other ports are judged in the same order.**
 
-| ポート | 実装が既に持っていることの例 |
+| Port | Examples of what implementations already have |
 |---|---|
-| Repo | 提出のテンプレート、必須の確認、自動統合 |
-| Runner | 定期実行、失敗の通知、再実行 |
-| Preview | 提出ごとの環境、期限切れでの破棄 |
-| Flag | 段階的な露出、自動の巻き戻し |
+| Repo | Submission templates, required checks, auto-merge |
+| Runner | Scheduled runs, failure notifications, reruns |
+| Preview | Per-submission environments, disposal on expiry |
+| Flag | Staged exposure, automatic rollback |
 
-**作る前に、実装の側を見ること。**
+**Before building, look at the implementation side.**
 
-## 残る危うさ
+## Remaining risks
 
-**実装を差し替えたとき、連携の設定は付いてこない。** 新しい Tracker で同じ設定をやり直すことになる。これはコードとして配れないため、`/init` の設定手順と、上の観測で受ける。
+**When the implementation is swapped, the integration settings do not come along.** The same settings must be redone on the new Tracker. This cannot be distributed as code, so it is covered by `/init`'s setup steps and the observations above.
 
-**設定がハーネスの外にあるため、変更の履歴が残らない。** 誰がいつ連携を外したかは、この参照実装からは読めない。観測が出たときに、そこから辿ることになる。
+**The settings are outside the harness, so no history of changes remains.** Who removed the integration when cannot be read from this reference implementation. When the observation appears, it is traced from there.
 
-**これらは載ることの対価であり、載らない理由にはしない。** 自前で作れば履歴は残るが、その代わりに発火の条件を自分で保つことになり、AUT-114 と AUT-165 で二度失敗している。
+**These are the price of riding on it, not reasons not to.** Building it ourselves would keep a history, but in exchange we would have to maintain the firing conditions ourselves, and that failed twice, in AUT-114 and AUT-165.

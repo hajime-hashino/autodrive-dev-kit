@@ -1,99 +1,99 @@
-# ADR 0002: トークン消費は、フックをきっかけにセッション記録から読む
+# ADR 0002: Token consumption is read from the session record, triggered by a hook
 
-- 状態: 承認（**書き込み先と費用の扱いは [0008](0008-token-usage-off-branch.md)、紐づけの手段は [0009](0009-attribute-by-branch.md) が置き換えた**）
-- 日付: 2026-08-22
-- 作業単位: AUT-10
+- Status: Accepted (**where it is written and how cost is handled are superseded by [0008](0008-token-usage-off-branch.md), and the means of linking by [0009](0009-attribute-by-branch.md)**)
+- Date: 2026-08-22
+- Work item: AUT-10
 
-## 背景
+## Background
 
-定義§6はトークン消費を記録対象とし、§16の補足は「トークン消費とモデル識別子は、スキルからの呼び出しではなくアダプタが自動で付与する。ランタイム由来の記録であり、語彙には現れない」としている。BOOTSTRAP は段階1で最も手数がかかる項目としてこれを予告している。
+Definition §6 makes token consumption a recording target, and the supplementary notes to §16 say "token consumption and the model identifier are attached automatically by the adapter, not by calls from skills. They are records that come from the runtime and do not appear in the vocabulary." BOOTSTRAP foretells this as the most laborious item in stage 1.
 
-停止や手戻りはAI自身が書けるが、トークン量は実行基盤から拾う必要がある。
+Stops and rework can be written by the AI itself, but token amounts have to be picked up from the runtime.
 
-## 調査した経路
+## Paths investigated
 
-### フック（きっかけにはなるが、値は持たない）
+### Hooks (a trigger, but they carry no values)
 
-**フックはトークン量も費用も受け取らない。** モデル名すら `SessionStart` で任意項目として渡るだけである。
+**Hooks receive neither token amounts nor cost.** Even the model name is passed only as an optional field on `SessionStart`.
 
-ただし**すべてのフックが `transcript_path` と `session_id` を受け取る**。したがってフックは「いつ集計するか」を決めるきっかけとして使い、値は別から読む。
+However, **every hook receives `transcript_path` and `session_id`.** So hooks are used as the trigger that decides "when to aggregate," and the values are read from elsewhere.
 
-### セッション記録（値の出どころ）
+### The session record (where the values come from)
 
-`~/.claude/projects/<プロジェクト>/<セッションID>.jsonl`。実行基盤が書く追記専用の JSONL で、応答1件ごとに `usage`（`input_tokens` / `output_tokens` / `cache_creation_input_tokens` / `cache_read_input_tokens`）と `model` を持つ。
+`~/.claude/projects/<project>/<session ID>.jsonl`. An append-only JSONL written by the runtime, with `usage` (`input_tokens` / `output_tokens` / `cache_creation_input_tokens` / `cache_read_input_tokens`) and `model` per response.
 
-実測で確認した（594行、208応答分の使用量）。
+Confirmed by measurement (594 lines, usage for 208 responses).
 
-取れないものが2つある。
+Two things cannot be taken.
 
-- **費用が入っていない。** `cost` に類する項目は無い
-- **`gitBranch` が全行 `HEAD`。** セッション開始時に1度だけ記録されるようで、`cwd` が行ごとに正しく変わるのに対して変化しない。**ブランチ名から作業単位IDを引く案は成立しない**
+- **Cost is not included.** There is no field resembling `cost`
+- **`gitBranch` is `HEAD` on every line.** It seems to be recorded only once at session start; it does not change, while `cwd` changes correctly per line. **The idea of looking up the work item ID from the branch name does not hold**
 
-> **2026-09-12 追記（AUT-172）**：**この観測は、いまは当てはまらない。** 実行基盤が変わり、`gitBranch` は行ごとに実際のブランチを持つ（1セッション 800 行以上で確認）。当時の観測が誤っていたのではなく、前提の側が動いた。**根拠が消えた判断は、根拠ごと読み直すこと。** ただし [0009](0009-attribute-by-branch.md) が採ったのはセッション記録ではなく、書く時点の作業ツリーそのものである。実行基盤の都合に依存しない。
+> **Addendum 2026-09-12 (AUT-172)**: **This observation no longer applies.** The runtime changed, and `gitBranch` now holds the actual branch per line (confirmed over 800+ lines in one session). The observation at the time was not wrong; the premise moved. **A decision whose grounds are gone should be reread, grounds and all.** Note, however, that what [0009](0009-attribute-by-branch.md) adopted is not the session record but the working tree itself at the time of writing. It does not depend on the runtime's circumstances.
 
-### OpenTelemetry（長期の行き先。いまは採らない）
+### OpenTelemetry (the long-term destination; not adopted now)
 
-実行基盤は OTEL を内蔵し、`claude_code.token.usage` と `claude_code.cost.usage`（USD）を出す。定義§16が Telemetry の実装例として挙げている経路そのものであり、**費用が直接取れる**。
+The runtime has OTEL built in, emitting `claude_code.token.usage` and `claude_code.cost.usage` (USD). It is exactly the path definition §16 gives as an example implementation of Telemetry, and **cost can be taken directly.**
 
-しかし段階1では採らない。
+But it is not adopted in stage 1.
 
-- **ファイル出力が無い。** エクスポータは `otlp` / `prometheus` / `console` / `none` のみ。ファイルに落とすにはコレクタの常駐か標準出力のリダイレクトが要る。どちらも定義§9の「ハーネスの既定動作として組み込む」に向かない。人が起動を忘れれば記録が消える
-- **作業単位に紐づかない。** 属性は `session.id` までで、作業単位IDが無い。結局どこかで対応表が要る
+- **There is no file output.** The exporters are only `otlp` / `prometheus` / `console` / `none`. Getting it into a file needs a resident collector or redirecting standard output. Neither fits definition §9's "built in as the default behavior of the harness." If a human forgets to start it, records disappear
+- **It is not linked to work items.** Attributes go only as far as `session.id`; there is no work item ID. A mapping would be needed somewhere anyway
 
-BOOTSTRAP の「保留中の判断」が挙げる移行条件は、現時点でどれも満たしていない。
+None of the migration conditions listed in BOOTSTRAP's "pending decisions" are currently met.
 
-## 決定
+## Decision
 
-**フックをきっかけ、セッション記録を情報源、作業単位マーカーを紐づけに使う。**
+**Use the hook as the trigger, the session record as the source, and the work item marker for linking.**
 
 ```
-Stop / SessionEnd フック
-  → transcript_path と session_id を受け取る
-  → 前回カーソル以降の応答の usage をモデル別に合計
-  → 作業単位マーカーから作業単位IDと対象リポジトリを読む
-  → <対象リポジトリ>/telemetry/<作業単位ID>.jsonl へ emitter: adapter で追記
-  → カーソルを更新
+Stop / SessionEnd hook
+  → receive transcript_path and session_id
+  → sum usage per model for responses after the previous cursor
+  → read the work item ID and target repository from the work item marker
+  → append to <target repository>/telemetry/<work item ID>.jsonl with emitter: adapter
+  → update the cursor
 ```
 
-### 紐づけは明示的なマーカーで行う
+### Linking is done with an explicit marker
 
-`.autodrive/current-work-item.json` に作業単位IDと対象リポジトリを持つ。作業状態であって成果物ではないため、リポジトリには入れない。
+`.autodrive/current-work-item.json` holds the work item ID and target repository. It is working state, not a deliverable, so it is not put in the repository.
 
-ブランチ名から取得する案は `gitBranch` が使えないため不可。時刻の範囲で割り当てる案は、作業単位が交錯すると壊れる。
+Getting it from the branch name is not possible because `gitBranch` cannot be used. Assigning by time range breaks when work items interleave.
 
-### マーカーが無い場合、記録を捨てない
+### Without a marker, records are not thrown away
 
-作業単位が解決できない場合、`work_item_id` に `null` を書いて `telemetry/unattributed.jsonl` へ残す。
+If the work item cannot be resolved, `null` is written to `work_item_id` and it is kept in `telemetry/unattributed.jsonl`.
 
-**記録を捨てないことが要点である。** 記録から消すと、費やした分そのものが消える。残せば後から読める。
+**Not throwing records away is the point.** Erasing them from the records erases what was spent itself. Kept, they can be read later.
 
-> **2026-08-24 追記（AUT-49 / AUT-51、定義 v0.10）**：当初ここには「作業単位に紐づかない作業は、起票せずに始めた作業であり、CLAUDE.md 違反である」と書いていた。**これは誤りだった。** 作業単位を起こすかどうかの検討や、起票される前の依頼は、どの作業単位にも属さない。定義§6（v0.10）はこれらを§6のイベントではないと整理している。
+> **Addendum 2026-08-24 (AUT-49 / AUT-51, definition v0.10)**: This originally said "work not linked to a work item is work started without filing, a violation of CLAUDE.md." **That was wrong.** Deliberating whether to raise a work item, or requests before filing, belong to no work item. Definition §6 (v0.10) sorts these out as not being §6 events.
 >
-> 違反として扱った結果、正しく動いた記録が `invariants` の失敗として現れ、`work_item_id` を遡って付与できないため解消できない状態になった。いまは `unattributed.jsonl` にあり理由を持つ記録に限り `work_item_id` を求めず、件数と理由を観測として出す。あわせて、解決できない理由（マーカーが無い／読めない／内容が欠けている）を見分けて記録する。
+> Treating them as violations made correctly working records appear as `invariants` failures, and since `work_item_id` cannot be attached retroactively, it became a state that could not be resolved. Now, only for records in `unattributed.jsonl` that have a reason, `work_item_id` is not required, and the count and reasons are printed as observations. In addition, the reasons for not resolving (no marker / unreadable / contents missing) are distinguished and recorded.
 
-これに伴い `invariants` の必須属性の判定を、属性の存在から**値の妥当性**へ改めた。存在確認だけでは `null` を通してしまう。
+With this, `invariants`' judgment of required attributes was changed from the existence of the attribute to **the validity of the value.** Checking existence alone lets `null` through.
 
-### 費用は保存せず、読むときに算出する
+### Cost is not stored but computed when read
 
-セッション記録に費用が無いため、保存するには単価表と掛けることになる。保存すると単価改定のたびに過去の値が誤りになり、しかも誤りだと分からない。
+Since the session record has no cost, storing it would mean multiplying by a price table. Stored, past values become wrong on every price change, and without anyone knowing they are wrong.
 
-トークン量（機械的に正確）だけを記録し、費用は必要になった時点で算出する。単価表を直せば過去の集計も直る。
+Only the token amounts (mechanically accurate) are recorded, and cost is computed when needed. Fixing the price table fixes past aggregates too.
 
-### ポート語彙は変えない
+### The port vocabulary does not change
 
-定義§16の補足のとおり、これはランタイム由来の記録であり語彙には現れない。スキルからは呼ばれない。
+As the supplementary notes to definition §16 say, these are records that come from the runtime and do not appear in the vocabulary. Skills do not call them.
 
-### フックの登録はプロジェクト側に置く
+### The hook is registered on the project side
 
-`~/.claude/settings.json` ではなく、リポジトリの `.claude/settings.json` に登録する。
+It is registered in the repository's `.claude/settings.json`, not `~/.claude/settings.json`.
 
-1. **`invariants` が読める。** リポジトリに入るため、フックが外されたら検出できる。BOOTSTRAP の「強制ではなく検出で代替する」方針に沿う
-2. ユーザ毎の環境セットアップ手順が要らない。clone すれば配られる
+1. **`invariants` can read it.** Being in the repository, removal of the hook can be detected. This follows BOOTSTRAP's policy of "substituting by detection rather than enforcement"
+2. No per-user environment setup is needed. Cloning distributes it
 
-clone 直後はワークスペース信頼の確認を経るまでフックが動かない。この状態はリポジトリからは読めないが、`emitter: adapter` のイベントが出ないため、結果として不変条件「テレメトリが記録されること」が有効に上がらない。**登録の有無と実際に動いているかを、別々の観測で押さえられる。**
+Right after cloning, the hook does not run until the workspace trust confirmation is passed. This state cannot be read from the repository, but no `emitter: adapter` events appear, so the invariant "Telemetry is recorded" does not rise to active as a result. **Whether it is registered and whether it actually runs can be covered by separate observations.**
 
-## 帰結
+## Consequences
 
-- セッション記録が追記専用であることに依存する。カーソルは行数で持ち、`last_uuid` を併記して健全性を確認できるようにした
-- 記録の失敗でエージェントを止めない。フックは常に 0 で終わる。記録が落ちたことは、使用量のイベントが現れないことで検出する
-- OTLP へ移す動機に「費用が直接取れる」が加わった。BOOTSTRAP の保留中の判断へ追記する
+- It depends on the session record being append-only. The cursor is held as a line count, with `last_uuid` alongside so its soundness can be checked
+- A recording failure does not stop the agent. The hook always exits 0. That recording dropped is detected by usage events not appearing
+- "Cost can be taken directly" is added to the motives for moving to OTLP. It is appended to BOOTSTRAP's pending decisions

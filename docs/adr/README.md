@@ -1,44 +1,46 @@
-# ADR 索引
+# ADR index
 
-参照実装を通じて残る設計判断の記録。**計画の冒頭でここを参照すること。** 置くだけでは読まれない（定義§16）。
+Records of design decisions that remain throughout the reference implementation. **Refer to this at the start of planning.** Placing it alone does not get it read (definition §16).
 
-覆したくなった判断があれば、該当の ADR を読んでから提案する。根拠を読まずに別案を出すと同じ議論を繰り返すことになる。
+If you want to overturn a decision, read the relevant ADR before proposing. Proposing an alternative without reading the grounds repeats the same discussion.
 
-| # | 判断 | 状態 | 日付 |
+| # | Decision | Status | Date |
 |---|---|---|---|
-| [0001](0001-implementation-language.md) | 参照実装は Node で動かし、型は JSDoc で書く。依存を持たない | 承認 | 2026-08-21（2026-08-29 改訂） |
-| [0002](0002-token-usage-capture.md) | トークン消費は、フックをきっかけにセッション記録から読む。費用は保存せず算出する | **一部を 0008・0009 が置き換え** | 2026-08-22 |
-| [0003](0003-enactment-boundary.md) | 有効の判定は、動かせる有効境界以降の記録に対して行う。有効境界はアダプタ経由でしか進められない | 承認 | 2026-08-22 |
-| [0004](0004-vendored-kit.md) | autodrive-dev-kit をプロジェクトの中へ複製し、バージョンで固定する。参照実装の更新は自動で降ってこない | **複製の置き場所を 0010 が置き換え** | 2026-08-27 |
-| [0005](0005-project-config.md) | 構成をプロジェクトに残し、決め方で3つのコマンドに分ける（`init` / `apply` / `update`） | 承認 | 2026-08-27 |
-| [0006](0006-version-bump-policy.md) | バージョンは提出のたびに上げ、タグは統合のあとに CI が打つ | 承認 | 2026-09-08 |
-| [0007](0007-ride-existing-integrations.md) | ポートの実装が既に持っている自動化に載る。載らない部分だけを作る | 承認 | 2026-09-09 |
-| [0008](0008-token-usage-off-branch.md) | トークン消費はブランチに載せず、OTLP で外へ送る。取り残しは拾わず、あることを言う | 承認 | 2026-09-12 |
-| [0009](0009-attribute-by-branch.md) | 記録は、いま居るリポジトリのブランチで作業単位へ紐づける。マーカーは受け皿として残す | 承認 | 2026-09-12 |
-| [0010](0010-distribution-boundary-in-the-tree.md) | 配布の境界を、一覧ではなく階層で表す。`src/vendored/` が複製され、`src/templates/` は配るが複製しない | 承認 | 2026-09-18 |
-| [0011](0011-applying-an-app-standard-to-a-tool.md) | アプリ向けの開発標準を、道具にどこまで適用するか。入れた先に要求することは寄せない。自分の開発の仕方は寄せる | 承認 | 2026-09-21 |
-| [0012](0012-sandbox-is-declared-not-built.md) | サンドボックスは、プロジェクトが宣言するもの。参照実装が中身を知るのは devcontainer だけで、判定もそこに限る | 承認 | 2026-09-23 |
-| [0013](0013-work-item-id-and-state-on-github-issues.md) | GitHub Issues で、作業単位IDと状態をどう持つか。IDは接頭辞付き、状態は開いている側をラベルで分ける | 承認 | 2026-09-23 |
+| [0001](0001-implementation-language.md) | The reference implementation runs on Node, with types written in JSDoc. It has no dependencies | Accepted | 2026-08-21 (revised 2026-08-29) |
+| [0002](0002-token-usage-capture.md) | Token consumption is read from the session record, triggered by a hook. Cost is computed, not stored | **Partly superseded by 0008 and 0009** | 2026-08-22 |
+| [0003](0003-enactment-boundary.md) | Whether something is active is judged on records from a movable activation boundary onward. The activation boundary can only be advanced through the adapter | Accepted | 2026-08-22 |
+| [0004](0004-vendored-kit.md) | autodrive-dev-kit is copied into the project and pinned by version. Updates to the reference implementation do not arrive automatically | **Where the copy is placed is superseded by 0010** | 2026-08-27 |
+| [0005](0005-project-config.md) | The setup is kept in the project, split into three commands by how it is decided (`init` / `apply` / `update`) | Accepted | 2026-08-27 |
+| [0006](0006-version-bump-policy.md) | The version is raised on every submission, and CI cuts the tag after integration | Accepted | 2026-09-08 |
+| [0007](0007-ride-existing-integrations.md) | Ride the automation the port implementations already have. Build only what does not ride on it | Accepted | 2026-09-09 |
+| [0008](0008-token-usage-off-branch.md) | Token consumption is not put on the branch but sent out over OTLP. Leftovers are not picked up; their existence is reported | Accepted | 2026-09-12 |
+| [0009](0009-attribute-by-branch.md) | Records are linked to work items by the branch of the repository you are currently in. The marker is kept as a fallback | Accepted | 2026-09-12 |
+| [0010](0010-distribution-boundary-in-the-tree.md) | The distribution boundary is expressed by directory hierarchy, not a list. `src/vendored/` is copied; `src/templates/` is distributed but not copied | Accepted | 2026-09-18 |
+| [0011](0011-applying-an-app-standard-to-a-tool.md) | How far to apply a development standard for apps to a tool. What it demands of where it is put is not aligned; how it itself is developed is aligned | Accepted | 2026-09-21 |
+| [0012](0012-sandbox-is-declared-not-built.md) | The sandbox is something the project declares. The reference implementation knows the contents only of devcontainer, and its checks are limited to that | Accepted | 2026-09-23 |
+| [0013](0013-work-item-id-and-state-on-github-issues.md) | How work item IDs and state are held on GitHub Issues. IDs carry a prefix; state is distinguished by labels while open | Accepted | 2026-09-23 |
 
-## 書き方
+## How to write
 
-- **ファイル名は英語、連番付き。** `NNNN-kebab-case-in-english.md`
-- **中身は日本語でよい。** 定義もこの参照実装も日本語で書かれている
-- 新しい ADR を追加したら、この索引に1行足す
+- **File names in English, numbered.** `NNNN-kebab-case-in-english.md`
+- **Contents in English.** The definition and this reference implementation are written in English
+- When adding a new ADR, add one line to this index
 
-ファイル名を英語にするのは、URL・パス・grep・ツールの扱いが素直になるためである。ファイル名は識別子であり、読み物ではない。
+**0001 to 0013 were originally written in Japanese and translated in AUT-265.** The meaning was not changed. The original text remains in the git history.
 
-### 人の発言を、そのまま引かない
+File names are in English because it keeps URLs, paths, grep, and tools straightforward. A file name is an identifier, not something to read.
 
-**何を言われたかではなく、何が問題だったかを書く。**
+### Do not quote people's words verbatim
 
-背景に人の発言を置きたくなるが、**発言はその場の言い方を含む。** 後から読む人に要るのは提起の中身であって、言い回しではない。
+**Write what the problem was, not what was said.**
+
+It is tempting to put someone's words in the background, but **words carry how they were said at the moment.** What a later reader needs is the substance of what was raised, not the phrasing.
 
 ```
-書かない: > kitをここに寄せるか１回考えておきたいです
-書く:     **人から「開発標準に合わせるか1回考えたい」という提起があった**
+Do not write: > kitをここに寄せるか１回考えておきたいです
+Write:        **A human raised "I want to think once about whether to align with the development standard"**
 ```
 
-**数と事実は引いてよい。**「34件が着手中のうち30件は統合済みだった」のように、**論拠になっているものは残す。** 丸めると根拠が弱まる。
+**Numbers and facts may be quoted.** Like "of 34 started, 30 were already integrated," **keep what serves as grounds.** Rounding weakens the grounds.
 
-**過去の ADR は直さない。** 決定の記録であり、後から書き換えると、そのとき何を決めたのかが読めなくなる。**これから書くものに適用する。**
+**Past ADRs are not rewritten for this.** They are records of decisions, and rewriting them later makes it unreadable what was decided at the time. **Apply it to what is written from now on.**

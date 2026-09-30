@@ -1,91 +1,91 @@
-# ADR 0009: 記録は、いま居るリポジトリのブランチで作業単位へ紐づける
+# ADR 0009: Records are linked to work items by the branch of the repository you are currently in
 
-- 状態: 承認
-- 日付: 2026-09-12
-- 作業単位: AUT-172
-- 関連: [0002](0002-token-usage-capture.md)（紐づけの手段を置き換える）
+- Status: Accepted
+- Date: 2026-09-12
+- Work item: AUT-172
+- Related: [0002](0002-token-usage-capture.md) (supersedes the means of linking)
 
-## 背景
+## Background
 
-記録の紐づけは、マーカー1つ（`.autodrive/current-work-item.json`）で行っていた。ADR 0002 が置いたもので、着手のたびに上書きされる。
+Records were linked through a single marker (`.autodrive/current-work-item.json`). ADR 0002 placed it, and it is overwritten on every start.
 
-**マーカーは1つしか無く、次に着手すると入れ替わる。** ところが記録は、着手の順番どおりには書かれない。
+**There is only one marker, and it is swapped on the next start.** But records are not written in the order work is started.
 
 ```
-1. AUT-162 を提出する
-2. AUT-174 に着手する      → マーカーが AUT-174 を指す
-3. AUT-162 に人の指摘が来る → 直して記録を書く
+1. Submit AUT-162
+2. Start AUT-174      → the marker points at AUT-174
+3. A human comments on AUT-162 → fix it and write a record
 ```
 
-**3 で書いた記録は AUT-174 に紐づく。** 提出のあとに指摘が来るのは普通のことであり、そのときマーカーは必ず次を指している。
+**The record written in 3 is linked to AUT-174.** Comments arriving after submission are normal, and at that point the marker always points at the next one.
 
-### 帰属しないより悪い
+### Worse than not being attributed
 
-実際に3件が誤った先を向いた（2026-09-12）。
+Three records actually pointed at the wrong place (2026-09-12).
 
-| 記録 | 正しい作業単位 | マーカーが指していた先 |
+| Record | Correct work item | Where the marker pointed |
 |---|---|---|
-| AUT-170 の検出漏れ | AUT-170 | AUT-174 |
-| AUT-162 の意思決定 | AUT-162 | AUT-174 |
-| AUT-162 の手戻り | AUT-162 | AUT-174 |
+| Missed detection of AUT-170 | AUT-170 | AUT-174 |
+| Decision of AUT-162 | AUT-162 | AUT-174 |
+| Rework of AUT-162 | AUT-162 | AUT-174 |
 
-**帰属しないことは `invariants` が件数として出す。誤った作業単位への帰属は、誰も気づかない。** 定義§6は作業単位IDを必須属性とし、遡って付与できないとしている。誤って付いた値も、同じ理由で直せない。
+**Not being attributed is reported as a count by `invariants`. Being attributed to the wrong work item is noticed by nobody.** Definition §6 makes the work item ID a required attribute that cannot be attached retroactively. A wrongly attached value cannot be fixed, for the same reason.
 
-### もう1つの症状：打つ場所で結果が変わる
+### Another symptom: the result changes with where it is run
 
-記録コマンドを子リポジトリの中から打つと、起点がそのディレクトリになり、マーカーもセッションの記録も見つからなかった。
+When the recording command was run from inside a child repository, the starting point became that directory, and neither the marker nor the session record was found.
 
-そのとき残る理由は「作業単位に紐づかないやり取りである可能性がある」だが、**これは誤った説明である。** 無かったのは紐づく先ではなく、探した場所である。**誤った理由が残ると、後から読んだ人を誤らせる。**
+The reason left then was "possibly an exchange not linked to a work item," but **that is a wrong explanation.** What was missing was not something to link to, but the place searched. **A wrong reason left behind misleads whoever reads it later.**
 
-## ADR 0002 の根拠は、前提が変わっていた
+## The premise of ADR 0002's grounds had changed
 
-ADR 0002 は「セッション記録の `gitBranch` が全行 `HEAD` なので、ブランチ名から引く案は成立しない」としていた。
+ADR 0002 said "`gitBranch` in the session record is `HEAD` on every line, so the idea of looking it up from the branch name does not hold."
 
-**実測すると、いまは行ごとに実際のブランチが入る**（2026-09-12、1セッション 800 行以上で確認）。当時の観測は正しく、実行基盤の側が変わった。
+**Measured now, the actual branch is in each line** (2026-09-12, confirmed over 800+ lines in one session). The observation at the time was right; the runtime side changed.
 
-**ただし、この ADR が採るのはセッション記録ではない。** 書く時点の作業ツリーそのものを見る。実行基盤の都合に依存しないためである。
+**However, what this ADR adopts is not the session record.** It looks at the working tree itself at the time of writing, so as not to depend on the runtime's circumstances.
 
-## 決定
+## Decision
 
-**いま居るリポジトリのブランチで引く。見つからなければマーカーで引く。**
+**Look it up by the branch of the repository you are currently in. If not found, look it up by the marker.**
 
 ```
-記録を書く
-  → cwd を含むリポジトリを求める（起点そのもの、または起点の直下に限る）
-  → そのリポジトリの現在のブランチを読む
-  → 対応表（.autodrive/work-items.json）を引く
-  → 無ければマーカーへ落ちる
+write a record
+  → find the repository containing cwd (limited to the starting point itself, or directly under it)
+  → read that repository's current branch
+  → look it up in the mapping (.autodrive/work-items.json)
+  → if not there, fall back to the marker
 ```
 
-**ブランチは作業単位ごとに分かれており、行き来しても入れ替わらない。** 戻って書いた記録も正しい先へ向かう。
+**Branches are separate per work item and are not swapped when moving back and forth.** Records written after going back also go to the right place.
 
-### ブランチ名から作業単位IDを推測しない
+### The work item ID is not guessed from the branch name
 
-`begin` が対応を書き残す。名前の形から逆算すると、`--branch` で別名を渡された場合に外れる。さらに悪いことに、**作業単位でないブランチ名から、存在しないIDを作ってしまう。**
+`begin` writes down the mapping. Working backward from the shape of the name misses when a different name was passed with `--branch`. Worse, **it would make up nonexistent IDs from branch names that are not work items.**
 
-対応表は**消さずに足す。** 前の作業単位のブランチが残っている限り、そこへ戻って書いた記録も正しく紐づく。それがこの表の目的である。
+The mapping is **added to, not cleared.** As long as a previous work item's branch remains, records written after returning there are linked correctly. That is the purpose of this table.
 
-### 起点の下にあるものだけを認める
+### Only what is under the starting point is accepted
 
-起点そのもの、または起点の直下のリポジトリに限る。外で打たれた場合に、関係のない対応を拾わないため。
+Limited to the starting point itself, or repositories directly under it. So that when run outside, unrelated mappings are not picked up.
 
-切り離された HEAD では引かない（ブランチ名が空になる）。
+It does not look up on a detached HEAD (the branch name is empty).
 
-### 起点は探し上げる
+### The starting point is searched upward
 
-`CLAUDE_PROJECT_DIR` が最優先。無ければ、`.autodrive` を持つディレクトリが見つかるまで上へ辿る。**打つ場所で結果が変わらないようにする。**
+`CLAUDE_PROJECT_DIR` has top priority. Otherwise, it goes up until it finds a directory with `.autodrive`. **So that the result does not change with where it is run.**
 
-### マーカーは残す
+### The marker is kept
 
-消さない。ブランチで引けない場合（既定ブランチにいる、対応表に無い）の受け皿として要る。
+Not deleted. It is needed as a fallback when the branch cannot be used (on the default branch, not in the mapping).
 
-## 並列実行との関係
+## Relation to parallel execution
 
-**作業単位ごとにワークツリーを作る形と噛み合う。** ワークツリーはそれぞれ別のブランチを持つため、同時に何本走っても取り違えない。マーカー1つでは、そもそも表現できなかった。
+**It meshes with the form of creating a worktree per work item.** Each worktree has its own branch, so however many run at once, they do not get mixed up. A single marker could not express this in the first place.
 
-## 帰結
+## Consequences
 
-- **誤った作業単位への紐づけが起きなくなった。** 実際に起きた3件は、いずれもブランチから正しく引ける
-- **子リポジトリの中から打っても紐づく。** 誤った理由が記録に残らなくなった
-- 状態ファイルが1つ増えた（`.autodrive/work-items.json`）。作業状態であって成果物ではないため、リポジトリには入れない
-- **過去に誤って紐づいた記録は直していない。** 作業単位IDは遡って付与も訂正もできない（定義§6）。誤りは記録として残す
+- **Linking to the wrong work item no longer happens.** The three that actually occurred can all be looked up correctly from the branch
+- **It links even when run from inside a child repository.** Wrong reasons no longer remain in the records
+- One more state file (`.autodrive/work-items.json`). It is working state, not a deliverable, so it is not put in the repository
+- **Records wrongly linked in the past were not fixed.** Work item IDs can neither be attached nor corrected retroactively (definition §6). The error is kept as a record

@@ -233,8 +233,8 @@
   {
     "name": "AUT-160 索引に、改訂前の判断を戻す",
     "file": "docs/adr/README.md",
-    "from": "| 参照実装は Node で動かし、型は JSDoc で書く。依存を持たない |",
-    "to": "| `invariants` と参照実装の実装言語を TypeScript とする。依存を持たない |",
+    "from": "| The reference implementation runs on Node, with types written in JSDoc. It has no dependencies |",
+    "to": "| `invariants` and the reference implementation are implemented in TypeScript. It has no dependencies |",
     "why": "最初に読む場所が、リンク先と逆のことを言う。改訂しても索引だけが古いまま残る"
   },
   {
@@ -329,8 +329,8 @@
   {
     "name": "AUT-194 配布物の文書で、言い換えた語を使う",
     "file": "docs/adr/README.md",
-    "from": "| トークン消費はブランチに載せず",
-    "to": "| トークン消費は枝に載せず"
+    "from": "| Token consumption is not put on the branch",
+    "to": "| Token consumption is not put on the twig"
   },
   {
     "name": "AUT-194 配布物へ、作る側の呼び名を持ち込む",
@@ -564,8 +564,8 @@
   {
     "name": "AUT-228 ADR の書き方から、発言を引かない規約を落とす",
     "file": "docs/adr/README.md",
-    "from": "### 人の発言を、そのまま引かない\n",
-    "to": "### 人の発言について\n",
+    "from": "### Do not quote people's words verbatim\n",
+    "to": "### About people's words\n",
     "why": "何を言われたかが残り、後から読む人には言い回しだけが伝わる"
   },
   {

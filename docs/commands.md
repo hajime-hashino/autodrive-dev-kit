@@ -1,303 +1,305 @@
-# コマンド
+# Commands
 
-**人が打つのは `init` / `apply` だけである。** 残りはAIが打つ。ここはその全体を並べたもので、参照実装を触るときと、AIの動きを確かめるときに読む。
+**The only commands a human runs are `init` / `apply`.** The AI runs the rest. This lists all of them; read it when working on the reference implementation, or when checking what the AI does.
 
-`update` もAIが打つ。**プロジェクトの追跡ファイルを書き換える変更であり、提出を経る**（AUT-150）。
+`update` is also run by the AI. **It is a change that rewrites files the project tracks, so it goes through a submission** (AUT-150).
 
-入口は `src/vendored/bin/autodrive-dev-kit` の1つにまとめてある。**PATH に入れて増えるものを1つにするため。**
+The entry point is gathered into one: `src/vendored/bin/autodrive-dev-kit`. **So that putting it on PATH adds only one thing.**
 
-`src/vendored/` の中身は、そのままプロジェクトの `autodrive/` になる。**したがって殻から実装への道のりは、参照実装の中でも複製先でも同じである**（`invariants` → `internal/main.js`）。
+The contents of `src/vendored/` become the project's `autodrive/` as they are. **So the path from the shell to the implementation is the same in the reference implementation and in the copy** (`invariants` → `internal/main.js`).
 
-## 土台を置く
+## Placing the foundation
 
 ```sh
-autodrive-dev-kit init      # 新しく始める。構成を聞く
-autodrive-dev-kit apply     # 既にあるものへ入れる。構成を推測して確かめる
-autodrive-dev-kit update    # 新しいバージョンへ入れ替える。構成は聞かない
+autodrive-dev-kit init      # start new. asks about the setup
+autodrive-dev-kit apply     # add to an existing project. infers the setup and confirms it
+autodrive-dev-kit update    # replace with a newer version. does not ask about the setup
 ```
 
-**違うのは構成をどう決めるかだけで、置く手順は同じ。** 前提が崩れていれば置かずに止まり、どれを打てばよいかを出す。
+**They differ only in how the setup is decided; the placing steps are the same.** If a precondition is broken, it stops without placing and says which one to run.
 
-### 置くには、テンプレートが要る
+### Placing needs the templates
 
-この3つはテンプレート（`src/templates/`）を読んでファイルを作る。**プロジェクトの中のコピー（`autodrive/`）にテンプレートは入っていない**（[ADR 0004](adr/0004-vendored-kit.md)）。
+These three read the templates (`src/templates/`) to create files. **The copy inside the project (`autodrive/`) does not include the templates** ([ADR 0004](adr/0004-vendored-kit.md)).
 
-したがって `update` は**外から取ってきて打つ**。
+Therefore `update` is **fetched from outside and run.**
 
 ```sh
 npx github:hajime-hashino/autodrive-dev-kit update
 ```
 
-コピーから打たれた場合は、置かずに止まり、この打ち方を出す。**理由を言わずに落ちると、打った側には何が起きたのか分からない**（AUT-152）。
+If run from the copy, it stops without placing and prints this way of running it. **Failing without a reason leaves whoever ran it not knowing what happened** (AUT-152).
 
-構成は `autodrive.json` に残る。**プロジェクトのものであり、入れ替えで上書きしない。** 設計の経緯は [ADR 0005](adr/0005-project-config.md)。
+The setup remains in `autodrive.json`. **It belongs to the project and is not overwritten on replacement.** The background of the design is in [ADR 0005](adr/0005-project-config.md).
 
-### 手で変えられていたら、上書きせずに止まる
+### If they were changed by hand, it stops without overwriting
 
-管理下のファイル（`.devcontainer/`、`.env.example`、`docs/autodrive.md`、CI 定義）は入れ替えのたびに書き直される。**手で変えられていた場合は、何も書かずに止まる。**
+Managed files (`.devcontainer/`, `.env.example`, `docs/autodrive.md`, CI definitions) are rewritten on every replacement. **If they were changed by hand, it writes nothing and stops.**
 
 ```
-管理下のファイルが手で変えられている。**このまま入れ替えると消える。**
+Managed files were changed by hand. **Replacing them as-is would erase those changes.**
 
   .devcontainer/devcontainer.json
       "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
       "forwardPorts": [5432],
 
-**何も書いていない。** 一部だけ新しい状態を作らないため。
+**Nothing was written.** So as not to leave a partially updated state.
 ```
 
-**一部だけ書いて止まらない。** 書きながら確かめると、autodrive-dev-kit だけ新しく、管理下のファイルが古い状態が残る。
+**It does not write partway and then stop.** Checking while writing would leave a state where only autodrive-dev-kit is new and the managed files are old.
 
-判定は、置いたときの指紋（`autodrive/manifest.json`）と突き合わせて行う。**参照実装の側が変えた分では止まらない。** 止めると入れ替えそのものができなくなる。
+The judgment compares against the fingerprints from when they were placed (`autodrive/manifest.json`). **It does not stop for what the reference implementation side changed.** Stopping there would make replacement itself impossible.
 
-指紋を `autodrive/` に置くのは、**そこが追跡されるからである。**`.autodrive/` は追跡しないので、手で変えて commit した人とクローンした人とで判定が変わってしまう。
+The fingerprints are kept in `autodrive/` **because that is tracked.** `.autodrive/` is not tracked, so the judgment would differ between someone who changed a file by hand and committed it and someone who cloned.
 
-指紋が無い場合（この仕組みより前に置かれたプロジェクト）は**止めない。** 手で変えたのか前のバージョンの中身なのかを区別できないため。ただし**確かめていないことは黙らない。**
+If there are no fingerprints (projects placed before this mechanism), it **does not stop**, because it cannot tell a change by hand from the previous version's contents. But **it does not stay silent about what it did not confirm.**
 
 ```
-手で変えられていないかを確かめられなかった（1件）。**上書きした。**
+Could not confirm whether these were changed by hand (1). **Overwrote them.**
   .devcontainer/allowed-domains.txt
 ```
 
-**「毎回AIがマージする」形は採っていない。** 管理下には `init-firewall.sh` が含まれる。マージを間違えると外向き通信が開き、**開いたことは判定でも気づけない。** いまは「中身がテンプレートと一致する」が機械的に確かめられる。マージすると、その保証が消える。
+**The form "the AI merges every time" is not adopted.** The managed files include `init-firewall.sh`. A wrong merge opens outbound traffic, and **that it opened cannot be noticed even by the checks.** Right now, "the contents match the template" can be confirmed mechanically. Merging would erase that guarantee.
 
-止まったあとに取り込むかを判断するのは、**検出されたときだけでよい。** 危険を毎回は負わない。
+Judging whether to take something in after it stops **is needed only when it is detected.** The risk is not taken on every time.
 
-## 着手する
+## Starting work
 
 ```sh
-autodrive-dev-kit begin <作業単位ID> --repo <対象リポジトリ> [--branch <ブランチ名>]
+autodrive-dev-kit begin <work item ID> --repo <target repository> [--branch <branch name>]
 ```
 
-着手には3つが要る。作業単位の確認、作業空間の用意（既定ブランチを最新にしてブランチを作る）、記録の紐づけ先の設置。**手で順に踏む形だと、どれかを飛ばしたことに気づけない。**
+Starting needs three things: checking the work item, preparing the workspace (bringing the default branch up to date and creating a branch), and placing the link for records. **Stepping through them by hand, you cannot notice having skipped one.**
 
-加えて、**対象リポジトリを作業単位そのものに記す**。手元のマーカーにしか書いていなかったため、Tracker の一覧を見てもどのリポジトリの作業か分からなかった（AUT-114）。
+In addition, **the target repository is noted on the work item itself.** It used to be written only in the local marker, so looking at the Tracker's list did not tell which repository a work item was for (AUT-114).
 
-記録に残っている失敗は3件で、いずれも規約には明記されていた。
+There are three failures in the records, and in each case the convention was stated explicitly.
 
-| 作業単位 | 何を飛ばしたか |
+| Work item | What was skipped |
 |---|---|
-| AUT-38 | 既定ブランチへ戻らず、統合済みのブランチへ積んだ。変更が届かなかった |
-| AUT-42 | マーカーを前の作業単位のままにした |
-| AUT-42 | ブランチを作らずに既定ブランチへ直接コミットした |
+| AUT-38 | Did not return to the default branch and stacked on an integrated branch. The change never arrived |
+| AUT-42 | Left the marker pointing at the previous work item |
+| AUT-42 | Committed directly to the default branch without creating a branch |
 
-**規約が存在しても、手順を通らなければ思い出す機会が無い。** 通らないと始まらない入口を置くことで、思い出す必要そのものを減らす。
+**Even if a convention exists, without going through the procedure there is no occasion to remember it.** Placing an entrance without which nothing starts reduces the need to remember in the first place.
 
-前提が崩れていれば進めずに止まる。**止まるときは、なぜと、何をすればよいかを出す。**
-
-```
-my-app はいま aut-48-begin-work にいる（既定ブランチは main）。
-前の作業のブランチの上から始めると、その提出が既に統合されている場合に変更が届かない。
-
-次のどちらかを行うこと。
-  - 前の作業が統合済みなら: git -C my-app fetch origin main:main && git -C my-app checkout main
-  - まだ提出していないなら: 先にその作業を提出してから着手する
-```
-
-手元に残っている変更は消さない。ブランチへ持っていったうえで、何を持ってきたかを出す。
-
-**既定ブランチへ戻るときは、先に進めること。** 案内に `fetch` が入っているのはそのためである。進めずに切り替えると、統合済みの記録と手元の記録が食い違い、未コミットの追記があると切り替えられない。
-
-**トークン消費の記録は提出のあとにも届く**（提出を作る間と、CI を待つ間）。したがってこれは例外ではなく毎回起きる。進めておけば、追記はそのまま次のブランチへ持ち越される。**捨てなくてよい。**
-
-### 着手が、取り残された記録を拾う
-
-持ち越すだけでは足りない。**順番が決まっている。**
-
-1. コミットする
-2. 提出する
-3. 人に報告して止まる → **ここでフックが走り、追記される**
-4. 次の作業へ移る。ブランチが変わる
-
-**3 は必ず 1 の後に来る。** したがって最後の1件は構造的にコミットされない。忘れたからではない（AUT-156）。
-
-持ち越されはするので消えはしないが、**入るのは次の作業単位のコミットである。** 参照実装で数えると、トークン記録 55 件のうち **51 件が別の作業単位のコミットで入っていた。** 拾えていたのは、たまたま次の作業がそこにあったからである。
-
-**たまたまに頼っている以上、次が無ければ残る。** 測った時点で、4つのリポジトリすべてに取り残しがあった（6行）。どれもそのリポジトリで最後に行われた作業単位の分だった。
-
-そこで `begin` が、ブランチを作った直後に拾ってコミットする。
+If a precondition is broken, it stops without proceeding. **When it stops, it says why, and what to do.**
 
 ```
-取り残された記録を拾って、このブランチへ載せた:
+my-app is currently on aut-48-begin-work (the default branch is main).
+Starting on top of the previous work's branch means the changes never arrive if that submission is closed.
+
+Do one of the following.
+  - If the previous work is integrated: git -C my-app fetch origin main:main && git -C my-app checkout main
+  - If it is not submitted yet: submit that work first, then start
+```
+
+Local changes are not deleted. They are carried over to the branch, and it says what was brought over.
+
+**When returning to the default branch, bring it up to date first.** That is why the guidance includes `fetch`. Switching without doing so makes the integrated records and the local records disagree, and switching fails if there are uncommitted additions.
+
+**Token consumption records arrive even after the submission** (while the submission is being created, and while waiting for CI). So this is not an exception; it happens every time. If it has been brought up to date, additions are carried over to the next branch as they are. **They need not be thrown away.**
+
+### Starting picks up records left behind
+
+Carrying them over is not enough. **The order is fixed.**
+
+1. Commit
+2. Submit
+3. Report to the human and stop → **the hook runs here and appends**
+4. Move on to the next work. The branch changes
+
+**3 always comes after 1.** So the last record is structurally never committed. Not because someone forgot (AUT-156).
+
+It is carried over so it does not disappear, but **it goes into the next work item's commit.** Counting in the reference implementation, of 55 token records, **51 went in with another work item's commit.** They were picked up only because the next work happened to be there.
+
+**Since it relies on chance, it remains if there is no next one.** At the time of measurement, all four repositories had leftovers (6 lines). Each was from the last work item done in that repository.
+
+So `begin` picks them up and commits them right after creating the branch.
+
+```
+Picked up records left behind and put them on this branch:
   telemetry/AUT-155.jsonl
 ```
 
-**記録以外には触らない。** 手元に残っている作業中の変更を巻き込むと、勝手に履歴へ載せることになる。コミットはパスを指して行う。
+**It touches nothing but records.** Pulling in work-in-progress changes left locally would put them into the history without asking. The commit is made by naming paths.
 
-**他のリポジトリの分は拾わない。** 1つの作業単位が変更を書き込むリポジトリは1つに限るためである。代わりに、あることを言う。そのリポジトリで次に着手したときに乗る。
+**It does not pick up those of other repositories.** Because a work item writes changes to only one repository. Instead, it says that they exist. They ride along the next time work starts in that repository.
 
-**フックにコミットさせる形は採っていない。** フックが走る時点で、そのブランチの提出は既に閉じていることがある。閉じたブランチへ積んでも既定ブランチには届かない（AUT-38 と同じ形）。
+**The form of having the hook commit is not adopted.** By the time the hook runs, that branch's submission may already be closed. Stacking on a closed branch never reaches the default branch (the same shape as AUT-38).
 
-## ポート語彙
+## Port vocabulary
 
-定義§16の語彙を、そのまま入口の名前にしている。**呼び出し側は実装名を知らない。** 差し替えるときは `src/adapters/` の中だけを置き換える。
+The vocabulary of definition §16 is used as the names of the entry points as it is. **Callers do not know implementation names.** When swapping, replace only what is inside `src/adapters/`.
 
 ```sh
 autodrive-dev-kit tracker 作業単位を取得する [<ID>]
-autodrive-dev-kit tracker 作業単位を起票する --title <題> --body <本文>
-autodrive-dev-kit tracker ステータスを進める <ID> --to started --repo <対象リポジトリ>
-autodrive-dev-kit tracker 作業ログを追記する <ID> --text <内容>
-autodrive-dev-kit tracker 本文を直す <ID> --body <本文>
+autodrive-dev-kit tracker 作業単位を起票する --title <title> --body <body>
+autodrive-dev-kit tracker ステータスを進める <ID> --to started --repo <target repository>
+autodrive-dev-kit tracker 作業ログを追記する <ID> --text <text>
+autodrive-dev-kit tracker 本文を直す <ID> --body <body>
 
-autodrive-dev-kit telemetry 停止を記録する     --kind <種別> --type <入力|手戻り> --detail <内容>
-autodrive-dev-kit telemetry 手戻りを記録する     --target <対象> --detail <内容> [--cause <原因>] [--found-in <工程>]
-autodrive-dev-kit telemetry 抜き取り確認を記録する --area <領域> --looked <見た範囲> \
-                                     --not-looked <見なかった範囲> --detail <内容> [--fixed]
-autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <領域> --from <状態> --to <状態> --detail <内容>
+autodrive-dev-kit telemetry 停止を記録する     --kind <kind> --type <入力|手戻り> --detail <details>
+autodrive-dev-kit telemetry 手戻りを記録する     --target <target> --detail <details> [--cause <cause>] [--found-in <stage>]
+autodrive-dev-kit telemetry 抜き取り確認を記録する --area <area> --looked <range looked at> \
+                                     --not-looked <range not looked at> --detail <details> [--fixed]
+autodrive-dev-kit telemetry 委譲範囲の変更を記録する --area <area> --from <state> --to <state> --detail <details>
 ```
 
-**本文を直せるのは着手前（`backlog` / `todo`）に限る**（定義§16）。着手後の本文は「何を頼まれたか」の記録であり、書き換えられる形にすると**「頼まれたとおり作ったか」を確かめられなくなる。** 着手後の訂正は「作業ログを追記する」で行う。断るときは、その行き先まで出す。
+**The commands still use the Japanese operation names of the definition before v0.19.** The mapping to the English names is in the definition's CHANGELOG (v0.19).
 
-**止まり方は2種類ある**（`--type`）。一括りにしない。入力を得る停止（何を作るかを聞く、見え方を決めてもらう、資格情報の発行を頼む）は**手法が正しく働いている証拠であり、減らす対象ではない。** 減らすのは手戻りの側である。**同じことを繰り返し聞くのは、入力ではなく手戻り。**
+**The body can be edited only before work starts (`backlog` / `todo`)** (definition §16). After work starts, the body is the record of "what was asked for," and making it rewritable **makes it impossible to confirm "whether it was built as asked."** Corrections after work starts are made with "作業ログを追記する" (Append to work log). When it refuses, it also says where to go instead.
 
-**抜き取り確認は、修正が入らなかった場合も必ず記録する。** 定義§8は緩和の判定を「N回連続で修正が入らないこと」で行うとしており、修正が無かった回が残らなければ判定が成立しない。見なかった範囲を省略できないのも同じ理由による。
+**There are two ways of stopping** (`--type`). Do not lump them together. Stops to obtain input (asking what to build, having them decide how it looks, asking for credentials to be issued) are **evidence that the method is working correctly, not something to reduce.** What to reduce is the rework side. **Asking the same thing again is rework, not input.**
 
-修正の有無は件数ではなく真偽で持つ。件数にすると修正率を算出できてしまい、§8が禁じている使い方への道が開く。
+**Always record spot checks, even when nothing was corrected.** Definition §8 judges loosening by "N consecutive times without correction," so the judgment does not hold unless the times without correction remain. The range not looked at cannot be omitted for the same reason.
 
-**必須属性（作業単位ID・モデル・参照実装のバージョン・書き込み経路）は渡さない。** アダプタが自動で付ける（定義§16の補足）。渡せる形にすると、渡し忘れた記録と渡された記録が混ざり、遡って直せなくなる。
+Whether something was corrected is held as a boolean, not a count. As a count, a correction rate could be calculated, opening the way to a use §8 forbids.
 
-### 着手が紐づけの起点になる
+**Required attributes (work item ID, model, reference implementation version, write path) are not passed.** The adapter attaches them automatically (supplementary notes to definition §16). Making them passable would mix records where they were forgotten with records where they were passed, and it could not be fixed retroactively.
 
-`ステータスを進める --to started` は作業単位マーカーを書く。以降の記録はその作業単位に紐づく。**着手していない状態で記録が発生したら、`work_item_id` が `null` になり `invariants` が落ちる。** 起票せずに作業した事実を、記録から消さずに検出する。
+### Starting is where linking begins
 
-`--to done` / `--to canceled` はマーカーを外す。別の作業単位の記録が紛れ込まないようにするため。
+`ステータスを進める --to started` writes the work item marker. Records from then on are linked to that work item. **If a record is produced without having started, `work_item_id` becomes `null` and `invariants` fails.** The fact of working without filing is detected without erasing it from the records.
 
-### 完了にする操作は、ここには無い
+`--to done` / `--to canceled` removes the marker, so that records of another work item do not slip in.
 
-**統合された作業単位を完了へ動かすのは、Tracker と Repo の連携である**（ADR 0007）。`begin` は閉じない。
+### There is no operation here for marking done
 
-以前は `begin` が着手のついでに閉じていた。**着手したリポジトリ1つ分しか見ないため、複数のリポジトリを渡り歩くと取り残された**（AUT-165）。連携なら統合の瞬間に、どのリポジトリでも動く。
+**What moves integrated work items to done is the Tracker–Repo integration** (ADR 0007). `begin` does not close them.
 
-手で閉じる必要が出た場合は `tracker <ID> --to done` を使う。**普段は打たない。**
+`begin` used to close them as a side effect of starting. **It looked at only the one repository being started in, so items were left behind when moving across several repositories** (AUT-165). An integration moves at the moment of integration, in any repository.
 
-**連携が効いていないことには、判定が気づく。** `invariants` が「統合済みなのに着手中の作業単位」を観測として出す。設定を忘れた場合も、途中で外れた場合も、同じ信号が出る。
+If it ever needs to be closed by hand, use `tracker <ID> --to done`. **Normally it is not run.**
 
-### Tracker の実装
+**The checks notice when the integration is not working.** `invariants` reports "work items still started though integrated" as an observation. The same signal appears whether the setting was forgotten or came off partway.
 
-`autodrive.json` の `ports.tracker` で決まる。**呼び出し側は実装名を知らない**（定義§16）。組み立てるのは `ports/trackerFactory.js` だけである。
+### Tracker implementations
 
-| 実装 | 作業単位ID | 状態の持ち方 | 資格情報 |
+Decided by `ports.tracker` in `autodrive.json`. **Callers do not know implementation names** (definition §16). Only `ports/trackerFactory.js` assembles them.
+
+| Implementation | Work item ID | How state is held | Credentials |
 |---|---|---|---|
-| `linear` | Tracker が持つ（`AUT-123`） | Tracker が持つ | `LINEAR_API_KEY` |
-| `github-issues` | 接頭辞＋番号（`AIEP-123`） | 開いている側はラベル、閉じた側は理由 | `GH_TOKEN`（別に持つなら `AUTODRIVE_TRACKER_TOKEN`） |
+| `linear` | Held by the Tracker (`AUT-123`) | Held by the Tracker | `LINEAR_API_KEY` |
+| `github-issues` | Prefix + number (`AIEP-123`) | Labels while open, the reason once closed | `GH_TOKEN` (`AUTODRIVE_TRACKER_TOKEN` to keep a separate one) |
 
-`github-issues` で足りない分は**アダプタが埋める**。詳細と、そうした理由は ADR 0013 にある。
+What `github-issues` lacks is **filled in by the adapter.** Details, and why, are in ADR 0013.
 
-**完了への移動は、どちらも連携に任せる。** GitHub では、提出の本文に `Closes #<番号>` を書けば統合時に閉じる。**接頭辞付きのIDでは閉じない**（GitHub が読むのは番号である）。
+**For both, moving to done is left to the integration.** On GitHub, writing `Closes #<number>` in the body of the submission closes it on integration. **A prefixed ID does not close it** (GitHub reads the number).
 
 ## `invariants`
 
 ```sh
-# ワークディレクトリ全体を横断して判定する（既定）
+# judge across the whole working directory (default)
 autodrive-dev-kit invariants --root /path/to/work
 
-# 1リポジトリの中だけで完結する判定に限る（各リポジトリの CI 用）
+# limit to judgments that are complete within one repository (for each repository's CI)
 autodrive-dev-kit invariants --root . --scope self
 
-# 機械可読な出力
+# machine-readable output
 autodrive-dev-kit invariants --root . --format json
 ```
 
-判定基準の全文は [invariants.md](invariants.md) を参照。
+The full criteria are in [invariants.md](invariants.md).
 
-不変条件「AIがこれらを無効化できないこと」の判定に Repo API を読むため、環境変数 `AUTODRIVE_CI_TOKEN` が要る。無い場合は判定不能として失敗する（定義§9「有効の判定ができない状態は、それ自体を失敗として扱う」）。
+Judging the invariant "The AI cannot disable any of these" reads the Repo API, so the environment variable `AUTODRIVE_CI_TOKEN` is needed. Without it, it fails as unjudgeable (definition §9, "a state in which it cannot be judged whether something is active is itself treated as a failure").
 
 ```sh
 set -a; . /path/to/work/.env; set +a
 autodrive-dev-kit invariants --root /path/to/work
 ```
 
-### 有効境界を進める
+### Advancing the activation boundary
 
 ```sh
 ./invariants --enact telemetry_recorded
 ```
 
-判定の起点を進める。これ以降の記録が判定の対象になる。障害で直書きへ戻ったあと、アダプタが直ってから復帰させるために使う。
+Advances where judging starts. Records from then on are judged. Used to restore things after a failure fell back to direct writes and the adapter has been fixed.
 
-記録を自動で残すフックが `.claude/settings.json` に登録されていなければ拒否する。有効境界の記録はアダプタ経由で書かれるため、**アダプタが壊れていれば進められない。** 直書きのまま有効を名乗る経路が無い。
+Refused if the hook that records automatically is not registered in `.claude/settings.json`. The activation boundary record is written through the adapter, so **it cannot advance if the adapter is broken.** There is no path to claim active while writing directly.
 
-詳細は [ADR 0003](adr/0003-enactment-boundary.md)。
+Details are in [ADR 0003](adr/0003-enactment-boundary.md).
 
-### 代替を記録する
+### Recording a substitution
 
 ```sh
-./invariants --substitute boundary_change_logged --by human --detail "委譲範囲の表は段階3で置く"
+./invariants --substitute boundary_change_logged --by human --detail "the delegation table is placed in stage 3"
 ```
 
-有効になっていない不変条件について、何が手で代替しているかを記録する。**定義§9の立ち上げ期の例外は、この記録があることを条件としている。** 記録が無ければ `invariants` は失敗する。
+For an invariant that is not active, records what is substituting for it by hand. **The bootstrap-phase exception in definition §9 is conditional on this record existing.** Without the record, `invariants` fails.
 
-**既に有効である不変条件に対しては拒否する。** 代替が要らない状態に代替の記録を足すと、有効が落ちたときに古い記録が残って判定を誤らせる。
+**Refused for an invariant that is already active.** Adding a substitution record where none is needed would leave an old record behind when active falls, misleading the judgment.
 
-記録はアダプタ経由で書かれる。手で書けば有効が落ちる形は保たれている。
+The record is written through the adapter. The property that writing it by hand makes active fall is kept.
 
-### 終了コード
+### Exit codes
 
-| 値 | 意味 |
+| Value | Meaning |
 |---|---|
-| 0 | 失敗なし。有効になっていない不変条件があっても、代替が記録されていれば 0 |
-| 1 | 代替の記録が無い不変条件がある、または判定できない不変条件がある |
-| 2 | 引数が不正、または判定対象のリポジトリが見つからない |
+| 0 | No failures. Even with invariants that are not active, 0 if substitutions are recorded |
+| 1 | There is an invariant with no substitution record, or an invariant that cannot be judged |
+| 2 | Invalid arguments, or no repository to judge was found |
 
-**代替であること自体は失敗ではない。** 失敗なのは、代替の記録が無いことと、判定ができないことである。
+**Being substituted is not itself a failure.** What is a failure is having no substitution record, and not being able to judge.
 
-### エージェントの外から実行できること
+### It can be run from outside the agent
 
-`invariants` は実行可能なファイルであり、スラッシュコマンドとしてのみ存在する形は取らない。エージェントに接続されないまま運用が続く事故を防げないためである。CI からの実行は [.github/workflows/invariants.yml](../.github/workflows/invariants.yml) を参照。
+`invariants` is an executable file, and does not take the form of existing only as a slash command. That form could not prevent the accident of operating on without it ever being connected to the agent. For running it from CI, see [.github/workflows/invariants.yml](../.github/workflows/invariants.yml).
 
 ## `quality`
 
 ```sh
-# 品質の証跡を出す（既定は横断）
+# produce the quality evidence (cross by default)
 autodrive-dev-kit quality --root /path/to/work
 
-# 1リポジトリの中だけ
+# within one repository only
 autodrive-dev-kit quality --root . --scope self
 
-# 機械可読な出力
+# machine-readable output
 autodrive-dev-kit quality --root . --format json
 ```
 
-**`invariants` と違い、判定ではない。** 通る／落ちるを返さず、終了コードで良し悪しを
-表さない。読んだ人が判断するための材料を並べるだけである。
+**Unlike `invariants`, it is not a judgment.** It returns no pass / fail, and its exit code does not express good
+or bad. It only lays out material for the reader to judge.
 
-**点を付けないのは、定義§1がそれを塞いでいるためである。**
+**No score is given because definition §1 closes that off.**
 
-> **この目的は指標として直接測定しない。**…**測れない基準を指標に置くと、達成した
-> ことにできてしまう。**
+> **This purpose is not measured directly as a metric.**… **Put a standard that cannot be measured into a metric,
+> and it can be declared achieved.**
 
-出すもの。
+What it shows.
 
-| | 出どころ |
+| | Source |
 |---|---|
-| 何を確かめると決めたか | 各リポジトリの `docs/quality.md`。**未記入の欄も出す** |
-| 実際に漏れた誤り | 検出漏れの記録。見つかった工程と原因の内訳 |
-| 手戻り | 手戻りの記録。原因の内訳 |
-| 人が見た範囲 | 抜き取り確認の記録。**見ていない範囲を必ず添える** |
-| 任せる範囲を動かした根拠 | 委譲範囲の変更の記録 |
+| What was decided to check | Each repository's `docs/quality.md`. **Unfilled fields are shown too** |
+| Errors that actually slipped through | Missed detection records. Breakdown by stage where found and by cause |
+| Rework | Rework records. Breakdown by cause |
+| What humans looked at | Spot check records. **The range not looked at is always attached** |
+| Grounds for moving what is delegated | Delegation change records |
 
-**0件を黙って出さない。** 記録が在って0件なのか、記録そのものが無いのかを言い分ける。
-**分母（記録の件数・作業単位の数）を必ず添える。**
+**It does not silently show 0.** It distinguishes 0 with records present from no records at all.
+**It always attaches the denominator (the number of records and of work items).**
 
-## トークン消費の記録
+## Recording token consumption
 
-実行基盤のフックから呼ばれ、セッション記録から使用量を読んで `<対象リポジトリ>/telemetry/<作業単位ID>.jsonl` へ追記する。
+Called from the runtime's hook, it reads usage from the session record and appends it to `<target repository>/telemetry/<work item ID>.jsonl`.
 
 ```sh
-./src/vendored/hooks/record-tokens   # フックの入力を標準入力から受け取る
+./src/vendored/hooks/record-tokens   # takes the hook's input on standard input
 ```
 
-フックの登録は、この参照実装ではなく利用側のリポジトリの `.claude/settings.json` に置く。`invariants` が読める場所に置くことで、外されたときに検出できる。
+The hook is registered in `.claude/settings.json` of the using repository, not of this reference implementation. Placing it where `invariants` can read it makes it detectable when removed.
 
-設計と、他の経路を採らなかった理由は [ADR 0002](adr/0002-token-usage-capture.md) にある。
+The design, and why other paths were not taken, is in [ADR 0002](adr/0002-token-usage-capture.md).
 
-### 作業単位マーカー
+### The work item marker
 
-使用量を作業単位へ紐づけるため、利用側のリポジトリ直下に次を置く。追跡対象外。
+To link usage to work items, the following are placed at the top of the using repository. Not tracked.
 
 ```
 .autodrive/current-work-item.json   {"work_item_id": "AUT-10", "repo": "autodrive-dev-kit"}
-.autodrive/cursors/<セッションID>.json
+.autodrive/cursors/<session ID>.json
 ```
 
-マーカーが無い状態で使用量が発生した場合、`work_item_id` に `null` を書いて `telemetry/unattributed.jsonl` へ残す。**記録を捨てない。** 起票せずに始めた作業を記録から消すと、違反も消えるため。`invariants` がこれを検出する。
+If usage occurs without a marker, `null` is written to `work_item_id` and it is kept in `telemetry/unattributed.jsonl`. **Records are not thrown away.** Erasing work begun without filing from the records would erase the violation too. `invariants` detects this.

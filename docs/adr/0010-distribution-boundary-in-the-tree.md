@@ -1,76 +1,76 @@
-# ADR 0010: 配布の境界を、一覧ではなく階層で表す
+# ADR 0010: The distribution boundary is expressed by directory hierarchy, not a list
 
-- 状態: 承認
-- 日付: 2026-09-18
-- 作業単位: AUT-202
+- Status: Accepted
+- Date: 2026-09-18
+- Work item: AUT-202
 
-## 背景
+## Background
 
-[ADR 0004](0004-vendored-kit.md) は、複製するものを名前の一覧で決めていた（`src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json`）。**その一覧は、参照実装のトップ階層と同じ高さに並んでいた。**
+[ADR 0004](0004-vendored-kit.md) decided what to copy by a list of names (`src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json`). **That list sat at the same level as the reference implementation's top directory.**
 
 ```
 autodrive-dev-kit/
-  bin/ src/ hooks/ templates/ invariants verify   ← 配る
-  test/ docs/ mutations/ telemetry/ README.md     ← 配らない
+  bin/ src/ hooks/ templates/ invariants verify   ← distributed
+  test/ docs/ mutations/ telemetry/ README.md     ← not distributed
 ```
 
-見ただけでは、どちらがどちらか分からない。人からの指摘。
+Looking at it, you cannot tell which is which. A human pointed out:
 
-> 同じ階層に配布されるもの、されないものが入り混じっていてわかりにくい気がした
+> Things that are distributed and things that are not are mixed at the same level, which felt hard to follow
 
-さらに、配る範囲の一覧が3つあった。
+Furthermore, there were three lists of what is distributed.
 
-| 一覧 | 何を決めるか | どう保たれていたか |
+| List | What it decides | How it was maintained |
 |---|---|---|
-| `package.json` の `files` | npm が配る範囲 | **手で保つ** |
-| `init.js` の `VENDORED` | プロジェクトへ複製する範囲 | 手で保つ |
-| `releaseVersion.js` の `DISTRIBUTED` | バージョンを上げる引き金 | `VENDORED` から導出 |
+| `files` in `package.json` | What npm distributes | **By hand** |
+| `VENDORED` in `init.js` | What is copied into the project | By hand |
+| `DISTRIBUTED` in `releaseVersion.js` | What triggers a version bump | Derived from `VENDORED` |
 
-3つ目だけが導出になっていた。AUT-160 で索引を手で保って古くなった経験から、意図してそうしてある。
+Only the third was derived. This was intentional, from the experience in AUT-160 of an index maintained by hand going stale.
 
-**1つ目は導出の外にいた。** そして `vendor()` は複製元の無いものを黙って飛ばしていた。したがって `VENDORED` に足して `files` に足し忘れると、**npx 経由でだけ中身の欠けた複製ができ、どの判定も落ちない。** 実際に壊れてはいなかったが、壊れても気づく仕掛けが無かった。
+**The first was outside the derivation.** And `vendor()` silently skipped anything without a source. So if something was added to `VENDORED` and not to `files`, **a copy with missing contents would be made only via npx, and no check would fail.** It was not actually broken, but there was no mechanism to notice if it broke.
 
-## 決めたこと
+## Decision
 
-**配る境界を階層に出す。**
+**Bring the distribution boundary out into the hierarchy.**
 
 ```
 autodrive-dev-kit/
   src/
-    vendored/     複製される。中身がそのまま autodrive/ になる
-      invariants        殻
-      hooks/            殻
-      bin/              殻
-      internal/         実装。名前で呼ばれない
-    templates/    配るが、複製はしない
-  VERSION LICENSE NOTICE package.json   添えもの。複製される
-  test/ docs/ mutations/ telemetry/ README*   配らない
+    vendored/     copied. its contents become autodrive/ as they are
+      invariants        shell
+      hooks/            shell
+      bin/              shell
+      internal/         implementation. not called by name
+    templates/    distributed, but not copied
+  VERSION LICENSE NOTICE package.json   accompaniments. copied
+  test/ docs/ mutations/ telemetry/ README*   not distributed
 ```
 
-- **`src/vendored/` の中身は、名前を持たずに `autodrive/` の直下へ展開する。** そのため殻から実装への相対パスが、参照実装の中と複製先とで同じになる
-- **`templates/` は `src/vendored/` の外に置く。** npm の境界と複製の境界は違う。中へ入れると「複製から templates を除く」という除外の一覧が要り、消した一覧が形を変えて戻る
-- **添えものはリポジトリの直下のまま。** npm も Apache-2.0 もそこにあることを前提にしており、`package.json` に至っては動かせない
-- **複製元が無いものを飛ばさない。** 欠けたまま動くより、そこで止まる
-- **一覧どうしの食い違いを、打つ前に落とす**（`test/packaging.test.js`）
-- **旧名 `verify` は消す。** どのみちパスが変わって互換は失われる。残すと、新しい場所にある旧名という意味の無いものになる
+- **The contents of `src/vendored/` are expanded directly under `autodrive/` without a name of their own.** So the relative path from shell to implementation is the same in the reference implementation and in the copy
+- **`templates/` is placed outside `src/vendored/`.** The npm boundary and the copy boundary are different. Putting it inside would need an exclusion list "exclude templates from the copy," and the list that was removed would come back in another form
+- **The accompaniments stay at the top of the repository.** Both npm and Apache-2.0 assume they are there, and `package.json` in particular cannot be moved
+- **Anything without a source is not skipped.** Stopping there is better than running with pieces missing
+- **Disagreements between the lists fail before running** (`test/packaging.test.js`)
+- **The old name `verify` is removed.** The path changes anyway, so compatibility is lost. Keeping it would make a meaningless thing: an old name in a new place
 
-## なぜこうしたか
+## Why
 
-**足し忘れに気づく機会を作るより、足し忘れようが無い形にするほうが強い。** `begin` を入口にしたのと同じ判断である。`src/vendored/` に置けば配られ、外に出せば配られない。一覧を思い出す必要が無い。
+**A shape where you cannot forget to add something is stronger than creating a chance to notice forgetting.** The same judgment as making `begin` the entrance. Put it in `src/vendored/` and it is distributed; put it outside and it is not. No need to remember the list.
 
-一覧が完全には消えないのは、添えものと `templates/` が階層の外にいるためである。**そこは導出できないので、突き合わせる判定を置いた。**
+The lists do not disappear completely because the accompaniments and `templates/` are outside the hierarchy. **That part cannot be derived, so a check that compares them was placed.**
 
-## この決定が生むもの
+## What this decision produces
 
-**`kit_version` の読み方に、場所の違いが1つ残る。** 添えものは参照実装ではリポジトリの直下に、複製先では複製の直下にある。`kitVersion.js` が両方を見る。**その食い違いをそこ1箇所に閉じ込めてある。**
+**One difference of location remains in how `kit_version` is read.** The accompaniments are at the top of the repository in the reference implementation and at the top of the copy in the copy. `kitVersion.js` looks at both. **That disagreement is confined to that one place.**
 
-**複製先から `update` が打てないことの判定が、テンプレートの不在で成り立っている。** これは ADR 0004 からの性質であり、変わらない。参照実装では `<リポジトリ>/src/templates` を見る。
+**The judgment that `update` cannot be run from the copy rests on the absence of templates.** This property comes from ADR 0004 and does not change. In the reference implementation, it looks at `<repository>/src/templates`.
 
-**既にある複製は、`update` を打つまで古いままである。** 意図した性質（ADR 0004）だが、今回は複製の中身の形が変わるため、打つまで新旧が混ざらない。
+**Existing copies stay old until `update` is run.** An intended property (ADR 0004), but this time the shape of the copy's contents changes, so old and new do not mix until it is run.
 
-## 却下した案
+## Rejected options
 
-- **`templates/` も `src/vendored/` へ入れる** — 却下。複製から除く一覧が要る。消したはずの一覧が戻る
-- **添えものを `src/vendored/` へ入れる** — 却下。`package.json` は動かせず、`LICENSE` を `autodrive/src/LICENSE` に置くのは Apache-2.0 §4(a) の趣旨から見て素直でない
-- **階層は変えず、一覧どうしの突き合わせだけを足す** — 却下。食い違いは落とせるが、見て分からないことは変わらない。**そして「配るものを足す」たびに、2箇所へ書く手間は残る**
-- **`verify` を `src/vendored/verify` として残す** — 却下。呼び出し側のパスはどのみち変わるため、互換にならない
+- **Put `templates/` into `src/vendored/` too** — Rejected. A list excluding it from the copy would be needed. The list that should have been removed comes back
+- **Put the accompaniments into `src/vendored/` as well** — Rejected. `package.json` cannot be moved, and placing `LICENSE` at `autodrive/src/LICENSE` is not straightforward in light of the intent of Apache-2.0 §4(a)
+- **Keep the hierarchy and only add a comparison between the lists** — Rejected. Disagreements could be caught, but it still could not be understood by looking. **And every time something is "added to what is distributed," the effort of writing it in two places remains**
+- **Keep `verify` as `src/vendored/verify` instead** — Rejected. Callers' paths change anyway, so it would not be compatible
