@@ -1,91 +1,91 @@
-# ADR 0012: サンドボックスは、プロジェクトが宣言するもの
+# ADR 0012: The sandbox is something the project declares
 
-- 状態: 承認
-- 日付: 2026-09-23
-- 作業単位: AUT-218
+- Status: Accepted
+- Date: 2026-09-23
+- Work item: AUT-218
 
-## 背景
+## Background
 
-題材アプリ1（agent-playground）が、作業単位ごとに使い捨てのコンテナを起こす形（Orca）で動いている。`sandbox` の選択肢が `devcontainer` と `none` の2つしか無いため、構成には `sandbox: none` と書かれている。**使っているのに「使わない」と書かれている。**
+Subject app 1 (agent-playground) runs in a form that spins up a disposable container per work item (Orca). The only choices for `sandbox` are `devcontainer` and `none`, so its configuration says `sandbox: none`. **It uses one, but it says "not used."**
 
-選択肢を1つ足すだけなら小さい話だが、**人から「この出口制限を参照実装側で見るべきなのか」という提起があった。** サンドボックスの実装は外に多くあり（Claude Managed Agent、Kubernetes Agent Sandbox、Codex Sandbox など）、そのすべてを参照実装が面倒を見る形にすると重すぎる。参照実装の中心はAI駆動開発を回せるようにすることであって、出口制限を組むことではない。
+Adding one choice would be a small matter, but **a human raised "should the reference implementation side be looking at this egress restriction?"** There are many sandbox implementations outside (Claude Managed Agent, Kubernetes Agent Sandbox, Codex Sandbox, and so on), and having the reference implementation look after all of them would be too heavy. The core of the reference implementation is making AI-driven development run, not building egress restrictions.
 
-### 参照実装が、自分の言っていることと違うことをしていた
+### The reference implementation was doing something different from what it said
 
-`autodrive-reference.md` は、守っているのは出口制限ではないと書いている。
+`autodrive-reference.md` says what protects is not the egress restriction.
 
-> 本当に守っているのは別のものである。
-> - 手元に資格情報を置かないこと
-> - 固定条件で止まること
-> - 記録が残ること
-> …これらを弱めて出口制限で補おうとしないこと。**補えない。**
+> What actually protects is something else.
+> - Not keeping credentials locally
+> - Stopping at fixed conditions
+> - Records remaining
+> … Do not weaken these and try to make up for it with the egress restriction. **It cannot make up for them.**
 
-一方で `isolationGaps` の結果は `exitCode` に入っており、**隔離の設定が欠けていれば落ちていた。** 補えないと書いたものを、判定では失敗として扱っていた。
+Meanwhile, the result of `isolationGaps` went into `exitCode`, and **it failed if isolation settings were missing.** What was written as "cannot make up for" was treated as a failure by the checks.
 
-さらに、**隔離は定義§9の不変条件ではない。** 不変条件は `outer_loop_running` / `telemetry_recorded` / `boundary_change_logged` / `ai_cannot_disable` の4つで固定である。
+Furthermore, **isolation is not an invariant of definition §9.** The invariants are fixed at four: `outer_loop_running` / `telemetry_recorded` / `boundary_change_logged` / `ai_cannot_disable`.
 
-### 何が落ちるかが、実態とずれていた
+### What failed did not match reality
 
-| 状態 | それまでの判定 |
+| State | The judgment until then |
 |---|---|
-| Orca を使っている（devcontainer.json が無い） | **通る。** 見るものが無いため |
-| devcontainer と宣言し、定義ごと消した | **通る。** 同上 |
-| devcontainer を使い、設定が欠けている | 落ちる |
+| Using Orca (no devcontainer.json) | **Passes.** Nothing to look at |
+| Declared devcontainer, and deleted the whole definition | **Passes.** Same as above |
+| Using devcontainer, with settings missing | Fails |
 
-**2行目が穴である。** 宣言と実物が食い違っていても、誰も言わなかった。
+**The second row is a hole.** Even though the declaration and the real thing disagreed, nothing said so.
 
-また `placeSandbox` は `none` 以外のすべてに `.devcontainer/` 一式を置いていた。**Orca を選んだプロジェクトに devcontainer が降ってくる。** 降ってきたものは判定の対象にもなるため、使っていない設定の欠けで落ちる。
+Also, `placeSandbox` placed the whole `.devcontainer/` set for everything other than `none`. **A devcontainer lands on projects that chose Orca.** What lands also becomes subject to the checks, so it fails on missing settings of something not in use.
 
-## 決めたこと
+## Decision
 
-**Sandbox ポートは、参照実装が用意するものではなく、プロジェクトが宣言するものにする。**
+**The Sandbox port becomes something the project declares, not something the reference implementation prepares.**
 
-| | 参照実装 | プロジェクト |
+| | Reference implementation | Project |
 |---|---|---|
-| `devcontainer` | 一式を置き、設定を判定する | 置かれたものを保守する |
-| それ以外（`orca`・`other`・任意の名前） | **名前を控えるだけ。置くものも判定も無い** | **用意する。何が守られているかを書く** |
-| `none` | 何もしない | 隔離しないと決めた記録が残る |
+| `devcontainer` | Places the whole set and checks the settings | Maintains what was placed |
+| Anything else (`orca`, `other`, any name) | **Only keeps the name. Nothing is placed and nothing is checked** | **Prepares it. Writes what is protected** |
+| `none` | Does nothing | A record of deciding not to isolate remains |
 
-### 3つの結果
+### Three consequences
 
-**1. 選択肢の一覧は、網羅をやめる。**
+**1. The list of choices stops trying to be exhaustive.**
 
-`PORT_CHOICES.sandbox` に `orca` と `other` を足したが、**これは網羅ではない。** 構成の値は照合しておらず、知らない名前も通る。増えるたびに参照実装を直す形にすると追いつかず、**追いつかない一覧は、載っていないものを「使ってはいけないもの」に見せる。**
+`orca` and `other` were added to `PORT_CHOICES.sandbox`, but **this is not exhaustive.** Configuration values are not matched against it, and unknown names pass. A form that fixes the reference implementation every time one is added cannot keep up, and **a list that cannot keep up makes what is not on it look like "must not be used."**
 
-**2. `.devcontainer/` は `devcontainer` を選んだときだけ置く。**
+**2. `.devcontainer/` is placed only when `devcontainer` is chosen.**
 
-配るものは変えない。**降ってくる条件を、選んだ結果に合わせる。**
+What is distributed does not change. **The condition under which it lands is matched to what was chosen.**
 
-**3. 判定の根拠を、置かれたファイルから宣言へ移す。**
+**3. The ground for the judgment moves from the placed files to the declaration.**
 
-`sandbox: "devcontainer"` と書いたなら見る。別の名前なら見ない。宣言したのに定義が無ければ、**それ自体を穴として出す**（上の表の2行目が塞がる）。
+If `sandbox: "devcontainer"` is written, it is looked at. If another name, it is not. If declared but there is no definition, **that itself is reported as a hole** (closing the second row of the table above).
 
-構成が読めない場合だけ、置かれたファイルで決める。**`init` を打っていない作業場がある**（参照実装を直に指しているもの）。そこで判定が消えると、いま効いている検出が黙って無くなる。
+Only when the configuration cannot be read is it decided by the placed files. **There are workspaces where `init` was never run** (those pointing directly at the reference implementation). If the judgment disappeared there, a detection currently in effect would silently vanish.
 
-### devcontainer の判定は、弱めない
+### The devcontainer judgment is not weakened
 
-AUT-121 で実際に起きたことを捕まえているのはこの判定である。
+This judgment is what catches what actually happened in AUT-121.
 
 ```
-サンドボックスの作成   2026-08-23
-コンテナ起動   2026-09-02        ← 10日後。再起動している
-iptables -S    -P OUTPUT ACCEPT  ← 既定が許可。規則0件
-example.com    HTTP 200          ← 許可一覧に無い。素通り
+sandbox created   2026-08-23
+container started 2026-09-02        ← 10 days later. it had restarted
+iptables -S       -P OUTPUT ACCEPT  ← the default is allow. 0 rules
+example.com       HTTP 200          ← not on the allowlist. straight through
 ```
 
-**devcontainer を選んだプロジェクトでは、失敗のまま残す。** 変えたのは適用範囲であって、強さではない。
+**In projects that chose devcontainer, it remains a failure.** What changed is the scope of application, not the strength.
 
-## 選ばなかった案
+## Options not chosen
 
-| 案 | なぜ選ばなかったか |
+| Option | Why not chosen |
 |---|---|
-| サンドボックスごとに判定を足す | **追いつかない。** 実装は外で増え続け、中身は参照実装の管理外にある。Claude Managed Agent のように、構成を読む手段すら無いものがある |
-| 隔離の判定を全部やめる | AUT-121 の型を取り落とす。**いま捕まえているものを、理由なく手放すことになる** |
-| 隔離を5つ目の不変条件にする | **定義の変更になる**（§9は4つで固定）。AUT-121 が同じ判断をしている |
-| 出口制限の仕掛けを devcontainer と Orca で共通化する | `init-firewall.sh` 自体は devcontainer 依存が無い素の iptables スクリプトであり、共通化はできる。**しかし Orca のコンテナは `--cap-add` 無しで起きるため、そのままでは規則を置けない。** そしてこれを進めると、サンドボックスごとに面倒を見る形へ戻る |
+| Add a check per sandbox | **Cannot keep up.** Implementations keep multiplying outside, and their contents are outside the reference implementation's control. Some, like Claude Managed Agent, have no means even to read their configuration |
+| Drop all isolation checks | Loses the AUT-121 pattern. **It would give up, for no reason, what is currently being caught** |
+| Make isolation a fifth invariant | **It would change the definition** (§9 is fixed at four). AUT-121 made the same judgment |
+| Share the egress restriction mechanism between devcontainer and Orca | `init-firewall.sh` itself is a plain iptables script with no devcontainer dependency, so it could be shared. **But Orca's containers start without `--cap-add`, so rules cannot be placed as is.** And pursuing this returns to the form of looking after each sandbox |
 
-## 影響
+## Impact
 
-**判定が緩む方向の変更である。** これまで落ちていたものが落ちなくなる経路がある（devcontainer 以外を宣言したプロジェクト）。**緩めた分は、`docs/quality.md` の「開発環境（サンドボックス）」へ書き出す形にした。** 判定が消えて、記録も残らないという状態を作らない。
+**This is a change in the direction of loosening the checks.** There is a path where what used to fail no longer fails (projects that declared something other than devcontainer). **What was loosened is written out into "Development environment (sandbox)" in `docs/quality.md`.** A state where the check disappears and no record remains is not created.
 
-**記録のフックのほうが重い。** `recordTokens` は Stop フックが渡す `transcript_path` と `session_id`、および手元のファイルシステムに置かれた記録に乗っている。環境を替えたとき、出口制限より先に確かめるべきはこちらである。`telemetry_recorded` は不変条件だが、隔離は違う。
+**The recording hook is heavier.** `recordTokens` rides on the `transcript_path` and `session_id` passed by the Stop hook, and on records placed in the local file system. When changing environments, this is what should be checked before the egress restriction. `telemetry_recorded` is an invariant; isolation is not.

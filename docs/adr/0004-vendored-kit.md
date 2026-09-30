@@ -1,67 +1,67 @@
-# ADR 0004: autodrive-dev-kit をプロジェクトの中へ複製し、バージョンで固定する
+# ADR 0004: autodrive-dev-kit is copied into the project and pinned by version
 
-- 状態: 承認
-- 日付: 2026-08-27
-- 作業単位: AUT-75
+- Status: Accepted
+- Date: 2026-08-27
+- Work item: AUT-75
 
-## 背景
+## Background
 
-`init` の最初の設計では、プロジェクトは**手元の参照実装を指していた**。設定に相対パスを書き、規約にも参照実装のコマンド名を書いていた。
+In the first design of `init`, the project **pointed at the local reference implementation.** Relative paths were written in the settings, and the conventions also named the reference implementation's commands.
 
-人からの指摘。
+A human pointed this out.
 
-> 今後kitを更新していくことを考えると、各プロジェクトで動くスクリプトはプロジェクトの中で完結させていた方が良い。**PJ1がkitのバージョン1で、PJ2がkitのバージョン2で動くという状況があり得るため。**
+> Considering that the kit will keep being updated, the scripts that run in each project should be self-contained within the project. **Because there could be a situation where PJ1 runs on kit version 1 and PJ2 on kit version 2.**
 
-**同じ穴が既に出ていた。** 3つのリポジトリの CI が、毎回 `git clone --depth 1` で参照実装を取りに行っていた。常に最新を取るため、**参照実装を壊す変更を入れると3リポジトリの CI が同時に落ちる。**
+**The same hole had already appeared.** The CI of three repositories fetched the reference implementation with `git clone --depth 1` every time. Since it always took the latest, **a change that broke the reference implementation would fail the CI of all three repositories at once.**
 
-さらに、記録に付く `kit_version` が `bootstrap` 固定だった。定義§6がこの属性を必須としているのは記録を後から比べるためであり、**全部が同じ値なら比べようがない。**
+Furthermore, the `kit_version` attached to records was fixed at `bootstrap`. Definition §6 makes this attribute required so that records can be compared later, and **if everything has the same value, there is nothing to compare.**
 
-## 決めたこと
+## Decision
 
-**autodrive-dev-kit をプロジェクトの中へ複製する。** 置き場所は `autodrive/`、追跡する。
+**autodrive-dev-kit is copied into the project.** It is placed in `autodrive/` and tracked.
 
-- 複製するのは `src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json`（**置き場所は [ADR 0010](0010-distribution-boundary-in-the-tree.md) が `src/vendored/` へ移した**）
-- **テスト・文書・テンプレートは複製しない。** プロジェクトは `init` を打たない
-- バージョンは `VERSION` に置き、**実行時に読む**。定数で持つと複製のたびに書き換えが要る
-- 入れ替えは**まるごと捨ててから置く**。前のバージョンの残骸が混ざると、どのバージョンで動いているのかが読めなくなる
+- What is copied: `src` / `hooks` / `bin` / `invariants` / `VERSION` / `package.json` (**[ADR 0010](0010-distribution-boundary-in-the-tree.md) later moved the location to `src/vendored/` instead**)
+- **Tests, documents, and templates are not copied.** The project does not run `init`
+- The version is placed in `VERSION` and **read at run time.** Holding it as a constant would require rewriting on every copy
+- Replacement **throws the whole thing away and then places it.** If remnants of the previous version mix in, it becomes unreadable which version is running
 
-## なぜこうしたか
+## Why
 
-**バージョンが固定されていないと、プロジェクトは参照実装の変更に巻き込まれる。** 巻き込まれる側は、いつ何が変わったかを知る手段を持たない。
+**Without a pinned version, the project gets caught up in changes to the reference implementation.** Those caught up have no way of knowing what changed when.
 
-追跡するのは、**履歴に載っていないと固定にならないため。** 手元にあるだけでは、別の環境で別のバージョンになる。
+It is tracked **because it is not pinned unless it is in the history.** Merely having it locally means a different version in a different environment.
 
-## この決定が生むもの
+## What this decision produces
 
-**CI が参照実装を取りに行かなくなる。** 複製が中にあるため、clone が消える。取得に失敗するという障害要因も消える。
+**CI no longer fetches the reference implementation.** The copy is inside, so the clone disappears. So does fetch failure as a source of outages.
 
-**`kit_version` に意味が出る。** 記録を比べたときに、どのバージョンで動いていたかが分かる。
+**`kit_version` gains meaning.** Comparing records shows which version was running.
 
-**参照実装の更新が、プロジェクトに自動で降ってこない。** これは意図した性質である。降らせるには `update` を打つ。
+**Updates to the reference implementation do not arrive at the project automatically.** This is an intended property. To bring them in, run `update`.
 
-**その `update` は、外から取ってきて打つことになる。** 複製にはテンプレートが入っていないため、複製からは置けない。ここが案内されておらず、複製先で打つよう案内する記述が `templates/autodrive.md` に残っていた（AUT-152）。いまは複製から打たれた場合に、理由と打ち方を出して止まる。
+**That `update` is fetched from outside and run.** The copy does not include the templates, so it cannot place files from the copy. This was not explained, and a description telling people to run it in the copy remained in `templates/autodrive.md` (AUT-152). Now, if run from the copy, it stops with the reason and how to run it.
 
-**構成（`autodrive.json`）だけを反映する打ち方は無い。** 反映するには外から取ってくることになり、そのときバージョンも上がる。バージョンを選ぶ手段が要るなら、タグが要る（AUT-155）。
+**There is no way to run it that applies only the configuration (`autodrive.json`).** Applying it means fetching from outside, and the version goes up then. If a means of choosing the version is needed, tags are needed (AUT-155).
 
-## 却下した案
+## Rejected options
 
-- **参照実装を指したままにする** — 却下。バージョンを固定できない。既に CI で同じ問題が出ている
-- **複製せず、バージョンだけを記録する** — 却下。記録は残るが、動くものは最新のままであり、固定になっていない
-- **パッケージとして配る** — 却下。依存ゼロという方針（ADR 0001）と、参照実装が読まれるべきものであることに合わない。複製なら中身がそのまま読める
+- **Keep pointing at the reference implementation** — Rejected. The version cannot be pinned. The same problem has already appeared in CI
+- **Do not copy; only record the version** — Rejected. The record remains, but what runs is still the latest, so it is not pinned
+- **Distribute as a package** — Rejected. It does not fit the zero-dependency policy (ADR 0001), nor the reference implementation being something that should be read. A copy can be read as it is
 
-## 未解決
+## Unresolved
 
-**まだポートになっていないものがある。** Repo（GitHub の形が判定に直に出ている）、Runner（CI が文字列）、エージェントの種別（記録のフックが Claude のセッション記録の形に依存）。
+**Some things are not ports yet.** Repo (GitHub's shape shows up directly in the checks), Runner (CI is a string), and the kind of agent (the recording hook depends on the shape of Claude's session record).
 
-**いま抽象化しない。** 2つ目の実装が無い状態でポートを増やすと、1つ目の形をそのまま抽象化したものができる。ポートが機能している証拠は、2つ目が入ったときに初めて出る。
+**Do not abstract now.** Adding ports with no second implementation produces an abstraction that is just the first one's shape. Evidence that a port works appears only when a second one comes in.
 
-後から入れる費用は次の順で高い。**エージェントの種別が最も高く、不変条件（記録が自動で残ること）に直接関わる。**
+The cost of adding them later is high in this order. **The kind of agent is the highest, and it bears directly on an invariant (records remaining automatically).**
 
-| | 費用 | 理由 |
+| | Cost | Reason |
 |---|---|---|
-| エージェントの種別 | 高 | 記録のフックがセッション記録の形に依存 |
-| Runner | 高 | CI が文字列。種別ごとに別物になる |
-| Repo | 中 | 呼ぶ場所は少なく、局所的 |
-| アプリの種別 | 低 | ほぼテンプレートの差し替え |
+| Kind of agent | High | The recording hook depends on the shape of the session record |
+| Runner | High | CI is a string. Each kind is a different thing |
+| Repo | Medium | Few places call it; it is local |
+| Kind of app | Low | Mostly swapping templates |
 
-テンプレートをコードの中の文字列から**ファイルへ出した**のは、この見通しによる。アプリの種別やエージェントの種別ごとに差し替えるとき、置き場所を変えるだけで済む。**いま安く、後で効く。**
+Templates were **moved out into files** from strings in the code because of this outlook. When swapping per kind of app or kind of agent, only the location needs to change. **Cheap now, pays off later.**

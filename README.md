@@ -195,8 +195,6 @@ To change a port after setup, tell the AI. It rewrites `autodrive.json` and appl
 
 ![How it fits together: the human, the sandbox, the record, and the run, with the path a change takes](docs/environment.svg)
 
-*The diagram is labelled in Japanese. Ask the AI and it will read it back in your language.*
-
 ### The toolkit is copied into your project
 
 ```
@@ -271,8 +269,6 @@ The full criteria, how to widen delegation, and how to record a substitution are
 | [docs/commands.md](docs/commands.md) | Every command. **Including the ones the AI runs** |
 | [docs/invariants.md](docs/invariants.md) | The full checking criteria |
 | [docs/adr/](docs/adr/) | Design decisions. **Read before proposing to overturn one** |
-
-**These are written in Japanese.** Ask the AI and it will explain any of them in your language — that is required of it, and it always reads the current version, so its answer never goes stale.
 
 ## Working on the kit itself
 

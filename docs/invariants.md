@@ -1,288 +1,290 @@
-# 有効の判定基準
+# Criteria for active
 
-`invariants` が、4つの不変条件（定義§9）それぞれについて何を観測し、何をもって有効とみなすかを定める。
+Sets out, for each of the four invariants (definition §9), what `invariants` observes and what it takes as active.
 
-判定根拠が読めない出力は意味を持たないため、`invariants` は状態だけでなく観測内容も必ず出力する。
+Output whose grounds cannot be read means nothing, so `invariants` always prints what it observed, not only the state.
 
-## 共通の原則
+## Common principles
 
-**宣言を根拠にしない。** 判定材料は、リポジトリの内容・git 履歴・Repo API の応答に限る。「やっています」と書かれたファイルの存在は根拠にしない。宣言で有効を名乗れる構造では、接続されないまま運用が続く事故を防げない。
+**Declarations are not grounds.** The material for judging is limited to the contents of repositories, git history, and Repo API responses. The existence of a file saying "we are doing it" is not a ground. A structure where active can be claimed by declaration cannot prevent the accident of operating on without it ever being connected.
 
-**代替は失敗ではない。** 定義§9は立ち上げ期に限り、不変条件を人が手で代替することを認めている。失敗なのは次の2つである。
+**Substitution is not failure.** Definition §9 allows invariants to be substituted by human hand, only in the bootstrap phase. What is a failure is these two.
 
-- 代替の記録が無いこと（立ち上げ期の例外の条件を満たしていない）
-- 判定ができないこと（「有効の判定ができない状態は、それ自体を失敗として扱う」）
+- Having no record of the substitution (the condition for the bootstrap-phase exception is not met)
+- Not being able to judge ("a state in which it cannot be judged whether something is active is itself treated as a failure")
 
-**判定していない項目が残る状態を有効と呼ばない。** 未実装の判定が1つでもある不変条件は、他がすべて満たされていても `ACTIVE` には到達しない。
+**A state with items left unjudged is not called active.** An invariant with even one unimplemented judgment does not reach `ACTIVE`, even if everything else is satisfied.
 
-## 状態
+## States
 
-| 状態 | 意味 | 終了コードへの影響 |
+| State | Meaning | Effect on the exit code |
 |---|---|---|
-| `ACTIVE` | 有効である | なし |
-| `SUBSTITUTED` | 代替。人が肩代わりし、その事実が記録にある | なし |
-| `UNSUBSTITUTED` | 要対応。肩代わりの記録が無い、または判定できない | **非0** |
-| `NOT_IN_SCOPE` | この実行範囲では判定しない | なし |
+| `ACTIVE` | Active | None |
+| `SUBSTITUTED` | Substituted. A human is covering for it, and that fact is in the records | None |
+| `UNSUBSTITUTED` | Unresolved. There is no record of anyone covering it, or it cannot be judged | **Non-zero** |
+| `NOT_IN_SCOPE` | Not judged within this run's scope | None |
 
-## 代替の記録をどこから読むか
+## Where substitution records are read from
 
-代替の事実は、テレメトリの `type: substitution` イベントから読む。`invariant` 属性で対象の不変条件を指す。
+The fact of a substitution is read from telemetry `type: substitution` events. The `invariant` attribute points at the target invariant.
 
-書くには `invariants --substitute <不変条件> --by <主体> --detail <内容>` を使う。**ポート語彙ではない。** 不変条件の有効状態についての記述であり、判定する側が読む対象であって、スキルが使う語彙ではない。`--enact` と同じ位置づけとする。
+To write one, use `invariants --substitute <invariant> --by <who> --detail <details>`. **This is not port vocabulary.** It is a statement about the active state of an invariant, something the side that judges reads, not vocabulary that skills use. It is positioned the same as `--enact`.
 
-既に有効である不変条件に対しては拒否する。代替が要らない状態に代替の記録を足すと、有効が落ちたときに古い記録が残って判定を誤らせる。
+It is refused for an invariant that is already active. Adding a substitution record where none is needed would leave an old record behind when active falls, misleading the judgment.
 
-宣言用のファイルを別に持たない。持つと、記録と宣言という2つの真実ができ、宣言のほうだけを更新して有効を名乗る経路が開く。代替の事実そのものが記録の中にあれば、その経路が塞がる。
+No separate file for declarations is kept. Keeping one would create two truths, records and declarations, opening a path to claim active by updating only the declaration. If the fact of substitution itself is in the records, that path is closed.
 
-## 実行範囲
+## Run scope
 
-| 範囲 | 対象 | 用途 |
+| Scope | Target | Used for |
 |---|---|---|
-| `cross`（既定） | 起点と、その直下のリポジトリすべて | kit の定期実行。すべての不変条件を判定する |
-| `self` | 起点のリポジトリのみ | 各リポジトリの CI。そのリポジトリの中だけで完結する判定に限る |
+| `cross` (default) | The starting point and every repository directly under it | The kit's scheduled run. Judges every invariant |
+| `self` | Only the starting repository | Each repository's CI. Limited to judgments complete within that repository |
 
-不変条件はリポジトリをまたいで成立するため、リポジトリ単位で判定すると抜ける。1つのリポジトリだけを見て「外側ループが回っていない」と結論しても、他のリポジトリで回っているかもしれず、判定になっていない。したがって `self` では判定可能なものだけを判定し、残りは `NOT_IN_SCOPE` として明示する。**判定できないものを判定したふりをするほうが、判定しないと明示するより危ない。**
+Invariants hold across repositories, so judging per repository misses things. Concluding "the outer loop is not running" from one repository alone is not a judgment, since it may be running in another. So `self` judges only what can be judged, and states the rest explicitly as `NOT_IN_SCOPE`. **Pretending to judge what cannot be judged is more dangerous than stating explicitly that it is not judged.**
 
-| 不変条件 | `cross` | `self` |
+| Invariant | `cross` | `self` |
 |---|---|---|
-| 外側ループが起動し、継続すること | 判定する | しない |
-| テレメトリが記録されること | 判定する | 構造の妥当性のみ（有効かどうかは判定しない） |
-| 委譲範囲の変更が履歴に残ること | 判定する | 判定する |
-| AIがこれらを無効化できないこと | 判定する | しない |
+| The outer loop starts and keeps running | Judged | Not judged |
+| Telemetry is recorded | Judged | Only structural validity (whether it is active is not judged) |
+| Delegation changes stay in the history | Judged | Judged |
+| The AI cannot disable any of these | Judged | Not judged |
 
-## 不変条件ではない判定
+## Judgments that are not invariants
 
-**落ちる判定は、不変条件の4つだけではない。** 定義§9の不変条件は4つで固定であり、5つ目を足すのは定義の変更になる。したがって次の3つは不変条件の外に置き、終了コードにだけ効かせている。
+**The judgments that fail are not only the four invariants.** Definition §9 fixes the invariants at four, and adding a fifth would be a change to the definition. So the following three are placed outside the invariants and affect only the exit code.
 
-| 何を見るか | どこ | 見つけたら | なぜ落とすか |
+| What it looks at | Where | If found | Why it fails |
 |---|---|---|---|
-| 追跡してはいけないものが追跡されていないか | `tracked.js` | 失敗 | 配布物「守ること」の「本番の資格情報を手元に置かない」の検出手段。規約はあったが、見る仕掛けが無かった（AUT-137） |
-| 隔離の設定が保たれているか | `isolation.js` | 失敗 | `devcontainer.json` をプロジェクトのものにした以上、壊れたまま統合される経路を残さない（AUT-157）。**`sandbox` に devcontainer を選んだ場合に限る**（ADR 0012） |
-| 引いている定義の節が、引いているつもりの節のままか | `definitionSections.js` | 失敗 | 定義が §17 を新設したとき、古い番号を指す記述が11箇所残った。誰も気づかなかった（AUT-232）。**横断でのみ判定する**（定義リポジトリが並んでいる場所だけが見られる） |
+| Whether things that must not be tracked are tracked | `tracked.js` | Failure | The means of detection for "Do not keep production credentials locally" in the distributed "What to keep to." The convention existed, but nothing looked (AUT-137) |
+| Whether the isolation settings are kept | `isolation.js` | Failure | Since `devcontainer.json` was made the project's own, no path is left for it to be integrated while broken (AUT-157). **Only when `sandbox` is set to devcontainer** (ADR 0012) |
+| Whether the definition sections cited are still the sections meant | `definitionSections.js` | Failure | When the definition added a new §17, 11 places were left pointing at the old number. Nobody noticed (AUT-232). **Judged only in cross** (only where the definition repository sits alongside can it be seen) |
 
-**いずれも観測に留めていない。** 出しても落ちなければ、CI では誰も気づかない。
+**None of them stops at an observation.** If it is printed but does not fail, nobody notices in CI.
 
 ---
 
-## 1. 外側ループが起動し、継続すること
+## 1. The outer loop starts and keeps running
 
-外側ループの一周は、定義§8により「委譲範囲の表のセルが動き、その根拠が履歴に残る」ことで完了する。したがって委譲範囲の変更履歴を観測点とする。
+Per definition §8, one round of the outer loop completes when "a cell in the delegation table moves and its ground remains in the history." So the history of delegation changes is the observation point.
 
-**起動**：委譲範囲の変更履歴に、次の3つをすべて持つエントリが1件以上ある。
+**Starting**: the history of delegation changes has at least one entry that has all three of the following.
 
-- 根拠（テレメトリ由来の実績。観察中の件数など）
-- 設定変更のコミットハッシュ。そのコミットが実際に `boundaries.yaml` を変更している
-- そのコミットが人の承認を経た提出に含まれている
+- A ground (a track record from telemetry, such as the count under observation)
+- The commit hash of the configuration change. That commit actually changes `boundaries.yaml`
+- That commit is included in a submission that went through human approval
 
-**継続**：直近エントリの日付が閾値以内。**閾値は定めない。** 定義§18が緩和しきい値を未確定としており、実データなしに決め打ちすると、根拠の無い数字が残る。起動が満たされるまで `N/A` を出す。
+**Continuing**: the date of the latest entry is within a threshold. **No threshold is set.** Definition §18 leaves the loosening threshold undecided, and deciding it without real data would leave a number with no ground. `N/A` is printed until starting is satisfied.
 
-### 何を「セルが動いた」と数えるか
+### What counts as "a cell moved"
 
-`boundaries.yaml` を変更したコミットについて、**親コミット時点の内容と比べる。** 領域が増減したか、`detectable` / `reversible` / `state` のいずれかが変わっていれば動きとして数える。
+For a commit that changed `boundaries.yaml`, **compare with the contents at the parent commit.** If an area was added or removed, or any of `detectable` / `reversible` / `state` changed, it counts as a move.
 
-- **初期設置は動きではない。** 親にそのファイルが無いコミット（ファイルを作ったコミット）がこれにあたる。表を置いただけでは外側ループは一周していない
-- **コメントや根拠の書き足しは動きではない。** 表の見た目が変わっても、任せる範囲は変わっていない
+- **The initial placement is not a move.** A commit whose parent does not have the file (the commit that created the file) is this. Just placing the table does not complete a round of the outer loop
+- **Adding comments or grounds is not a move.** Even if the table looks different, what is entrusted has not changed
 
-### 承認をどう導出するか
+### How approval is derived
 
-**そのコミットに対して「変更を統合する」が実行されているかを** Repo API に問い合わせる。統合済みであれば承認とみなす。
+**Whether "Integrate change" was executed for that commit** is asked of the Repo API. If integrated, it is taken as approved.
 
-定義§8が「承認は『変更を統合する』の事実から導出する」としている（v0.9 で確定）。AIが委譲範囲の表を書き換えて「承認された」と書くことはできるが、統合されたことにはできない。
+Definition §8 says "approval is derived from the fact of 'Integrate change'" (settled in v0.9). The AI can rewrite the delegation table and write "approved," but it cannot make it integrated.
 
-**承認の記録を別に持たない。** 統合の事実は Repo が保持している。委譲範囲の変更履歴に承認者欄を設けるような形にすると、書く側が承認を名乗れる。
+**No separate record of approval is kept.** Repo holds the fact of integration. A form such as an approver field in the history of delegation changes would let the writer claim approval.
 
-### 読めない場合は失敗にする
+### If it cannot be read, it fails
 
-**代替ではなく失敗として扱う。** セルが動いているのに承認を確かめられない状態は、代替なのではなく判定できていない状態であり、定義§9はそれ自体を失敗とする。代替を添えて通すと、判定できていないことが代替の中に紛れる。
+**Treated as a failure, not a substitution.** A state where a cell moved but approval cannot be confirmed is not substituted but not judged, and definition §9 makes that itself a failure. Passing it with a substitution would hide the inability to judge inside the substitution.
 
-ただし、**承認の揃ったエントリが1件でもあれば「起動したか」は判定できている。** 読めなかった別のエントリは結論を覆さないが、穴なので観測として残す。
+However, **if even one entry has approval, "has it started" has been judged.** Another entry that could not be read does not overturn the conclusion, but it is a hole, so it is kept as an observation.
 
-読み取り専用のトークンでは統合を読めない。判定に使うトークンには、提出の読取を含める必要がある（`.env.example` を参照）。
+A read-only token cannot read integration. The token used for the checks needs read access to submissions (see `.env.example`).
 
-## 2. テレメトリが記録されること
+## 2. Telemetry is recorded
 
-「記録がある」では足りない。人や AI が覚えていないと残らない状態は、定義§9の「ハーネスの既定動作として組み込む」を満たさない。
+"Records exist" is not enough. A state where things remain only if people or the AI remember does not meet definition §9's "built in as the default behavior of the harness."
 
-**ハーネスと実行基盤は別のものである。** この文書では次のように使い分ける。
+**The harness and the runtime are different things.** This document uses them as follows.
 
-| 語 | 指すもの |
+| Term | What it refers to |
 |---|---|
-| ハーネス | 誤りを機械的に見つける仕組み（テスト・判定・CI）。定義§5・§7 の語 |
-| 実行基盤 | AIを動かす土台（Claude Code）。フックを登録する先 |
+| Harness | The machinery that finds errors mechanically (tests, checks, CI). The term of definition §5 and §7 |
+| Runtime | The ground the AI runs on (Claude Code). Where hooks are registered |
 
-記録が自動で残ることは、**実行基盤にフックを登録して実現している。** それが定義のいう
-「ハーネスの既定動作として組み込む」にあたる。したがって有効の条件は、**記録がアダプタ経由で書かれていることとする。**
+Records remaining automatically is **achieved by registering a hook with the runtime.** That is what the definition calls
+"built in as the default behavior of the harness." So the condition for active is **that records are written through the adapter.**
 
-これを機械的に判定するため、全イベントが `emitter` 属性を持つ。
+To judge this mechanically, every event has an `emitter` attribute.
 
-| 値 | 意味 |
+| Value | Meaning |
 |---|---|
-| `adapter` | 定義§16のポート語彙を経由して書かれた |
-| `manual` | アダプタが存在せず、ファイルへ直書きした |
+| `adapter` | Written through the port vocabulary of definition §16 |
+| `manual` | No adapter existed; written directly to the file |
 
-### 判定の対象は有効境界以降
+### Judged from the activation boundary onward
 
-立ち上げ期の直書きが記録に残り続けるため、全期間を対象にすると有効へ到達できない。したがって判定は、最後に記録された**有効境界**以降のイベントに対して行う。
+Direct writes from the bootstrap phase remain in the records, so judging the whole period would never reach active. So the judgment covers events from the last recorded **activation boundary** onward.
 
-有効境界は1回きりの切り替え点ではなく、動かせる記録である。障害でアダプタが使えなくなり直書きへ戻ったあとも、直れば復帰できる。**有効境界を進めるにはアダプタが動いている必要がある**（有効境界の記録自体がアダプタ経由で書かれるため）。進めるには `invariants --enact telemetry_recorded` を使い、フックが登録されていなければ拒否される。
+The activation boundary is not a one-time switch point but a record that can move. Even after a failure makes the adapter unusable and things fall back to direct writes, it can recover once fixed. **Advancing the activation boundary needs a working adapter** (since the boundary record itself is written through the adapter). Advance it with `invariants --enact telemetry_recorded`; it is refused if the hook is not registered.
 
-| 見るもの | 対象 |
+| What is looked at | Target |
 |---|---|
-| 必須属性の妥当性 | **全期間**。遡って付与できないため、有効境界より前だからといって欠けてよい理由にならない |
-| 書き込み経路が自動か | 有効境界以降。「いまどうなっているか」の問いであるため |
-| 代替の記録 | 全期間。有効境界より前に書かれた代替も有効 |
+| Validity of required attributes | **The whole period.** They cannot be attached retroactively, so being before the activation boundary is no reason for them to be missing |
+| Whether the write path is automatic | From the activation boundary onward. The question is "how is it now" |
+| Substitution records | The whole period. Substitutions written before the activation boundary also count |
 
-**有効境界より前の記録は消さない。** 判定の対象から外すだけであり、履歴としては残る。
+**Records before the activation boundary are not deleted.** They are only excluded from judging, and remain as history.
 
-有効境界を進めた回数は出力する。何度も動いていることは、ハーネスが安定していないという信号であり、外側ループが読むべき入力になる。**何回で異常とみなすかは定めない**（定義§18）。
+The number of times the activation boundary was advanced is printed. Moving many times is a signal that the harness is not stable, and an input the outer loop should read. **How many times counts as abnormal is not set** (definition §18).
 
-詳細は [ADR 0003](adr/0003-enactment-boundary.md)。
+Details are in [ADR 0003](adr/0003-enactment-boundary.md).
 
-判定は次の順に行う。
+The judgment proceeds in this order.
 
-`self` では、記録が壊れていないか（読めること、必須属性が妥当なこと）だけを見て、有効かどうかは `NOT_IN_SCOPE` とする。1リポジトリの記録だけでは、ハーネスが記録を受け持っているかは決まらないためである。代替の記録を無理に添えて代替を名乗らせるより、判定しないと明示するほうが正しい。壊れた記録は `self` でも失敗として扱うため、見落としは生じない。
+In `self`, it looks only at whether records are broken (readable, required attributes valid), and whether it is active is `NOT_IN_SCOPE`. One repository's records alone cannot decide whether the harness takes charge of recording. Stating explicitly that it is not judged is more correct than forcing a substitution record to claim substitution. Broken records are treated as failures in `self` too, so nothing is overlooked.
 
-1. イベントが1件も無い → `UNSUBSTITUTED`
-2. 読めない行がある → `UNSUBSTITUTED`
-3. `work_item_id` / `model` / `kit_version` / `emitter` を欠くイベント、または**値が空のイベント**がある → `UNSUBSTITUTED`。これらは遡って付与できないため、代替では埋められない
+1. There is not a single event → `UNSUBSTITUTED`
+2. There are unreadable lines → `UNSUBSTITUTED`
+3. There are events missing `work_item_id` / `model` / `kit_version` / `emitter`, or **events with empty values** → `UNSUBSTITUTED`. These cannot be attached retroactively, so substitution cannot fill them
 
-   属性の存在だけでなく値を見る。存在確認だけでは、`null` が書かれた記録を通してしまう。
+   It looks at values, not only whether the attribute exists. Checking existence alone would let through records where `null` was written.
 
-   ただし**帰属できなかった記録は除く**（下記）。
-4. `emitter` に未定義の値がある → `UNSUBSTITUTED`
-5. `emitter: manual` が1件でもある → `SUBSTITUTED`
-6. すべて満たす → `ACTIVE`
+   However, **records that could not be attributed are excluded** (below).
+4. `emitter` has an undefined value → `UNSUBSTITUTED`
+5. There is even one `emitter: manual` → `SUBSTITUTED`
+6. Everything is satisfied → `ACTIVE`
 
-### 帰属できなかった記録
+### Records that could not be attributed
 
-`telemetry/unattributed.jsonl` にあり、`unattributed_reason` を持つ記録は、**`work_item_id` を求めない。**
+Records in `telemetry/unattributed.jsonl` that have `unattributed_reason` **are not required to have `work_item_id`.**
 
-定義§6（v0.10）は、**作業単位に帰属しないやり取りを§6のイベントではないと整理している。** 作業単位を起こすかどうかの検討や、起票されていない依頼がそれにあたる。必須属性はそこに課されない。**例外ではなく、対象外である。**
+Definition §6 (v0.10) **sorts out exchanges not attributable to a work item as not being §6 events.** Deliberating whether to raise a work item, or requests not yet filed, are such exchanges. The required attributes are not imposed on them. **It is not an exception; they are out of scope.**
 
-アダプタは作業単位を解決できなかった場合、記録を捨てずにこのファイルへ理由つきで書く。**壊れた記録ではなく、帰属できなかった費用の置き場である。**
+When the adapter cannot resolve the work item, it does not throw the record away but writes it to this file with a reason. **It is not a broken record, but the place for costs that could not be attributed.**
 
-定義が課す条件は2つあり、実装はこう満たしている。
+The definition imposes two conditions, and the implementation meets them like this.
 
-| §6（v0.10）の条件 | 実装 |
+| Condition in §6 (v0.10) | Implementation |
 |---|---|
-| 記録を捨てないこと | アダプタが `unattributed.jsonl` へ理由つきで書く。判定はこれを失敗にしない |
-| 件数が読めること | `invariants` が件数と理由を観測として必ず出す |
+| Do not discard the records | The adapter writes to `unattributed.jsonl` with a reason. The checks do not make this a failure |
+| Keep the count readable | `invariants` always prints the count and the reasons as observations |
 
-抜け道を作らないための条件が2つある。
+There are two conditions so as not to create a loophole.
 
-| 条件 | 無いとどうなるか |
+| Condition | What happens without it |
 |---|---|
-| **置き場が** `unattributed.jsonl` であること | 理由だけを見ると、どの記録も「帰属できなかった」と名乗れば作業単位を持たずに済む |
-| **理由**（`unattributed_reason`）を持つこと | 置き場だけを見ると、そのファイルへ何でも投げ込めばよいことになる |
+| **The place is** `unattributed.jsonl` | Looking only at the reason, any record could avoid having a work item by declaring "could not attribute" |
+| **It has a reason** (`unattributed_reason`) | Looking only at the place, anything could be thrown into that file |
 
-**免除するのは `work_item_id` だけ。** `model` / `kit_version` / `emitter` はランタイム由来であり、帰属できなくても必ず付く。欠けていれば失敗する。
+**Only `work_item_id` is exempted.** `model` / `kit_version` / `emitter` come from the runtime and are always attached even if unattributable. If missing, it fails.
 
-**件数と理由は必ず出す。** 有効は妨げないが、見えなくはしない。
+**The count and reasons are always printed.** It does not prevent active, but it does not hide them either.
 
 ```
-観測  作業単位に帰属できなかった記録が 1 件ある
-観測  帰属できなかった理由: 作業単位マーカーが無い。作業単位に紐づかないやり取り（起票するかの検討など）である可能性がある
+observed  1 records could not be attributed to a work item
+observed  Why it could not be attributed: 作業単位マーカーが無い。作業単位に紐づかないやり取り（起票するかの検討など）である可能性がある
 ```
 
-### 理由を見分ける
+The reason is a value written into the record, so it stays as it was written (in Japanese, for records written so far).
 
-**帰属できるものは必ず紐づける**（§6）。帰属しないと扱ってよいのは、仕組みの上で紐づけようがない場合に限る。したがってアダプタは、解決できない理由を3つに見分けて書く。
+### Telling reasons apart
 
-| 状態 | 意味 |
+**Whatever can be attributed must be linked** (§6). Treating something as unattributed is allowed only when there is no way to link it in the mechanism. So the adapter distinguishes three reasons for not resolving it.
+
+| State | Meaning |
 |---|---|
-| マーカーが無い | 作業単位に紐づかないやり取りである可能性がある。**正常な場合を含む** |
-| マーカーが読めない | 壊れている。**紐づけられたはずの記録が帰属しないまま残る** |
-| マーカーの内容が欠けている | 同上。どの属性が欠けたかも書く |
+| No marker | Possibly an exchange not linked to a work item. **Includes normal cases** |
+| The marker cannot be read | Broken. **Records that should have been linked remain unattributed** |
+| The marker's contents are missing | Same as above. It also writes which attribute is missing |
 
-**同じ言葉で報告しないこと。** 原因の違うものを同じ言葉で言い切って人を誤らせた例が記録に3件ある（AUT-37 の2件・AUT-39）。件数だけでは、紐づく先が無いのか、アダプタが壊れているのかを区別できない。
+**Do not report them in the same words.** There are three records of misleading people by stating differently caused things in the same words (two in AUT-37, AUT-39). From counts alone, it cannot be told whether there is nothing to link to or the adapter is broken.
 
-なお§6は、起票を強制する仕組みを**設けないことを既定**としている。帰属しない部分の量は小さく、厳密にするための労力は他へ向けたほうが§4に効くという判断による。**件数が読める以上、量が無視できなくなればその時点で判断をやり直せる。**
+Note that §6 makes **not setting up** a mechanism to force filing the default. The unattributed amount is small, and the effort to make it strict does more for §4 when directed elsewhere. **Since the count is readable, the judgment can be redone as soon as the amount can no longer be ignored.**
 
-加えて `cross` では、記録を自動で残すフックが実行基盤に登録されているかを見る。登録が無ければ、いま自動で書けていても続く保証が無いため `ACTIVE` には到達させない。
+In addition, `cross` looks at whether the hook that records automatically is registered with the runtime. Without registration, there is no guarantee it will continue even if it is writing automatically now, so it is not allowed to reach `ACTIVE`.
 
-**登録はリポジトリの中（`.claude/settings.json`）にあること。** リポジトリの外に置くと `invariants` から読めず、外されても気づけない。読める場所にあることが、強制ではなく検出で代替するという方針の前提になっている。
+**The registration is inside the repository (`.claude/settings.json`).** Placed outside the repository, `invariants` could not read it and would not notice if it were removed. Being in a readable place is the premise of the policy of substituting by detection rather than enforcement.
 
-なお「登録されているが、まだ信頼されていないので動いていない」状態はリポジトリからは読めない。ただしその場合 `emitter: adapter` のイベントが出ないため、結果として有効に上がらない。登録の有無と実際に動いているかを、別々の観測で押さえている。
+Note that the state "registered but not yet trusted, so not running" cannot be read from the repository. But in that case no `emitter: adapter` events appear, so it does not rise to active as a result. Whether it is registered and whether it actually runs are covered by separate observations.
 
-判断を要する記録（検出漏れ、手戻りの原因の内訳、抜き取り確認の結果）も、アダプタができれば定義§16のポート語彙を経由して書かれるため `adapter` になる。内容を人が決めることと、書き込み経路がアダプタであることは別である。したがって `manual` は立ち上げ期にのみ現れる。
+Records that require judgment (missed detections, the breakdown of rework causes, spot check results) are also `adapter` once the adapter exists, since they are written through the port vocabulary of definition §16. A human deciding the contents and the write path being the adapter are separate things. So `manual` appears only in the bootstrap phase.
 
-**段階1以降に `manual` が消えない記録が出た場合、それはポート語彙に欠けた操作があるという信号である。** 定義へ差し戻す。
+**If records whose `manual` does not go away appear from stage 1 onward, that is a signal that the port vocabulary lacks an operation.** Send it back to the definition.
 
-### 記録と作業単位の突き合わせ（`cross` のみ）
+### Matching records against work items (`cross` only)
 
-当初は「完了済みの作業単位すべてに記録があること」を条件に置いていたが、そのままでは誤検出になる。作業が発生せずに完了した作業単位（定義への差し戻しの起票など）にも記録を要求してしまうためである。
+The condition was originally "every completed work item has records," but as is, that produces false positives. It would demand records even from work items completed without any work (such as a filing that sends something back to the definition).
 
-確実に判定できるのは逆向きで、**記録が指す作業単位が実在するかは、誤検出なく見られる。**
+What can be judged reliably is the reverse direction: **whether the work items records point at exist can be seen without false positives.**
 
-| 観測 | 判定 |
+| Observation | Judgment |
 |---|---|
-| Tracker の資格情報が無い、または読めない | `UNSUBSTITUTED`。判定できない状態は通さない |
-| 存在しない作業単位を指す記録がある | `UNSUBSTITUTED`。綴り誤りか、作られていない作業単位への記録 |
-| 記録の無い完了済み作業単位がある | 観測として出す。**失敗にはしない** |
+| No Tracker credentials, or it cannot be read | `UNSUBSTITUTED`. A state that cannot be judged does not pass |
+| There are records pointing at a work item that does not exist | `UNSUBSTITUTED`. A typo, or records for a work item that was never created |
+| There are completed work items with no records | Printed as an observation. **Not made a failure** |
 
-最後のものを失敗にしないのは、作業が無かったのか、記録が別の作業単位へ流れたのかを、この情報だけでは区別できないためである。区別できないものを失敗として扱うと、失敗の意味が薄まる。
+The last is not made a failure because this information alone cannot tell whether there was no work or the records went to another work item. Treating what cannot be told apart as a failure dilutes what failure means.
 
-### 作業単位の状態そのものも見る（`cross` のみ）
+### Also looking at the state of work items themselves (`cross` only)
 
-**完了させる仕組みは、ハーネスにはもう無い。** Tracker と Repo の連携が動かす（ADR 0007）。**だから効いていないことに気づく場所が要る。** 載せた側は、動かなくなっても静かに動かなくなる。
+**The harness no longer has a mechanism to complete work items.** The Tracker–Repo integration moves them (ADR 0007). **So a place is needed to notice when it is not working.** What you ride on stops silently when it stops.
 
-| 観測 | 判定 |
+| Observation | Judgment |
 |---|---|
-| 統合済みの提出があるのに、作業単位が着手中のまま | 観測として出す。**失敗にはしない** |
-| 作業単位マーカーが完了済みの作業単位を指している | 観測として出す。**失敗にはしない** |
-| Repo の資格情報が無く、提出を読めない | 読めなかったことを観測として出す |
+| There is an integrated submission, but the work item is still started | Printed as an observation. **Not made a failure** |
+| The work item marker points at a completed work item | Printed as an observation. **Not made a failure** |
+| No Repo credentials, so submissions cannot be read | Printed as an observation that it could not read them |
 
-**どちらもここで見るのは、記録がどの作業単位に紐づくかを直接左右するためである。** 閉じ忘れた作業単位には記録が入り続ける。外れないままのマーカーは、次の着手までの間に書かれた記録を、完了した作業単位へ入れる。
+**Both are looked at here because they directly affect which work item records get linked to.** A work item left unclosed keeps receiving records. A marker that is not removed puts records written until the next start into a completed work item.
 
-**失敗にしないのは、不変条件が定義§9のものであり、Tracker 側の設定はその範囲外にあるためである。** 連携の設定漏れで「テレメトリが記録されること」が落ちるのは、判定の意味が合わない。見えれば足りる。
+**They are not made failures because the invariants are those of definition §9, and the Tracker-side settings are outside that scope.** Failing "Telemetry is recorded" because the integration was not configured does not fit what the judgment means. Being visible is enough.
 
-マーカーの側は、**連携では届かない部分である。** 手元のファイルであり、Tracker が状態を動かしても残る。着手のたびに上書きされるため、次の着手までの間だけ起こる。
+The marker side is **the part the integration does not reach.** It is a local file and remains even when the Tracker moves the state. It is overwritten on every start, so it happens only until the next start.
 
-## 3. 委譲範囲の変更が履歴に残ること
+## 3. Delegation changes stay in the history
 
-不変条件1と観測対象は同じだが、問うことが違う。1は「ループが回っているか」、3は「動かしたときに漏れなく残るか」。
+The observation target is the same as invariant 1, but the question is different. 1 asks "is the loop running," 3 asks "when it moves, does it remain without omission."
 
-`git log` から `boundaries.yaml` を変更した全コミットを取り出し、各コミットが委譲範囲の変更履歴から参照されているかを見る。未参照のコミットが1件でもあれば、履歴に残っていない変更があるということ。
+It takes every commit that changed `boundaries.yaml` from `git log`, and looks at whether each commit is referenced from the history of delegation changes. If even one commit is unreferenced, a change is missing from the history.
 
-**`boundaries.yaml` が存在しない場合を `ACTIVE` にしない。** 動かす対象が無いため空集合を形式的に満たしてしまうが、それは仕組みが無いだけである。`SUBSTITUTED` として扱う。
+**When `boundaries.yaml` does not exist, it is not made `ACTIVE`.** With nothing to move, the empty set formally satisfies it, but that only means there is no mechanism. It is treated as `SUBSTITUTED`.
 
-これは提出単位で判定できるため、各リポジトリの CI で `--scope self` として使える。
+This can be judged per submission, so it can be used in each repository's CI as `--scope self`.
 
-## 4. AIがこれらを無効化できないこと
+## 4. The AI cannot disable any of these
 
-強制ではなく検出で代替する（BOOTSTRAP「着手前に決めた事項」）。したがって有効の条件は「AIが実際に無効化できないこと」ではなく、**無効化されたら必ず気づけることとする。**
+Substituted by detection rather than enforcement (BOOTSTRAP, "decided before starting"). So the condition for active is not "the AI actually cannot disable them" but **that disabling them is always noticed.**
 
-Repo API から、各リポジトリの既定ブランチの保護設定を読む。
+It reads the protection settings of each repository's default branch from the Repo API.
 
-| 観測 | 判定 |
+| Observation | Judgment |
 |---|---|
-| API のトークンが無い | `UNSUBSTITUTED`。判定できない状態は通さない |
-| 応答が読めない対象がある | `UNSUBSTITUTED`。同上 |
-| `403 Upgrade to GitHub Pro...` | プラン制限。保護設定を持てない → `SUBSTITUTED` |
-| ruleset が0件 | 保護されていない → `SUBSTITUTED` |
-| ruleset がある | 次の検証へ |
+| No API token | `UNSUBSTITUTED`. A state that cannot be judged does not pass |
+| Some targets' responses cannot be read | `UNSUBSTITUTED`. Same as above |
+| `403 Upgrade to GitHub Pro...` | A plan limitation. Protection settings cannot be held → `SUBSTITUTED` |
+| 0 rulesets | Not protected → `SUBSTITUTED` |
+| There are rulesets | On to the next verification |
 
-**403 という応答コードそのものを観測として使う。** 宣言ではなくプラットフォームの応答から導出されるため、判定は機械的に成立する。
+**The 403 response code itself is used as the observation.** It is derived from the platform's response rather than a declaration, so the judgment holds mechanically.
 
-### 提出を経ずに既定ブランチへ入った変更
+### Changes that entered the default branch without a submission
 
-**保護設定を持てなくても、破られたかどうかは見られる。** 段階0で強制ではなく検出による代替を選んだ以上、検出が無いまま規約だけで担保する状態を続けない。
+**Even without protection settings, whether it was broken can be seen.** Having chosen substitution by detection rather than enforcement in stage 0, the state of guaranteeing it by convention alone without detection is not continued.
 
-既定ブランチの first-parent を辿り、**マージコミットでないものを候補とする。** 提出を経た変更は、既定ブランチへマージコミットとして入る。
+It follows the default branch's first-parent, and **takes non-merge commits as candidates.** Changes that went through a submission enter the default branch as merge commits.
 
-| 観測 | 判定 |
+| Observation | Judgment |
 |---|---|
-| 候補が無い | 「すべて提出を経て入っている」を観測として出す |
-| 候補があり、統合済みの提出に含まれる | 直接コミットとしない（squash マージの場合） |
-| 候補があり、提出に含まれない | `UNSUBSTITUTED`。**規約が破られており、代替が成立していない** |
-| 既定ブランチや履歴を読めない | `UNSUBSTITUTED`。判定できない状態は通さない |
+| No candidates | Prints "entered through a submission" as an observation |
+| Candidates, included in an integrated submission | Not counted as direct commits (the squash merge case) |
+| Candidates, not included in a submission | `UNSUBSTITUTED`. **The convention has been broken, and the substitution does not hold** |
+| The default branch or history cannot be read | `UNSUBSTITUTED`. A state that cannot be judged does not pass |
 
-- **親を持たないコミットは除く。** リポジトリの作成時点であり、提出の仕組みがまだ存在しない。委譲範囲の表の初期設置を動きとして数えないのと同じ
-- **既定ブランチは、手元の設定（`origin/HEAD`）を先に見て、無ければ Repo に尋ねる。** `git init` から作った作業ツリーには手元の設定が無い。そこで止めると、問題の無いリポジトリへ誤警報を出すことになる
-- 候補が出たときだけ Repo API に問い合わせる。**通常は API 呼び出しが発生しない**
+- **Commits with no parent are excluded.** That is the point the repository was created, when the submission mechanism did not exist yet. The same as not counting the initial placement of the delegation table as a move
+- **For the default branch, the local setting (`origin/HEAD`) is looked at first, and the Repo is asked if it is missing.** A working tree created with `git init` has no local setting. Stopping there would raise a false alarm for a repository with no problem
+- The Repo API is asked only when candidates appear. **Normally no API calls are made**
 
-これは不変条件4を有効に変えるものではない（ruleset は依然として持てない）。**代替の質を上げる。**
+This does not make invariant 4 active (rulesets still cannot be held). **It raises the quality of the substitution.**
 
-`invariants` を必須チェックとして登録しているかの検証は未実装。登録の確認自体が ruleset に依存しており、プラン制限下では判定手段が無い。
+Verifying that `invariants` is registered as a required check is not implemented. Confirming the registration itself depends on rulesets, and under the plan limitation there is no means of judging.
 
-エージェントに渡っている資格情報が保護設定を変更できないことの検証も未実装。
+Verifying that the credentials given to the agent cannot change protection settings is not implemented either.

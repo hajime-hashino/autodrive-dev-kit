@@ -1,127 +1,127 @@
-# ADR 0013: GitHub Issues で、作業単位IDと状態をどう持つか
+# ADR 0013: How work item IDs and state are held on GitHub Issues
 
-- 状態: 承認
-- 日付: 2026-09-23
-- 作業単位: AUT-234
+- Status: Accepted
+- Date: 2026-09-23
+- Work item: AUT-234
 
-## 背景
+## Background
 
-2つのプロジェクト（`augone-team/aiep-app`・`augone-team/claude-agents-sample`）が、作業単位を GitHub Issues で管理する。参照実装は Tracker に Linear の実装しか持っていない。
+Two projects (`augone-team/aiep-app`, `augone-team/claude-agents-sample`) manage work items on GitHub Issues. The reference implementation had only a Linear implementation for the Tracker.
 
-### 選べていなかった
+### It could not be chosen
 
-**`autodrive.json` の `ports.tracker` は、どこからも読まれていなかった。** Linear が4箇所で直に組み立てられていた。
+**`ports.tracker` in `autodrive.json` was read from nowhere.** Linear was assembled directly in four places.
 
 ```
 trackerCli.js:158   new LinearTracker(...)
 beginCli.js:429     new LinearTracker(...)
 main.js:176         new LinearTracker(...)
-credentials.js:178  LINEAR_API_KEY を固定で要求
+credentials.js:178  LINEAR_API_KEY required unconditionally
 ```
 
-定義§16 は「実装名を知るのはアダプタだけとする」と言っている。**呼び出し側が実装を名指しで組み立てている限り、その形になっていない。** アダプタを足すだけでは選べるようにならない。
+Definition §16 says "only adapters know implementation names." **As long as callers assemble implementations by name, it is not in that shape.** Adding an adapter alone does not make it choosable.
 
-### 実装の持ち物が違う
+### The implementations have different things
 
-| ポートが要るもの | Linear | GitHub Issues |
+| What the port needs | Linear | GitHub Issues |
 |---|---|---|
-| 作業単位のID | `AUT-123` を自分で持つ | リポジトリごとの番号 `123` |
-| 5つの状態 | 状態を自由に定義できる | open / closed と閉じた理由だけ |
-| 対象リポジトリの欄 | 無い（ラベルで補っている） | 無い |
+| Work item ID | Holds `AUT-123` itself | A per-repository number `123` |
+| Five states | States can be defined freely | Only open / closed and the reason for closing |
+| A field for the target repository | None (covered by labels) | None |
 
-## 決めたこと
+## Decision
 
-### 1. 構成を読んで実装を返す口を置く
+### 1. Place an entry point that reads the configuration and returns the implementation
 
-`ports/trackerFactory.js` を置き、呼び出し側は実装名を書かない。**ここが、実装名の出てくる最後の場所である。**
+`ports/trackerFactory.js` is placed, and callers do not write implementation names. **This is the last place implementation names appear.**
 
-**組み立てられない理由を見分けて返す。** 資格情報が無いのか、構成が欠けているのか、対象が読めないのかで、人がやることが違う。`null` を返して黙ると、どれなのか分からない。
+**It distinguishes and returns the reason it cannot assemble one.** Whether credentials are missing, the configuration is incomplete, or the target cannot be read, the human has different things to do. Returning `null` silently leaves it unclear which.
 
-### 2. 作業単位IDは `<接頭辞>-<番号>`
+### 2. The work item ID is `<prefix>-<number>`
 
-構成に2〜4文字の接頭辞を持ち、`AIEP-123` の形にする。
+The configuration holds a 2–4 character prefix, giving the shape `AIEP-123`.
 
-**`#123` をそのまま使わない。** git のブランチ名としては通る（確認済み）が、**シェルで壊れる。**
+**`#123` is not used as is.** It passes as a git branch name (confirmed), but **it breaks in the shell.**
 
 ```
-git checkout #123           ← # 以降がコメント。何も起きない
-cat telemetry/#123.jsonl    ← 同じ
+git checkout #123           ← everything after # is a comment. nothing happens
+cat telemetry/#123.jsonl    ← same
 ```
 
-**番号だけにもしない。** リポジトリをまたぐと衝突する。`telemetry/<ID>.jsonl` は対象リポジトリの中にあるため衝突しないが、`work_item_id` は横断判定が突き合わせる鍵である。
+**Not the number alone either.** It collides across repositories. `telemetry/<ID>.jsonl` is inside the target repository so it does not collide, but `work_item_id` is the key the cross-repository check matches on.
 
-**接頭辞は聞く。** リポジトリ名から案を作り、そのまま Enter で採れる形で出す。
+**The prefix is asked.** A suggestion is made from the repository name and shown so that pressing Enter as-is takes it.
 
-一度は「聞かずに案を書いて人が直す」としていた。ヒアリングの口が選ばせる形だけに限っていて、**自由記述を受け取らない、と書いてあった。**
+At one point it was "write the suggestion without asking and let the human fix it." The hearing entry point was limited to having people choose, and **it said it does not accept free text.**
 
-**制約の理由を読まずに、文言だけで判断していた。**
+**It was judging by the wording alone, without reading the reason for the constraint.**
 
-その理由はこうだった。
+The reason was this.
 
-> 自由記述は、受け取った側が**意味を解釈することになり**、何が選ばれたのかが記録から読めなくなる。
+> Free text **makes the receiving side interpret the meaning**, and what was chosen cannot be read from the record.
 
-**接頭辞は解釈しない。** 形を確かめて、そのまま構成に書くだけである。理由が守ろうとしているものが、ここには無かった。
+**The prefix is not interpreted.** It checks the shape and writes it into the configuration as is. What the reason was protecting was not present here.
 
-したがって口のほうを直した。**形（`pattern`）は問い自身が持つ。** 合わない答えは飲み込まず、聞き直す。**形を決められないものは、いまも聞かない。**
+So the entry point was fixed instead. **The shape (`pattern`) is held by the question itself.** Answers that do not match are not swallowed; it asks again. **What cannot have a shape decided is still not asked.**
 
-これは定義§10「制約と自分の推論を区別する」が言っている型である。出所を確かめずに制約として扱うと、**存在しない制約を回避するための設計が残る。**
+This is the pattern definition §10's "distinguish constraints from your own reasoning" describes. Treating something as a constraint without checking its source **leaves behind designs that work around constraints that do not exist.**
 
-**衝突しないことは確かめられない。** 別のリポジトリが同じ接頭辞を使っていても分からない。決めるのは人である。
+**That it does not collide cannot be confirmed.** Another repository using the same prefix would not be noticed. It is the human who decides.
 
-### 3. 状態は、開いている側をラベルで分ける
+### 3. State: the open side is distinguished by labels
 
-| 語彙 | GitHub |
+| Vocabulary | GitHub |
 |---|---|
-| backlog | open、ラベル無し |
+| backlog | open, no label |
 | todo | open + `state:todo` |
 | started | open + `state:started` |
-| done | closed（`completed`） |
-| canceled | closed（`not_planned`） |
+| done | closed (`completed`) |
+| canceled | closed (`not_planned`) |
 
-**backlog にラベルを置かない。** 起票したままの状態が backlog であり、そこに印を要求すると、人が普通に立てた Issue が状態を持たないものになる。
+**No label is placed for backlog.** The state as filed is backlog, and requiring a mark there would make Issues people open normally have no state.
 
-**閉じた理由を見る。** `not_planned` を done と読むと、やらないと決めたものが完了として数えられる。
+**The reason for closing is looked at.** Reading `not_planned` as done would count what was decided not to do as completed.
 
-**閉じるときは、開いている側のラベルを落とす。** 残すと、閉じた Issue に「着手中」の印が付いたままになる。
+**When closing, the open-side labels are removed.** Leaving them would leave a "started" mark on a closed Issue.
 
-**閉じたものへ着手できるようにする。** 開け直さないと、締め直しの経路が無くなる。
+**It is possible to start on something closed.** Without reopening, the path for tightening back would disappear.
 
-### 4. 資格情報は `GH_TOKEN` で足りる
+### 4. `GH_TOKEN` is enough for credentials
 
-**`gh` CLI に頼らない。** `fetch` で REST を直に呼ぶ。`repoApi.js` が同じ形で既に動いており、依存ゼロ（ADR 0001）のままである。**叩き方を2つ持たない。**
+**It does not rely on the `gh` CLI.** It calls REST directly with `fetch`. `repoApi.js` already works the same way, and it stays at zero dependencies (ADR 0001). **It does not keep two ways of calling.**
 
-`GH_TOKEN` に `Issues: Read and write` を足す。**新しい鍵を並べない。**
+`Issues: Read and write` is added to `GH_TOKEN`. **No new key is lined up.**
 
-別に持ちたい場合は `AUTODRIVE_TRACKER_TOKEN` を設定すれば、そちらが使われる。
+To keep a separate one, set `AUTODRIVE_TRACKER_TOKEN` and that is used instead.
 
-**`AUTODRIVE_CI_TOKEN` は兼ねない。** あちらは判定が使う読むだけの鍵であり、兼ねると**判定する側が判定対象を書き換えられる**（定義§9）。
+**`AUTODRIVE_CI_TOKEN` is not shared.** That one is a read-only key the checks use, and sharing it would let **the side that checks rewrite what it checks** (definition §9).
 
-**Linear の `LINEAR_API_KEY` は変えない。** 既に配った先が壊れる。
+**Linear's `LINEAR_API_KEY` is not changed.** Places already distributed to would break.
 
-#### 一度、別の鍵を必須にしていた（AUT-235 で直した）
+#### A separate key was once required (fixed in AUT-235)
 
-当初は `AUTODRIVE_TRACKER_TOKEN` を必須とし、理由をこう書いていた。
+At first, `AUTODRIVE_TRACKER_TOKEN` was required, with this reason.
 
-> Repo の資格情報とは別に持つ。同じ値を使い回すと、片方を絞れなくなる。
+> Keep it separate from the Repo credentials. Reusing the same value makes it impossible to narrow one of them.
 
-**分離の理由を取り違えていた。** `AUTODRIVE_CI_TOKEN` を分けているのは「判定する側が判定対象を書き換えられる」ためであって、絞れるからではない。
+**The reason for separation was mistaken.** `AUTODRIVE_CI_TOKEN` is separated because "the side that checks could rewrite what it checks," not because it can be narrowed.
 
-`GH_TOKEN` と Tracker の鍵の間には、その関係が無い。**どちらもエージェントが自分の作業のために持つ書ける鍵であり、同じ対象を指す。** 分けても守れるものが増えず、人が2つ用意する手間だけが残った。実際にそうなった。
+Between `GH_TOKEN` and the Tracker key there is no such relation. **Both are writable keys the agent holds for its own work, pointing at the same target.** Separating them protects nothing more, and only left the human the effort of preparing two. That is actually what happened.
 
-**片方の理由を、もう片方へそのまま当てていた。** 分離には理由ごとに違う根拠がある。
+**The reason for one had been applied as-is to the other.** Separation has different grounds for each reason.
 
-## 選ばなかった案
+## Options not chosen
 
-| 案 | なぜ選ばなかったか |
+| Option | Why not chosen |
 |---|---|
-| `#123` をそのまま作業単位IDにする | **シェルで壊れる**（上記）。リポジトリをまたぐと衝突する |
-| 番号だけを作業単位IDにする | 横断判定が突き合わせる鍵が、リポジトリをまたいで衝突する |
-| 状態を Projects v2 の Status で持つ | **プロジェクトを先に作って紐づける手順が要る。** 用意されていない対象で着手が落ち、落ちる先は規約を知らない人の手元である。ラベルはその場で作れる |
-| 語彙の状態を5つから3つへ減らす | 実装に合わせて定義§16の語彙を削ることになる。**実装が足りない分は、アダプタが埋める** |
-| `gh` CLI を呼ぶ | 外部のコマンドが手元にあることを前提にする。**REST は既に叩いており、増やす理由が無い** |
+| Use `#123` as the work item ID as is | **It breaks in the shell** (above). It collides across repositories |
+| Use only the number as the work item ID | The key the cross-repository check matches on collides across repositories |
+| Hold state in the Projects v2 Status | **It needs a step to create and link a project first.** Starting fails on targets where it is not prepared, and where it fails is in the hands of people who do not know the convention. Labels can be created on the spot |
+| Reduce the vocabulary's states from five to three | That would cut definition §16's vocabulary to fit the implementation. **What the implementation lacks, the adapter fills in** |
+| Call the `gh` CLI | Assumes an external command is available locally. **REST is already being called, so there is no reason to add it** |
 
-## 残っている問題
+## Remaining problems
 
-**混在した `--scope cross` は扱わない。** 横断判定は `tracker.list()` を1つの実装に対してしか呼ばない。リポジトリごとに違う実装を宣言した場合、突き合わせが成り立たない。**いまは起きない**（作業場は1つの実装で動く）。起きたときに決める。
+**A mixed `--scope cross` is not handled.** The cross-repository check calls `tracker.list()` on only one implementation. If repositories declare different implementations, the matching does not hold. **It does not happen now** (the workspace runs on one implementation). Decide when it happens.
 
-**接頭辞の衝突を検出しない。** 上記のとおり、参照実装からは分からない。
+**Prefix collisions are not detected.** As above, the reference implementation cannot tell.

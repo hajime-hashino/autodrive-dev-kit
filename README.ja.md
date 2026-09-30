@@ -197,6 +197,8 @@ autodrive-dev-kit が所有するファイルは `update` で上書きされる�
 
 ![構築例。人・サンドボックス・記録・実行の4つの区画と、1件の変更が流れる経路](docs/environment.svg)
 
+*図の文字は英語である。AIに聞けば日本語で読み上げる。*
+
 ### autodrive-dev-kit はプロジェクトの中に複製される
 
 ```
@@ -271,6 +273,8 @@ autodrive/invariants --root . --scope self
 | [docs/commands.md](docs/commands.md) | コマンドの全体。**AIが実行するものを含む** |
 | [docs/invariants.md](docs/invariants.md) | 判定基準の全文 |
 | [docs/adr/](docs/adr/) | 設計判断の記録。**覆す提案をする前に読む** |
+
+**これらは英語で書かれている。** AIに聞けば日本語で説明する。そうすることが求められており、常にいまの版を読むので、説明が古くなることはない。
 
 ## autodrive-dev-kit そのものを直す
 

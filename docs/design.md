@@ -1,99 +1,99 @@
-# 見え方を、作る前に決める
+# Deciding how it looks, before building it
 
-画面のあるものを作るとき、**実装に入る前に見え方を合意する。**
+When building something with a UI, **agree on how it looks before starting implementation.**
 
-## なぜ
+## Why
 
-見え方は**人が最も長く接する部分**であり、後から直すと作り直しになる。そして放っておくと、AIが黙って決めてしまう。
+How it looks is **the part people deal with the longest**, and fixing it later means rebuilding. Left alone, the AI decides it silently.
 
-実際にそうなった。ある作業単位で、アバターの選択肢も、画面の並びも、文言も、**AIが決めた。人が見られるのは配布された後だった。**
+That actually happened. In one work item, the avatar options, the screen layout, and the wording **were all decided by the AI. The human could only see them after they were deployed.**
 
-## これはレビューではない
+## This is not a review
 
-**ここを取り違えると、手法が壊れる。**
+**Get this wrong and the method breaks.**
 
-定義§14は「途中（中間成果物の承認）」を**成立しない**としている。設計書レビューを挟むと、人が検出手段そのものになり、§1の置き換えが起きない。§8も抜き取り確認の対象から設計書を外している。
+Definition §14 says a gate "midway (approval of intermediate artifacts)" **does not hold.** Inserting a design document review makes the human the means of detection itself, and §1's replacement does not happen. §8 also excludes design documents from spot checks.
 
-**見え方は別である。** 定義§10は「What/Why の提示」を人の役割としている。**見え方は What の一部であって**、正しさの検査対象ではない。
+**How it looks is different.** Definition §10 makes "presenting the What/Why" a human role. **How it looks is part of the What**, not something to be inspected for correctness.
 
-| | 位置づけ | 成立するか |
+| | Positioning | Holds? |
 |---|---|---|
-| AIが設計書を作り、**人が検査する** | 中間成果物の承認 | **しない**（§14） |
-| AIが案を出し、**人が決める** | 停止点での判断 | する（§10） |
+| The AI makes a design document and **the human inspects it** | Approval of intermediate artifacts | **No** (§14) |
+| The AI proposes options and **the human decides** | Decision at a stopping point | Yes (§10) |
 
-**決めるのであって、検査するのではない。** したがって、
+**It is deciding, not inspecting.** Therefore:
 
-- 人は**絵を描かなくてよい**。示された案から選ぶ、または直してほしい点を言う
-- AIは「これでよいですか」と**承認を求めない**。「こうしました、どうしますか」と**選択肢を出す**
-- 合意した内容は**人の提示として記録する**。AIが独断で書き換えない
+- The human **does not have to draw anything.** They choose from the options shown, or say what they want changed
+- The AI **does not ask for approval** with "Is this OK?" It **presents options**: "I did this; what would you like?"
+- What was agreed **is recorded as the human's presentation.** The AI does not rewrite it on its own judgment
 
-**非エンジニアでも成立する形にすること。** ここが崩れると、この手法の前提（人のスキルレベルによらず一定の品質で開発できる）が崩れる。
+**Make it a form that works even for non-engineers.** If this breaks, the premise of this method (developing at a consistent quality regardless of the person's skill level) breaks.
 
-## いつやるか
+## When to do it
 
-**見え方が新しく生まれるとき。**
+**When a new way of looking comes into being.**
 
-| 場面 | 要るか |
+| Situation | Needed? |
 |---|---|
-| 新しい画面を作る | **要る** |
-| 画面に新しい要素が載る（選択肢、状態表示、入力欄） | **要る** |
-| 文言の方針を決める | **要る** |
-| 既にある形に沿って項目が増える | 要らない |
-| 画面が無い（`invariants`、記録の仕組み、CI） | **要らない** |
+| Building a new screen | **Yes** |
+| A new element appears on a screen (options, status display, input fields) | **Yes** |
+| Deciding the policy for wording | **Yes** |
+| Items are added along an existing shape | No |
+| There is no screen (`invariants`, recording machinery, CI) | **No** |
 
-定義§5が内側と外側を「委譲範囲の表のセルを動かすか」で切り分けているのと同じ形である。**同じ形の中で増えるのは内側、形そのものが生まれるのが対象。**
+This is the same shape as definition §5 separating inner from outer by "whether it moves a cell in the delegation table." **Growth within the same shape is inner; the target is where a shape itself comes into being.**
 
-**毎回止めないこと。** 止めるほど人の関与が増え、§4（人の関与あたりの成果）を下げる。迷ったら「これは人が見て違和感を持ちうるか」で判断する。
+**Do not stop every time.** The more you stop, the more human involvement grows, lowering §4 (output per unit of human involvement). When in doubt, judge by "could a human who looks at this feel something is off?"
 
-## どうやるか
+## How to do it
 
-**動くものを見せる。** 定義§8が抜き取り確認の対象を「動くプロダクトの見え方に限る」としているのと同じ理由で、文書や図では幅・配色・実機での見え方を判断できない。
+**Show something that runs.** For the same reason definition §8 limits spot checks to "how the working product looks," documents and diagrams cannot judge width, color scheme, or how it looks on a real device.
 
-参照実装では、**提出ごとにプレビューURLが出る**。バージョンごとに別のURLで、本番の通信には影響しない。中身が無くてもよい（押しても何も起きないボタンでよい）。
+In the reference implementation, **every submission produces a preview URL.** Each version gets a separate URL, and it does not affect production traffic. It may have no substance (a button that does nothing when pressed is fine).
 
-### プレビューは検証環境の上に出る
+### Previews appear on top of the verification environment
 
-**別の環境ではない。** 検証環境の worker に上げたバージョンへ、別名を付けたものである。
+**It is not a separate environment.** It is an alias given to a version uploaded to the verification environment's worker.
 
 ```sh
 wrangler versions upload --env staging --preview-alias "$ALIAS"
 ```
 
-ここを取り違えると、**「プレビューを見ている」つもりで検証環境を見ていることになる。** 実際にそう報告された（AUT-125）。違反ではなく、そういう作りだった。**どこで動くのかが、どこにも書かれていなかった。**
+Get this wrong and **you end up looking at the verification environment while believing you are looking at "the preview."** It was actually reported that way (AUT-125). Not a violation; that is how it was built. **Where it runs was written nowhere.**
 
-### プレビューも検証環境も、閉じたまま見せる
+### Show previews and the verification environment while keeping them closed
 
-**見え方の確認のために公開しない。** `src/templates/autodrive.md` の「露出は、戻せるが取り消せない」に従う。確認のために公開が要るなら、それ自体が人へ差し出す論点である。
+**Do not publish just to check how it looks.** Follow "Exposure can be reverted but not undone" in `src/templates/autodrive-reference.md`. If checking needs publication, that itself is a point to put to the human.
 
-Cloudflare Workers なら、**独自ドメインを用意しなくても閉じられる。** Access を worker 単位で有効にすると、その worker に紐づくすべての宛先（route・独自ドメイン・`workers.dev`・**プレビュー**）が一度に守られる。
+With Cloudflare Workers, **you can keep it closed without preparing a custom domain.** Enabling Access per worker protects every destination tied to that worker at once (route, custom domain, `workers.dev`, **previews**).
 
-- 見るときに、許可したアカウントでのサインインが要る
-- **プレビューだけを守ることもできる**（本番は別扱いにできる）
+- Viewing requires signing in with an allowed account
+- **You can protect only the previews** (production can be treated separately)
 
-**WebSocket を使う場合は、worker 単位ではなく宛先ごとの Access を使うこと。** worker 単位の方式は接続の昇格を 403 で落とす。
+**If you use WebSocket, use per-destination Access rather than per-worker.** The per-worker method fails connection upgrades with 403.
 
-参照: [Cloudflare Access（Workers）](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
+Reference: [Cloudflare Access (Workers)](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
 
-1. AIが、見え方だけを実装したものを提出する
-2. **プレビューURLを人が開く**
-3. 人が決める。直すところがあれば言う
-4. 合意した内容を記録する
-5. 中身の実装に入る
+1. The AI submits an implementation of only how it looks
+2. **The human opens the preview URL**
+3. The human decides. If something should change, they say so
+4. Record what was agreed
+5. Start implementing the substance
 
-**1で中身まで作らないこと。** 作ってしまうと、直すときに捨てる量が増え、「もう作ったから」が判断に混ざる。
+**Do not build the substance in step 1.** Building it increases what is thrown away when fixing, and "it's already built" creeps into the judgment.
 
-## 記録する
+## Recording
 
-2つ残す。
+Keep two things.
 
-**合意した内容は**、What/Why と同じ場所・同じ扱いで残す。人の提示であり、AIが独断で書き換えない。
+**What was agreed** is kept in the same place and treated the same as the What/Why. It is the human's presentation, and the AI does not rewrite it on its own judgment.
 
-**止まった事実は** 停止イベントとして残す（定義§6）。種別は `design_agreement`。
+**The fact of stopping** is kept as a stop event (definition §6). The kind is `design_agreement`.
 
 ```sh
-telemetry 停止を記録する --kind design_agreement --type 入力 --detail "<何を決めてもらったか>"
+telemetry 停止を記録する --kind design_agreement --type 入力 --detail "<what they were asked to decide>"
 ```
 
-**これは「入力」の停止である。** 見え方を決めてもらうことは、手法が正しく働いている証拠であり、減らす対象ではない（定義§6 v0.11）。減らすのは、決めてもらったあとに作り直しが出た分。
+**This is an "input" stop.** Having them decide how it looks is evidence that the method is working correctly, not something to reduce (definition §6 v0.11). What to reduce is rebuilding after they decided.
 
-**繰り返し同じ種別で止まるなら、それはスキル化・自動化の候補である**（定義§6）。たとえば、選択肢の出し方が毎回同じなら、出し方を型にできる。
+**If stops of the same kind recur, they are candidates for skills and automation** (definition §6). For example, if options are presented the same way every time, that way can be made into a template.

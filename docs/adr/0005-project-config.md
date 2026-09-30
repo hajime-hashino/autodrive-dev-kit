@@ -1,66 +1,66 @@
-# ADR 0005: 構成をプロジェクトに残し、決め方で3つのコマンドに分ける
+# ADR 0005: The setup is kept in the project, split into three commands by how it is decided
 
-- 状態: 承認
-- 日付: 2026-08-27
-- 作業単位: AUT-81
+- Status: Accepted
+- Date: 2026-08-27
+- Work item: AUT-81
 
-## 背景
+## Background
 
-`init` は、何も聞かずに同じものを置いていた。**そのプロジェクトが何で動いているかが、どこにも残らなかった。**
+`init` placed the same things without asking anything. **What the project runs on was recorded nowhere.**
 
-残らないことで3つ困る。
+Not being recorded causes three problems.
 
-1. **入れ替えが、置いたときの判断を再現できない。** 毎回同じものを置き直すしかない
-2. **既にあるプロジェクトへ後から適用できない。** すでに何かが動いている場所へ、上書きで踏み込む形になる
-3. **AIが、そのプロジェクトに何があるかを推測で決める。** 「見え方を決めてもらう」ときにプレビューURLを出せるのかどうかを、確かめずに書き始めていた
+1. **Replacement cannot reproduce the judgments made when placing.** It can only place the same things again every time
+2. **It cannot be applied later to an existing project.** It would stride into a place where something is already running, by overwriting
+3. **The AI decides what the project has by guessing.** When "having them decide how it looks," it started writing without confirming whether a preview URL could be produced
 
-## 決めたこと
+## Decision
 
-構成を `autodrive.json` に残す。**プロジェクトのものであり、入れ替えで上書きしない。**
+The setup is kept in `autodrive.json`. **It belongs to the project and is not overwritten on replacement.**
 
-コマンドを3つに分ける。**違うのは構成をどう決めるかだけで、置く手順は同じ。**
+The commands are split into three. **They differ only in how the setup is decided; the placing steps are the same.**
 
-| | 前提 | 構成の決め方 |
+| | Precondition | How the setup is decided |
 |---|---|---|
-| `init` | 構成がまだ無い | **人に聞く** |
-| `apply` | 構成がまだ無く、中身がある | **見て推測し、人が確かめる** |
-| `update` | 構成が既にある | **聞かない。** 記録されたもので置き直す |
+| `init` | No setup yet | **Ask the human** |
+| `apply` | No setup yet, but there is content | **Look and infer; the human confirms** |
+| `update` | A setup already exists | **Do not ask.** Re-place with what was recorded |
 
-前提が崩れていれば置かずに止まり、**どれを打てばよいかを出す。** 3つの違いを人に覚えさせない。
+If a precondition is broken, it stops without placing and **says which one to run.** The human is not made to remember the differences among the three.
 
-### 聞き方
+### How to ask
 
-- **選択肢が1つしか無いものは聞かない。** 答えを持たない問いに人の時間を使わせない。記録はする
-- **専門語で聞かない。** 「Preview ポートは？」ではなく「提出のたびに、動くものを見られる場所を用意しますか？」
-- **推奨を示すが、決めない。** そのまま Enter で推奨。番号で選べば、選んだほうになる
-- **読めない答えを推奨として飲み込まない。** 選んだつもりの人が、選ばれなかったことに気づけない
-- **聞けなかったとき（端末が無い、CI）は推奨で進め、そう出す。** 黙って既定へ倒れると、決めていないものが決めたものに見える
+- **Do not ask what has only one option.** Do not spend the human's time on questions with no answer. Record it anyway
+- **Do not ask in jargon.** Not "Preview port?" but "Do you want a place to see the running app on every submission?"
+- **Show a recommendation, but do not decide.** Enter as-is takes the recommendation. Choosing by number takes the chosen one
+- **Do not swallow an unreadable answer as the recommendation.** Someone who thinks they chose would not notice it was not chosen
+- **When it cannot ask (no terminal, CI), proceed with the recommendation and say so.** Silently falling back to defaults makes undecided things look decided
 
-### 画面の有無は聞かない
+### Whether there is a UI is not asked
 
-`app.screen` は `init` では決めず、`unknown` のまま置く。**何を作るかを聞く段で決まるものであり**（AUT-80 の1）、土台を置く時点ではまだ誰も知らない。AIが聞き取ったときに書き足す。
+`app.screen` is not decided by `init` and is placed as `unknown`. **It is decided at the stage of asking what to build** (item 1 of AUT-80), and at the time the foundation is placed, nobody knows yet. The AI adds it when it has heard.
 
-## 承知していること
+## What we accept
 
-**今日の時点で、選択肢が2つ以上あるポートは2つしか無い**（Preview、Sandbox）。ヒアリングは薄い。
+**As of today, only two ports have two or more options** (Preview, Sandbox). The hearing is thin.
 
-それでも構成を残すのは、**置き場所を作るためである。** 2つ目の実装が入ったとき、アプリの種別やエージェントの種別が増えたとき、決めた内容の行き先がここになる（ADR 0004）。
+The setup is kept anyway **to create a place for it.** When a second implementation comes in, or kinds of app or agent increase, this is where the decisions go (ADR 0004).
 
-**いま抽象化はしない。記録するだけにする。** テンプレートを種別ごとに分けることもしていない。分ける理由がまだ無いのに分けると、同じ内容が2つに増えて、いずれ食い違う。
+**No abstraction now; only recording.** Templates are not split per kind either. Splitting with no reason to split doubles the same content, and eventually the two disagree.
 
-## なぜこの形か
+## Why this shape
 
-**ヒアリングをポートにした。** 端末に直に書くと、テストが端末を要求する。判定できないものは、いずれ判定されなくなる。テストでは答えを差し込み、**何を聞かれたかまで見ている。**
+**The hearing was made a port.** Writing directly to the terminal would make the tests require a terminal. What cannot be checked eventually stops being checked. Tests inject answers, and **even look at what was asked.**
 
-**推測と確定を分けた。** `apply` が見て分かるのは「何が置かれているか」までで、**何を使うつもりかは分からない。** 推測は推奨として出し、決めるのは人である（定義§10）。根拠（何を見てそう言っているか）も一緒に出す。
+**Inference and settlement were separated.** What `apply` can see is "what is placed," and **not what is intended to be used.** Inferences are shown as recommendations, and the human decides (definition §10). The grounds (what it looked at to say so) are shown too.
 
-**推測できていないものに、既定を推奨として出さない。** 構成の既定値は「聞かないポートの初期値」であって推奨ではない。混ぜると、聞いているのに既定へ倒れる。実際に一度そうなった。
+**Do not show defaults as recommendations for what could not be inferred.** Configuration defaults are "initial values for ports that are not asked," not recommendations. Mixing them makes it fall back to defaults even while asking. This actually happened once.
 
-## 却下した案
+## Rejected options
 
-- **`init` だけを残し、既存プロジェクトも同じ扱いにする** — 却下。既にあるものを見ずに上書きすることになる
-- **`apply` を `init --force` にする** — 却下。オプションの違いではなく、構成の決め方そのものが違う。同じ名前にすると、どちらが起きるかが打つ側から見えない
-- **構成をコード（`VERSION` の隣）に持つ** — 却下。プロジェクトごとに違うものを、参照実装が持てない
-- **構成を `autodrive/` の中に置く** — 却下。入れ替えで丸ごと捨てられる場所である。決めた内容が消える
-- **`update` で構成を読み直して書き戻す** — 却下。整形の違いや、**このバージョンが知らない項目の欠落が入りうる。** 読むだけにする
-- **自由記述で聞く** — 却下。受け取った側が意味を解釈することになり、何が選ばれたのかが記録から読めない
+- **Keep only `init` and treat existing projects the same** — Rejected. It would overwrite what exists without looking at it
+- **Make `apply` into `init --force` instead** — Rejected. It is not a difference of option but of how the setup is decided. Giving them the same name hides from the caller which one will happen
+- **Keep the setup in the code (next to `VERSION`)** — Rejected. The reference implementation cannot hold what differs per project
+- **Place the setup inside `autodrive/` too** — Rejected. That place is thrown away whole on replacement. What was decided would disappear
+- **Have `update` reread the setup and write it back** — Rejected. Formatting differences and **the loss of items this version does not know about could creep in.** Only read it
+- **Ask in free text** — Rejected. The receiving side would have to interpret the meaning, and what was chosen could not be read from the record

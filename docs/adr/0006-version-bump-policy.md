@@ -1,70 +1,70 @@
-# ADR 0006: バージョンは提出のたびに上げ、タグは統合のあとに CI が打つ
+# ADR 0006: The version is raised on every submission, and CI cuts the tag after integration
 
-- 状態: 承認
-- 日付: 2026-09-08
-- 作業単位: AUT-155
+- Status: Accepted
+- Date: 2026-09-08
+- Work item: AUT-155
 
-## 背景
+## Background
 
-ADR 0004 は autodrive-dev-kit をプロジェクトの中へ複製し、**バージョンで固定すると決めた。** 固定されているのは「`update` を打つまで変わらない」ところまでであり、**打った先に何が来るかは選べなかった。**
+ADR 0004 copied autodrive-dev-kit into the project and **decided to pin it by version.** What was pinned went only as far as "it does not change until `update` is run," and **what arrived after running it could not be chosen.**
 
-`VERSION` は ADR 0004 で置かれた日から一度も動いていなかった。**164コミットの間ずっと 0.1.0 で、記録 270 件すべてが同じ値だった。** 定義§6が `kit_version` を必須属性としているのは記録を後から比べるためであり、全部が同じ値なら比べようがない。**ADR 0004 が直そうとした問題が、形を変えて残っていた。**
+`VERSION` had not moved once since the day ADR 0004 placed it. **Across 164 commits it stayed 0.1.0, and all 270 records had the same value.** Definition §6 makes `kit_version` a required attribute so that records can be compared later, and if everything has the same value, there is nothing to compare. **The problem ADR 0004 set out to fix remained in a different form.**
 
-### 測って分かったこと
+### What measurement showed
 
-**タグが無くても、バージョンは指せた。**
+**Even without tags, a version could be pointed at.**
 
 ```
 npm pack "github:hajime-hashino/autodrive-dev-kit#8ca3174"
-→ TypeScript 時代の中身が降りてきた（.ts が35本、src の .js は0本）
+→ the contents from the TypeScript era came down (35 .ts files, 0 .js files in src)
 ```
 
-`#` の後ろには、タグでもコミットのIDでも書ける。したがって**問題は「選べない」ことではなく、`VERSION` が動かないことだった。** 読みやすい名前が無いことは、その次にある。
+After `#`, either a tag or a commit ID can be written. So **the problem was not "cannot choose" but that `VERSION` did not move.** Having no readable name comes after that.
 
-**上げるコミットを、CI から既定ブランチへ直接 push することはできない。** 参照実装自身が「提出を経ずに既定ブランチへ入った変更」を検出しており（`src/directCommits.js`）、そこで落ちる。**上げる操作は、提出の中に載せるしかない。**
+**A commit that raises it cannot be pushed directly to the default branch from CI.** The reference implementation itself detects "changes that entered the default branch without a submission" (`src/directCommits.js`), and it would fail there. **The act of raising it has to ride in a submission.**
 
-## 決めたこと
+## Decision
 
-**提出のたびに上げる。** 上げるのはAIであり、ブランチの中で行う。統合されたら CI がタグを打つ。
+**Raise it on every submission.** The AI raises it, inside the branch. Once integrated, CI cuts the tag.
 
-| 何を | 誰が | どこで |
+| What | Who | Where |
 |---|---|---|
-| `VERSION` と `package.json` の version を上げる | AI | 作業単位のブランチの中（提出に乗る） |
-| 上げ忘れていないかを見る | 判定 | 提出のたび（`invariants.yml` の version ジョブ） |
-| `v<VERSION>` を打つ | CI | 統合のあと（`tag.yml`） |
+| Raise `VERSION` and version in `package.json` | The AI | Inside the work item's branch (rides on the submission) |
+| Check that raising was not forgotten | The checks | On every submission (the version job in `invariants.yml`) |
+| Cut `v<VERSION>` | CI | After integration (`tag.yml`) |
 
-**配られる中身が変わったときだけ求める。** テスト・文書・記録・変異の一覧だけの変更では上げない。上げても、受け取る側で何も変わらない。
+**It is required only when what is distributed changes.** Changes to only tests, documents, records, or the list of mutations do not raise it. Raising it would change nothing on the receiving side.
 
-配られるものの一覧は `src/init.js` の `VENDORED` から導く。**写して持たない。** 置くものを変えたときに片方だけが古くなる。実際に索引でそれが起きている（AUT-160）。
+The list of what is distributed is derived from `VENDORED` in `src/init.js`. **It is not held as a copy.** When what is placed changes, only one side would go stale. That is actually happening with the index (AUT-160).
 
-## なぜこうしたか
+## Why
 
-**上げ忘れたことに気づく機会が無かった。** 規約に書いても、通らなければ思い出せない。164コミットの間ずっと動かなかったのは、忘れたからではなく、**思い出す機会が無かったからである。** `begin` を入口にしたのと同じ理由で、判定に置く。
+**There was no occasion to notice forgetting to raise it.** Even written in a convention, it is not remembered unless one goes through it. It stayed put across 164 commits not because someone forgot, but **because there was no occasion to remember.** For the same reason `begin` was made the entrance, it is placed in the checks.
 
-**上げるのを人の仕事にしなかった。** 末尾の数字を1つ上げるのは手順であって意思決定ではない。手順を人に振ることは、AIが自分の仕事を人へ渡していることになる（定義§10）。
+**Raising it was not made the human's job.** Raising the last number by one is procedure, not a decision. Handing procedure to the human means the AI is passing its own job to the human (definition §10).
 
-**タグを打つのを CI にしたのは、統合の事実が Repo にあるためである。** 統合されたかどうかを人が転記する形にすると、記録が二重になり片方だけが古くなる（定義§16の記録規約と同じ理由）。
+**Cutting the tag was given to CI because the fact of integration is in the Repo.** A form where a human transcribes whether it was integrated doubles the record, and only one side goes stale (the same reason as the recording conventions in definition §16).
 
-## この決定が生むもの
+## What this decision produces
 
-**記録の `kit_version` に意味が出る。** 作業単位ごとに違う値になり、後から比べられる。定義§6がこの属性を必須にしている理由が、ここで初めて満たされる。
+**`kit_version` in records gains meaning.** It takes a different value per work item and can be compared later. The reason definition §6 makes this attribute required is satisfied here for the first time.
 
-**バージョンを指して入れ替えられる。**
+**It can be replaced by pointing at a version.**
 
 ```sh
 npx github:hajime-hashino/autodrive-dev-kit#v0.1.1 update
 ```
 
-**数字そのものには、変更の大きさが乗らない。** 末尾を機械的に上げるため、0.1.1 と 0.1.2 の差が大きいか小さいかは読めない。区切りを表したくなったら、そのとき中の数字を上げる判断を人が行う。
+**The number itself does not carry the size of the change.** The last number is raised mechanically, so whether the difference between 0.1.1 and 0.1.2 is large or small cannot be read. If a milestone is to be expressed, the human decides then to raise a middle number.
 
-## 却下した案
+## Rejected options
 
-- **区切りのときだけ上げる** — 却下。上げ忘れが起きる。**実際いま起きているのがこれで**、164コミットの間ずっと動かなかった。区切りの間の記録は同じ値のままになり、比べられない範囲が残る
-- **バージョンをやめて、統合された地点のIDを `VERSION` に入れる** — 却下。記録は必ず一意になるが、人が読めない。ADR 0004 が置いた「PJ1 はバージョン1、PJ2 はバージョン2」という言い方ができなくなる
-- **CI が上げて既定ブランチへ push する** — 却下。`directCommits` が「提出を経ていない変更」として落とす。判定を緩める側へ書き換えることになり、それは人の承認を要する（配布物「守ること」）
+- **Raise it only at milestones** — Rejected. Forgetting happens. **This is exactly what is happening now**: it did not move across 164 commits. Records between milestones keep the same value, leaving a range that cannot be compared
+- **Drop versions and put the ID of the integrated point in `VERSION` instead** — Rejected. Records would always be unique, but people cannot read them. The phrasing ADR 0004 set up, "PJ1 on version 1, PJ2 on version 2," would no longer be possible
+- **CI raises it and pushes to the default branch** — Rejected. `directCommits` fails it as "a change that did not go through a submission." That would mean rewriting the checks in a loosening direction, which requires human approval (the distributed "What to keep to")
 
-## 未解決
+## Unresolved
 
-**0.1.0 のタグは打たれない。** この決定より前の164コミットは、どれも 0.1.0 であり区別できない。**遡って付けられないものとして扱う。** 定義§6が必須属性を「後から遡って付与できない」としているのと同じ理由で、後から意味のある割り当てはできない。
+**No 0.1.0 tag is cut.** The 164 commits before this decision are all 0.1.0 and cannot be told apart. **Treated as something that cannot be attached retroactively.** For the same reason definition §6 says required attributes "cannot be attached retroactively," no meaningful assignment can be made after the fact.
 
-**同時に2つのブランチが上がると、同じ数字になる。** この作業場はエージェントを1つに限っているため（`CLAUDE.md`）、いまは起きない。起きたときは git の衝突として出る。**黙って片方が消えることはない。**
+**If two branches raise it at the same time, they get the same number.** This workspace limits agents to one (`CLAUDE.md`), so it does not happen now. When it does, it appears as a git conflict. **One side does not silently disappear.**

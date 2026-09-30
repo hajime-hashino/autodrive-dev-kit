@@ -1,83 +1,83 @@
-# ADR 0003: 有効の判定は、動かせる有効境界以降の記録に対して行う
+# ADR 0003: Whether something is active is judged on records from a movable activation boundary onward
 
-- 状態: 承認
-- 日付: 2026-08-22
-- 作業単位: AUT-12
+- Status: Accepted
+- Date: 2026-08-22
+- Work item: AUT-12
 
-## 背景
+## Background
 
-不変条件「テレメトリが記録されること」の判定は「`emitter: manual` が1件でもあれば有効でない」としている。立ち上げ期に手で書いた記録が残り続けるため、全期間を対象にすると**永久に有効へ到達できない**。
+The judgment of the invariant "Telemetry is recorded" says "if there is even one `emitter: manual`, it is not active." Records written by hand in the bootstrap phase remain, so judging the whole period means **it can never reach active.**
 
-最初に検討したのは、アダプタ導入時点を1回だけ有効境界として置く案だった。しかし人から指摘があった。
+The first idea considered was to place the time the adapter was introduced as the activation boundary, just once. But a human pointed something out.
 
-> 障害が発生して、再び manual を追加せずに進められなくなった場合はどうするか
+> What happens if a failure occurs and we can no longer proceed without adding manual records again?
 
-これは実際に起こりうる。
+This can actually happen.
 
-| ケース | 例 |
+| Case | Example |
 |---|---|
-| アダプタの不具合 | 参照実装のバグ |
-| 実行基盤の変更 | セッション記録の形式やフックの仕様が変わる |
-| Tracker が落ちている | 作業単位が引けず、紐づけができない |
-| 信頼のリセット | clone し直し、別マシンへの移動 |
-| 語彙に無い記録が出る | 実際に起きている（手戻りの原因の内訳。定義への差し戻し済み） |
+| A defect in the adapter | A bug in the reference implementation |
+| A change in the runtime | The format of the session record or the hook specification changes |
+| The Tracker is down | Work items cannot be looked up, so linking fails |
+| Trust is reset | Re-cloning, moving to another machine |
+| A record not in the vocabulary appears | This actually happens (the breakdown of rework causes; already sent back to the definition) |
 
-有効境界が1回しか動かない形では、一度でも直書きへ戻ると二度と復帰できない。壁の位置が変わるだけである。
+With an activation boundary that moves only once, falling back to direct writes even once means never recovering. The wall just moves.
 
-## すでに正しく扱えていたこと
+## What was already handled correctly
 
-**直書きへ戻ったときに有効が落ちるのは、正しい挙動である。** ハーネスが既定で記録していない状態に戻ったのだから、有効ではないと報告するのが事実にあたる。定義§8が「緩和と締め直しは必ず対で運用する」としているのと同じ形で、締め直しである。
+**Active falling when things fall back to direct writes is correct behavior.** The harness is back to not recording by default, so reporting it as not active is the fact. It is the same shape as definition §8's "loosening and tightening back are always operated as a pair": this is tightening back.
 
-そのとき `invariants` は代替の記録を要求する。代替が無ければ失敗するため、**記録に残さないまま直書きへ戻る経路はすでに塞がっている。** 定義§9の「代替した事実を記録に残すこと」が効いている。
+At that point `invariants` demands a substitution record. Without one it fails, so **the path of falling back to direct writes without leaving a record is already closed.** Definition §9's "the fact of substitution is left in the records" is doing its job.
 
-欠けていたのは復帰の経路だけだった。
+What was missing was only the path to recover.
 
-## 決定
+## Decision
 
-**有効の判定は、最後に記録された有効境界以降のイベントに対して行う。有効境界はアダプタ経由でしか進められない。**
+**Whether something is active is judged on events from the last recorded activation boundary onward. The activation boundary can only be advanced through the adapter.**
 
-- 直書きへ戻る → 有効境界以降に `manual` が現れ、有効が落ちる。代替の記録が要る
-- アダプタが直る → 有効境界を進める → 有効へ復帰
-- **有効境界を進めるにはアダプタが動いている必要がある。** 有効境界の記録自体がアダプタ経由で書かれるため、壊れている間は進められない
+- Falling back to direct writes → `manual` appears after the activation boundary, and active falls. A substitution record is needed
+- The adapter is fixed → advance the activation boundary → back to active
+- **Advancing the activation boundary needs a working adapter.** The boundary record itself is written through the adapter, so it cannot advance while broken
 
-進めるには `invariants --enact <不変条件>` を使う。フックが `.claude/settings.json` に登録されていなければ拒否する。登録が無いまま有効境界の記録だけ進めると、記録が続く保証が無いまま有効を名乗ることになる。
+Advance it with `invariants --enact <invariant>`. It is refused if the hook is not registered in `.claude/settings.json`. Advancing only the boundary record without registration would claim active with no guarantee that recording continues.
 
-### 判定の対象を分ける
+### Splitting what is judged
 
-| 見るもの | 対象 | 理由 |
+| What is looked at | Target | Reason |
 |---|---|---|
-| 必須属性の妥当性 | **全期間** | 遡って付与できない。有効境界より前だからといって欠けてよい理由にはならない |
-| 書き込み経路が自動か | 有効境界以降 | 「いまどうなっているか」の問い |
-| 代替の記録 | 全期間 | 有効境界より前に書かれた代替も有効 |
+| Validity of required attributes | **The whole period** | They cannot be attached retroactively. Being before the activation boundary is no reason for them to be missing |
+| Whether the write path is automatic | From the activation boundary onward | The question is "how is it now" |
+| Substitution records | The whole period | Substitutions written before the activation boundary also count |
 
-**有効境界より前の記録は消さない。** 判定の対象から外すだけであり、履歴としては残り続ける。
+**Records before the activation boundary are not deleted.** They are only excluded from judging, and remain as history.
 
-## 記録の時刻は解析してから比べる
+## Timestamps are parsed before comparing
 
-ISO 表記はオフセットの書き方が複数あり、辞書順と実時刻の順序が一致しない。`2026-08-22T10:00:00+09:00`（=01:00Z）は `2026-08-22T05:00:00Z` より辞書順では後、実時刻では先になる。**文字列のまま比べないこと。**
+ISO notation has several ways of writing offsets, and lexicographic order does not match real time. `2026-08-22T10:00:00+09:00` (=01:00Z) comes after `2026-08-22T05:00:00Z` lexicographically, but before it in real time. **Do not compare them as strings.**
 
-時刻が読めない記録は判定の対象に残す。外すほうへ倒すと、時刻を壊すことで記録を判定の外へ置ける経路ができる。
+Records whose timestamps cannot be read are kept in the judgment. Leaning toward excluding them would create a path to put records outside the judgment by breaking their timestamps.
 
-### 有効境界は「いま」に置く
+### The activation boundary is placed at "now"
 
-立ち上げ期に手で書いた記録には、実時刻より未来を指す値が混じっていた（会話上の日付から組み立てたもので、時計から読んだ値ではなかった）。
+Records written by hand in the bootstrap phase contained values pointing to the future beyond real time (they were built from the date in the conversation, not read from a clock).
 
-一度は有効境界を `max(既存の記録の最大時刻, いま)` に置く案を採ったが、**これは誤りだった。** 有効境界が未来に置かれると、そこへ至るまでの間に書かれた記録が、正しいものも含めてすべて判定の対象から外れる。実際に5時間の盲点ができていた。記録が書かれる時点と判定が走る時点は別なので、この穴は必ず踏む。
+The idea of placing the activation boundary at `max(the latest timestamp among existing records, now)` was adopted once, but **that was wrong.** With the boundary placed in the future, every record written until then, correct ones included, falls outside the judgment. A 5-hour blind spot actually occurred. The time a record is written and the time the judgment runs are separate, so this hole is always stepped in.
 
-誤った値は補正するのが正しい。**補正の根拠にはコミット時刻を使う。** 独立した系が持つ検証可能な値であり、記録が書かれた時点がこれを超えることはない。補正した記録は `ts_corrected_from` に元の値を残すため、何をどう直したかは記録から読める。
+Correcting the wrong values is right. **Commit times are used as the ground for correction.** They are verifiable values held by an independent system, and the time a record was written cannot exceed them. Corrected records keep the original value in `ts_corrected_from`, so what was fixed and how can be read from the records.
 
-これは辻褄合わせのための書き換えではなく、**誤った値の訂正である。** この区別を保つ条件は、訂正の事実と元の値が記録に残ることとする。
+This is not rewriting to make things add up, but **correcting a wrong value.** The condition for keeping this distinction is that the fact of the correction and the original value remain in the records.
 
-## 残る穴
+## The remaining hole
 
-**直書き → 有効境界を進める → 直書き → 有効境界を進める、を繰り返せば、形式上は有効を保てる。** これは塞げない。
+**By repeating direct writes → advance the boundary → direct writes → advance the boundary, active can be kept formally.** This cannot be closed.
 
-ただし**有効境界を進めた回数は記録に残り、`invariants` が出力する。** 何度も動いていること自体が、ハーネスが安定していないという信号であり、段階4で外側ループが読むべき入力になる。
+However, **the number of times the activation boundary was advanced remains in the records, and `invariants` prints it.** Moving many times is itself a signal that the harness is not stable, and an input the outer loop should read in stage 4.
 
-防ぐのではなく見えるようにする。BOOTSTRAP が「AIが無効化できないことは検出で代替する」と決めた方針と同じ形である。
+Not preventing it but making it visible. The same shape as the policy BOOTSTRAP decided: "that the AI cannot disable them is substituted by detection."
 
-**何回で異常とみなすかは定めない。** 定義§18が緩和しきい値を未確定としているのと同じ理由で、実データなしに数字を置くと根拠なく残る。回数を出力するだけとし、判断は人に残す。
+**How many times counts as abnormal is not set.** For the same reason definition §18 leaves the loosening threshold undecided: placing a number without real data leaves it without grounds. It only prints the count, and leaves the judgment to the human.
 
-## 前提
+## Premise
 
-**人がプロジェクトのファイルを直接操作することはない。** 人が動くのは、AIが判断を求めたときに限られる。したがって語彙を呼ぶのは常にAIであり、`emitter: manual` は「アダプタに到達できなかった」ことだけを意味する。人が意図的に迂回した場合を、この判定は想定しない。
+**Humans do not operate the project's files directly.** Humans act only when the AI asks for a decision. So it is always the AI that calls the vocabulary, and `emitter: manual` means only "the adapter could not be reached." This judgment does not assume a human deliberately going around it.
