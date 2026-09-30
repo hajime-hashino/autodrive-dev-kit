@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 準備が足りているかを見る。
+# Check whether the setup is sufficient.
 #
-# **足りなくても止めない。** 初回は .env がまだ無いのが正常であり、ここで止めると、
-# 中に入って直すことができなくなる。足りないものは表示で伝える。
+# **Do not stop even if something is missing.** On first start having no .env yet is normal,
+# and stopping here would make it impossible to get in and fix it. What is missing is shown.
 #
-# **何が要るかは .env.example から読む。** ここに一覧を持つと、要るものが増えた
-# ときに2か所を直すことになり、片方が置き去りになる。
+# **What is needed is read from .env.example.** Keeping a list here would mean fixing two
+# places when something new is needed, and one would be left behind.
 set -uo pipefail
 
 ROOT="${1:-$PWD}"
@@ -15,16 +15,16 @@ ENV_FILE="$ROOT/.env"
 missing=()
 
 if [ ! -f "$EXAMPLE" ]; then
-  echo "⚠ .env.example が無い。autodrive-dev-kit init を打ったか確認すること。"
+  echo "⚠ There is no .env.example. Check whether autodrive-dev-kit init was run."
   exit 0
 fi
 
 if [ ! -f "$ENV_FILE" ]; then
-  echo "⚠ .env が無い。.env.example をコピーして作り、資格情報を書くこと。"
+  echo "⚠ There is no .env. Copy .env.example to create it, and write the credentials."
   exit 0
 fi
 
-# 変数名だけを取り出す（NAME= の形の行）。
+# Take only the variable names (lines of the form NAME=).
 while IFS= read -r name; do
   [ -n "$name" ] || continue
   value=$(grep -E "^${name}=" "$ENV_FILE" | head -1 | cut -d= -f2-)
@@ -32,41 +32,41 @@ while IFS= read -r name; do
 done < <(grep -oE '^[A-Z_][A-Z0-9_]*(?==)' "$EXAMPLE" 2>/dev/null || grep -oE '^[A-Z_][A-Z0-9_]*=' "$EXAMPLE" | tr -d '=')
 
 if [ ${#missing[@]} -gt 0 ]; then
-  echo "⚠ .env に値の入っていないものがある:"
+  echo "⚠ Some entries in .env have no value:"
   for name in "${missing[@]}"; do echo "    $name"; done
-  echo "  .env.example に、それぞれ何に使うかが書いてある。"
+  echo "  .env.example says what each one is for."
 else
-  echo "✓ 資格情報は揃っている"
+  echo "✓ Credentials are in place"
 fi
 
-# 出口が閉じているか。
+# Whether the egress is closed.
 #
-# **「閉じているつもり」を残さない。** 規則はコンテナの停止で消えるため、置いた
-# はずでも効いていないことがある。実際に10日間、効かないまま動いていた（AUT-121）。
+# **Do not leave "I think it is closed."** Rules disappear when the container stops, so even
+# if they were placed they may not be in effect. It actually ran for 10 days without them (AUT-121).
 #
-# ここでは直さない。**直すのは init-firewall.sh であり、起動のたびに走る。**
-# ここは、それが走らなかったことに気づくための最後の網である。
+# This does not fix it. **What fixes it is init-firewall.sh, which runs on every start.**
+# This is the last net for noticing that it did not run.
 #
-# **したがって、閉じたあとに走らなければ意味が無い。** postCreateCommand に
-# 置いていた間は閉じる前に走っており、配った先すべてで毎回「効いていない」と
-# 報告していた（AUT-169）。呼ぶ場所は devcontainer.json の postStartCommand。
+# **So it is meaningless unless it runs after closing.** While it sat in postCreateCommand
+# it ran before closing, and reported "not in effect" every time everywhere it was distributed
+# (AUT-169). It is called from postStartCommand in devcontainer.json.
 #
-# **出られないことだけでは、閉じていることの根拠にならない。** 通信そのものが
-# 死んでいても、規則が厳しすぎて許可した宛先にも届かなくても、同じように
-# 出られない。**両方向を見て、初めて「閉じている」と言える。**
+# **Being unable to get out is not by itself grounds that it is closed.** If networking itself
+# is dead, or the rules are so strict that even allowed destinations are unreachable, you also
+# cannot get out. **Only after looking in both directions can you say "it is closed."**
 if [ -f "$ROOT/.devcontainer/allowed-domains.txt" ]; then
   if ! command -v curl >/dev/null 2>&1; then
-    echo "⚠ 出口制限を確かめられない。curl が入っていない。"
-    echo "    **確かめられないことを、効いていることにしない。**"
+    echo "⚠ Cannot check the egress restriction. curl is not installed."
+    echo "    **What cannot be checked is not treated as in effect.**"
   elif curl -fsS --max-time 5 -o /dev/null https://example.com 2>/dev/null; then
-    echo "⚠ 出口制限が効いていない。許可していない宛先へ出られる。"
-    echo "    sudo bash .devcontainer/init-firewall.sh を打つこと。"
-    echo "    **効かないまま動くと、隔離されていると思ったまま作業することになる。**"
+    echo "⚠ The egress restriction is not in effect. Destinations that are not allowed are reachable."
+    echo "    Run sudo bash .devcontainer/init-firewall.sh."
+    echo "    **Running without it means working while believing you are isolated.**"
   elif curl -fsS --max-time 5 -o /dev/null https://api.github.com 2>/dev/null; then
-    echo "✓ 出口制限が効いている"
+    echo "✓ The egress restriction is in effect"
   else
-    echo "⚠ 出口制限を確かめられない。許可した宛先にも届かない。"
-    echo "    規則が厳しすぎるか、通信そのものが落ちている。"
+    echo "⚠ Cannot check the egress restriction. Even allowed destinations are unreachable."
+    echo "    Either the rules are too strict, or networking itself is down."
   fi
 fi
 

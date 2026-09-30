@@ -1,42 +1,42 @@
 #!/usr/bin/env bash
-# 外向き通信を許可制にする。
+# Make outbound traffic allowlisted.
 #
-# **隔離だけでは情報の持ち出しを防げない。** サンドボックスに入れたものは、
-# 中から読めるし、出口が開いていれば送れる。守れるのはプロジェクトの外にある
-# ものだけである。中にあるものを守るには、出口を絞る必要がある。
+# **Isolation alone cannot prevent information from being taken out.** What is put in the
+# sandbox can be read from inside, and sent if the egress is open. Only what is outside the
+# project is protected. To protect what is inside, the egress must be narrowed.
 #
-# 既定を拒否にし、allowed-domains.txt に書かれた宛先だけを通す。
+# Deny by default, and let through only destinations written in allowed-domains.txt.
 #
-# **規則は名前解決した時点の IP に置かれる。** 大手の CDN は IP を入れ替えるため、
-# 置いたままにすると出られなくなる。実測では19宛先のうち2つが数時間でズレた
-# （CI のログ本文と、公式文書の置き場）。**静かに出られなくなる**（AUT-63）。
+# **Rules are placed against the IPs resolved at that time.** Major CDNs swap IPs, so rules
+# left in place stop reaching them. Measured, 2 of 19 destinations drifted within hours
+# (CI log bodies, and where the official docs live). **It silently becomes unreachable** (AUT-63).
 #
-# そのため、置いたあとも定期的に引き直す。
+# So after placing them, they are re-resolved periodically.
 #
-#   init-firewall.sh            全部を組み立て直し、引き直しを背後で始める
-#   init-firewall.sh --refresh  **足りない IP を足すだけ。** 一度きり
+#   init-firewall.sh            rebuild everything, and start re-resolving in the background
+#   init-firewall.sh --refresh  **only add missing IPs.** once
 #
-# **引き直しで丸ごと置き直さない。** `-F` の瞬間に、通っている接続の戻りを許す
-# 規則も消えるため、実行中の通信が切れる。足すだけなら切れない。
+# **Re-resolving does not replace everything.** At the moment of `-F`, the rule allowing the
+# return of established connections also disappears, cutting traffic in flight. Only adding does not cut it.
 #
-# **引き直す対象は、一覧にある名前だけである。** 出られなかった宛先を引き直す形に
-# すると、一覧に無い名前を足す経路になる。そこは通さない。
+# **Only names on the list are re-resolved.** Re-resolving destinations that could not be reached
+# would become a path to add names not on the list. That is not allowed.
 #
-# **規則は溜まる。** 古い IP は消さないため、動かし続けると増える（実測で1日に
-# 55→85）。増える分はすべて一覧にある名前の回っている IP であり、**出られる名前は
-# 増えない。** ただし CDN が使わなくなった IP を許可したままにはなる。
+# **Rules accumulate.** Old IPs are not removed, so they grow as it keeps running (measured:
+# 55→85 in one day). Everything added is a rotating IP of a name on the list, so **the names
+# that can be reached do not grow.** But IPs a CDN no longer uses stay allowed.
 #
-# 溜まりはコンテナの停止で消える。起動のたびに組み立て直すため、**上限は
-# コンテナを動かし続けた時間で決まる。**
+# The accumulation disappears when the container stops. Rules are rebuilt on every start, so
+# **the upper bound is set by how long the container keeps running.**
 set -euo pipefail
 
 ALLOWED="$(dirname "$0")/allowed-domains.txt"
-[ -f "$ALLOWED" ] || { echo "許可する宛先の一覧が無い: $ALLOWED" >&2; exit 1; }
+[ -f "$ALLOWED" ] || { echo "There is no list of allowed destinations: $ALLOWED" >&2; exit 1; }
 
-# 引き直しの間隔（秒）。0 にすると背後で回さない。
+# Re-resolve interval (seconds). 0 disables the background loop.
 REFRESH_INTERVAL="${AUTODRIVE_FIREWALL_REFRESH:-600}"
 
-# 一覧にある名前の、いま引ける IP のうち、まだ許可されていないものを足す。
+# For names on the list, add the currently resolvable IPs that are not yet allowed.
 refresh() {
   added=0
   while read -r line; do
@@ -44,7 +44,7 @@ refresh() {
     domain="$(echo "$domain" | tr -d "[:space:]")"
     [ -z "$domain" ] && continue
     for ip in $(getent ahostsv4 "$domain" 2>/dev/null | awk "{print \$1}" | sort -u || true); do
-      # 既にあるなら足さない。二重に積むと規則が際限なく増える。
+      # Do not add if already present. Stacking duplicates grows the rules without limit.
       iptables -C OUTPUT -d "$ip" -j ACCEPT 2>/dev/null && continue
       iptables -A OUTPUT -d "$ip" -j ACCEPT && added=$((added + 1))
     done
@@ -53,34 +53,34 @@ refresh() {
 }
 
 if [ "${1:-}" = "--refresh" ]; then
-  # **閉じていないなら何もしない。** 開いた状態で足しても意味が無く、
-  # 「引き直したから守られている」と読める出力だけが残る。
+  # **If it is not closed, do nothing.** Adding while open means nothing, and would leave only
+  # output that reads as "re-resolved, so protected."
   if ! iptables -S OUTPUT | head -1 | grep -q "DROP"; then
-    echo "出口が閉じていない。先に init-firewall.sh を打つこと" >&2
+    echo "The egress is not closed. Run init-firewall.sh first" >&2
     exit 1
   fi
   n="$(refresh)"
-  [ "$n" -gt 0 ] && echo "引き直した: ${n} 件の宛先を足した"
+  [ "$n" -gt 0 ] && echo "Re-resolved: added ${n} destinations"
   exit 0
 fi
 
-echo "外向き通信を許可制にする"
+echo "Making outbound traffic allowlisted"
 
-# 既存の規則を捨ててから組み立てる。二重に積むと意図しない許可が残る。
+# Discard existing rules before building. Stacking duplicates leaves unintended allowances.
 iptables -F OUTPUT
 iptables -F INPUT 2>/dev/null || true
 
-# 折り返しと、こちらから開いた接続の戻りは通す。
+# Allow loopback, and the return of connections opened from here.
 iptables -A OUTPUT -o lo -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# 名前解決。これを閉じると宛先を引けない。
+# Name resolution. Closing this makes destinations unresolvable.
 iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
 
-# ホスト側（編集機からの接続）は通す。閉じると VS Code がつながらない。
+# Allow the host side (connections from the editing machine). Closing it disconnects VS Code.
 GATEWAY="$(ip route | awk '/^default/ {print $3; exit}')"
 if [ -n "$GATEWAY" ]; then
   SUBNET="$(ip -o -f inet addr show | awk '/scope global/ {print $4; exit}')"
@@ -94,10 +94,10 @@ while read -r line; do
   domain="$(echo "$domain" | tr -d '[:space:]')"
   [ -z "$domain" ] && continue
 
-  # 名前が引けない宛先は飛ばす。ここで止めると、一時的な不通で環境が起動しなくなる。
+  # Skip destinations whose names do not resolve. Stopping here would keep the environment from starting on a transient outage.
   ips="$(getent ahostsv4 "$domain" 2>/dev/null | awk '{print $1}' | sort -u || true)"
   if [ -z "$ips" ]; then
-    echo "  引けない: $domain"
+    echo "  does not resolve: $domain"
     skipped=$((skipped + 1))
     continue
   fi
@@ -107,17 +107,17 @@ while read -r line; do
   done
 done < "$ALLOWED"
 
-# 最後に既定を拒否にする。**組み立ての途中で閉じると、名前解決ができなくなる。**
+# Set the default to deny last. **Closing partway through building would break name resolution.**
 iptables -P OUTPUT DROP
 iptables -P INPUT DROP 2>/dev/null || true
 
-echo "  許可した宛先: ${allowed} 件（引けなかったもの: ${skipped} 件）"
+echo "  allowed destinations: ${allowed} (did not resolve: ${skipped})"
 
-# 引き直しを背後で始める。**二重に回さない。**
+# Start re-resolving in the background. **Do not run two.**
 #
-# **止める相手は PID で特定する。** 名前で探して落とす形（`pkill -f`）は、
-# その文字列を含むだけの無関係な処理まで巻き込む。実際に、確認していた
-# シェル自身を落とした（AUT-63）。**絞る仕掛けが、絞る対象を間違えては困る。**
+# **Identify what to stop by PID.** Finding and killing by name (`pkill -f`) also takes down
+# unrelated processes that merely contain the string. It actually killed the very shell doing
+# the checking (AUT-63). **A mechanism that narrows must not mistake what it narrows.**
 PIDFILE=/run/autodrive-firewall-refresh.pid
 if [ "$REFRESH_INTERVAL" -gt 0 ]; then
   if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
@@ -127,18 +127,18 @@ if [ "$REFRESH_INTERVAL" -gt 0 ]; then
   setsid bash -c 'while sleep '"$REFRESH_INTERVAL"'; do bash "'"$SELF"'" --refresh >/dev/null 2>&1 || true; done' \
     </dev/null >/dev/null 2>&1 &
   echo $! > "$PIDFILE"
-  echo "  引き直し: ${REFRESH_INTERVAL} 秒ごと"
+  echo "  re-resolving: every ${REFRESH_INTERVAL} seconds"
 fi
 
-# 効いていることを確かめる。**確かめずに「絞った」と言わない。**
+# Confirm it is in effect. **Do not say "narrowed" without confirming.**
 if curl -fsS --max-time 5 -o /dev/null https://api.github.com 2>/dev/null; then
-  echo "  確認: 許可した宛先へ出られる"
+  echo "  check: allowed destinations are reachable"
 else
-  echo "  確認に失敗: 許可した宛先へ出られない。規則が厳しすぎる" >&2
+  echo "  check failed: allowed destinations are unreachable. The rules are too strict" >&2
   exit 1
 fi
 if curl -fsS --max-time 5 -o /dev/null https://example.com 2>/dev/null; then
-  echo "  確認に失敗: 許可していない宛先へ出られてしまう" >&2
+  echo "  check failed: a destination that is not allowed is reachable" >&2
   exit 1
 fi
-echo "  確認: 許可していない宛先へは出られない"
+echo "  check: a destination that is not allowed is unreachable"

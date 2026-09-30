@@ -1,35 +1,35 @@
-# あなたの置き場所
+# Your place
 
-**AIに渡す前に、考えをまとめる場所。** 資料でも、走り書きでも、読みかけのリンクでも。
+**A place to organize your thoughts before handing them to the AI.** Materials, scribbles, links you are halfway through reading.
 
-**中身は追跡しない**（`.gitignore` に入れてある）。この README だけが追跡される。
+**Its contents are not tracked** (they are in `.gitignore`). Only this README is tracked.
 
-## 誰のものか
+## Whose it is
 
-**あなたのものである。** AIは頼まれたら読むが、**自分から書き換えない。**
+**It is yours.** The AI reads it when asked, but **does not rewrite it on its own.**
 
-読ませたいときは、そう言えばよい。
+When you want it read, just say so.
 
-> `notes/` にまとめた考えを読んでから始めて
+> Read the thoughts I put together in `notes/` before starting
 
-## 置いてはいけないもの
+## What must not be put here
 
-**本番の資格情報。** クライアントシークレット、署名鍵、配布用のトークン。
+**Production credentials.** Client secrets, signing keys, deployment tokens.
 
-配られた規約にこうある。
+The distributed rules say:
 
-> **本番の資格情報を手元に置かない。** 配布用のトークンは CI だけが持つ
+> **Do not keep production credentials locally.** Only CI holds the deployment token
 
-ここに値を置くと**AIが読める状態になり**、この前提が崩れる。
+Putting values here **makes them readable by the AI**, and that premise breaks.
 
-**`.gitignore` が防ぐのはコミットだけである。** サンドボックスに入れたものの持ち出しは防げない。**追跡しないことと、守られていることは別である。**
+**`.gitignore` only prevents committing.** It cannot prevent what is put in the sandbox from being taken out. **Not being tracked and being protected are different things.**
 
-## 値はどこに置くか
+## Where values go
 
-| 対象 | 置き場所 |
+| Target | Where |
 |---|---|
-| 配布先の資格情報 | 配布先のサービスに登録する。控えるならパスワード管理ソフト |
-| CI が使う資格情報 | Repo のシークレット |
-| AIが使う資格情報 | `.env`（`.env.example` に一覧がある） |
+| Credentials for the deployment target | Register them with the deployment service. If you keep a copy, a password manager |
+| Credentials CI uses | The Repo's secrets |
+| Credentials the AI uses | `.env` (`.env.example` lists them) |
 
-**どの資格情報がどこにあるかは、値を書かずにここへ記録してよい。** 持ち出せる情報ではなく、迷ったときに参照するためのものである。
+**You may record here which credential is where, without writing the values.** It is not information that can be taken out, but something to refer to when unsure.

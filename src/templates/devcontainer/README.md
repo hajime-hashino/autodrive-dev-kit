@@ -1,98 +1,98 @@
-# サンドボックス
+# Sandbox
 
-**AIはこの中で動かす。** 外向きの通信は許可制で、`allowed-domains.txt` に無い宛先の
-多くは塞がる。
+**The AI runs inside this.** Outbound traffic is allowlisted, and most destinations not in
+`allowed-domains.txt` are blocked.
 
-**ただし全部ではない。** 規則は名前解決した IP に対して置かれるため、**許可した宛先と
-同じ IP を共有する宛先へは、一覧に無くても出られる**（AUT-122）。詳しくは
-`allowed-domains.txt` の冒頭にある。**通信を遮断する仕組みではなく、出られる先を減らす仕組みである。**
+**But not all.** Rules are placed against resolved IPs, so **destinations that share an IP
+with an allowed destination can be reached even if they are not on the list** (AUT-122). Details are at the
+top of `allowed-domains.txt`. **It is not a mechanism that cuts off traffic, but one that reduces where traffic can go.**
 
-## 入った直後にすること
+## Right after getting in
 
-1. `.env.example` をコピーして `.env` を作り、資格情報を書く
-2. コンテナを開き直す（`.env` は環境を作るときに読まれる）
+1. Copy `.env.example` to create `.env`, and write the credentials
+2. Reopen the container (`.env` is read when the environment is built)
 
-`.env` が無いまま入っても環境の作成は止まらない。**初回はそれが正常である。**
-足りないものは、入ったときに表示で伝えられる。
+Getting in without `.env` does not stop the environment from being created. **On the first time, that is normal.**
+What is missing is shown when you get in.
 
-## 外へ出られないとき
+## When traffic cannot get out
 
-`allowed-domains.txt` に宛先を足し、コンテナを作り直す。**なぜ要るのかを併記すること。**
-書けないなら要らない可能性が高い。
+Add the destination to `allowed-domains.txt` and rebuild the container. **Write why it is needed alongside.**
+If you cannot write it, it is likely not needed.
 
-**ワイルドカードは書けない。** 規則は名前解決した IP に対して置かれるため、
-サブドメインごとに1行が要る。
+**Wildcards cannot be written.** Rules are placed against resolved IPs, so
+each subdomain needs its own line.
 
-**IP が入れ替わる宛先がある。** 足したはずなのに出られない場合、名前解決の結果が
-変わっていることがある。`sudo bash .devcontainer/init-firewall.sh` を打ち直す。
+**Some destinations swap their IPs.** If it is unreachable even though you added it, the name
+resolution result may have changed. Run `sudo bash .devcontainer/init-firewall.sh` again.
 
-## 規則は起動のたびに置き直される
+## Rules are re-placed on every start
 
-iptables の規則は**コンテナのネットワーク名前空間**にあるため、停止すると消える。
-したがって `init-firewall.sh` は `postStartCommand` に置いてあり、**起動のたびに走る。**
+iptables rules live in **the container's network namespace**, so they disappear when it stops.
+So `init-firewall.sh` is placed in `postStartCommand` and **runs on every start.**
 
-**作成時のフック（`postCreateCommand`）に置いてはいけない。** そこに置くと、1回目の
-起動以降は隔離が無くなる。**実際に10日間、効かないまま動いていた**（AUT-121）。
+**Do not place it in the creation hook (`postCreateCommand`).** Placed there, isolation is gone from the
+first restart onward. **It actually ran for 10 days without it** (AUT-121).
 
-効いているかは `check-setup.sh` も見る。**効いていない状態で気づかずに作業するのが
-いちばん悪い。** 隔離されていると思ったまま進めることになる。
+`check-setup.sh` also looks at whether it is in effect. **The worst case is working without noticing it is not in effect.**
+You proceed believing you are isolated.
 
 ```
-⚠ 出口制限が効いていない。許可していない宛先へ出られる。
-    sudo bash .devcontainer/init-firewall.sh を打つこと。
+⚠ The egress restriction is not in effect. Destinations that are not allowed are reachable.
+    Run sudo bash .devcontainer/init-firewall.sh.
 ```
 
-**その確認も `postStartCommand` で、閉じたあとに続けて走る。** 以前は
-`post-create.sh` から呼んでおり、つまり `postCreateCommand` で走っていた。
-**postCreate → postStart の順に走るため、確認の時点では必ず規則が無い。**
-環境を作り直すたびにこの警告が出ていた（AUT-169）。
+**That check also runs in `postStartCommand`, right after closing.** It used to be called from
+`post-create.sh`, which means it ran in `postCreateCommand`.
+**postCreate runs before postStart, so at check time the rules were always absent.**
+This warning appeared every time the environment was rebuilt (AUT-169).
 
-**誤って出る警告は、本物の警告を「また誤りだろう」で流させる。** 確認を置く場所は、
-確認の中身と同じだけ重要である。
+**Warnings that fire by mistake make real warnings get dismissed as "probably another false alarm."** Where a check is placed
+matters as much as what it checks.
 
-## 規則は定期的に置き直される
+## Rules are re-resolved periodically
 
-**規則は名前解決した時点の IP に置かれる。** 大手の CDN は IP を入れ替えるため、置いた
-ままにすると**静かに出られなくなる。** 実測では19宛先のうち2つが数時間でズレた
-（CI のログ本文と、公式文書の置き場）。AUT-63。
+**Rules are placed against the IPs at the time of resolution.** Major CDNs swap IPs, so left in place
+**it silently becomes unreachable.** Measured, 2 of 19 destinations drifted within hours
+(CI log bodies, and where the official docs live). AUT-63.
 
-そのため `init-firewall.sh` は、置いたあと**背後で定期的に名前解決をやり直す**（既定は600秒。
-`AUTODRIVE_FIREWALL_REFRESH` で変えられる。`0` で止まる）。
+So after placing them, `init-firewall.sh` **re-resolves names periodically in the background** (600 seconds by default;
+change it with `AUTODRIVE_FIREWALL_REFRESH`, `0` stops it).
 
-- **やり直す対象は、一覧にある名前だけ。** 出られなかった宛先を名前解決し直す形にすると、
-  一覧に無い名前を足す経路になる。そこは通さない
-- **足すだけで、置き直さない。** 丸ごと組み直すと、その瞬間に通っている接続の戻りを
-  許す規則も消え、実行中の通信が切れる
-- **出られる名前は増えない。** 増えるのは、既に一覧にある名前に対応する IP だけ
-- **規則は溜まる。** 古い IP を消さないため、動かし続けると増える（実測で1日に
-  55→85）。**溜まりはコンテナの停止で消える**
+- **Only names on the list are re-resolved.** Re-resolving destinations that could not be reached would
+  become a path to add names not on the list. That is not allowed
+- **It only adds; it does not re-place.** Rebuilding everything would, at that moment, also remove the rule allowing
+  the return of established connections, cutting traffic in flight
+- **The names that can be reached do not grow.** What grows is only the IPs of names already on the list
+- **Rules accumulate.** Old IPs are not removed, so they grow as it keeps running (measured: 55→85
+  in one day). **The accumulation disappears when the container stops**
 
-手で打つこともできる。
+It can also be run by hand.
 
 ```sh
 sudo bash .devcontainer/init-firewall.sh --refresh
 ```
 
-## この一覧は構成から作られている
+## This list is built from the configuration
 
-`allowed-domains.txt` は `autodrive.json` の構成から組み立てられている。**使わないポート語彙（Preview や Tracker
-など）の宛先は入っていない。** 構成を変えたら `autodrive-dev-kit update` を打ち直すこと。
+`allowed-domains.txt` is assembled from the configuration in `autodrive.json`. **Destinations for ports not in use (such as Preview or Tracker)
+are not included.** If you change the configuration, run `autodrive-dev-kit update` again.
 
-**このファイルを直接編集しないこと。** `update` のたびに書き直される。以前はここへ
-足すよう書いていたが、**書けと言った場所が、書いたものを消していた**（AUT-115）。
+**Do not edit this file directly.** It is rewritten on every `update`. It used to say to
+add things here, but **the place it told you to write in erased what you wrote** (AUT-115).
 
-配布先（自分のアプリが動く場所）や、アプリ自身が叩く先は `autodrive.json` の
-`app.destinations` に書く。
+The deployment target (where your app runs), and destinations the app itself calls, go in `app.destinations` in
+`autodrive.json`.
 
 ```json
 {
   "app": {
     "destinations": [
-      { "host": "example.workers.dev", "why": "配布先の疎通確認" }
+      { "host": "example.workers.dev", "why": "connectivity check of the deployment target" }
     ]
   }
 }
 ```
 
-書いたら `autodrive-dev-kit update` を打つ。**宛先が増えるたびに手が要るが、そこが
-判断の機会になる。**
+Once written, run `autodrive-dev-kit update`. **It takes effort every time a destination is added, but that is
+where the judgment happens.**

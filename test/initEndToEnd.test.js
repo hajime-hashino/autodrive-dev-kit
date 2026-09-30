@@ -314,8 +314,8 @@ test("人が使う置き場所を置き、中身は追跡しない", () => {
 test("置き場所が、誰のものかを言っている", () => {
   const notes = readFileSync(join(initialized(), "notes", "README.md"), "utf8");
 
-  assert.ok(notes.includes("あなたのもの"), notes.slice(0, 400));
-  assert.ok(notes.includes("自分から書き換えない"), "AIが書かないことが書かれていない");
+  assert.ok(notes.includes("It is yours"), notes.slice(0, 400));
+  assert.ok(notes.includes("does not rewrite it on its own"), "AIが書かないことが書かれていない");
 });
 
 // **置いてはいけないものを書く。** 追跡しないことと、守られていることは別である。
@@ -323,19 +323,19 @@ test("置き場所が、置いてはいけないものを言っている", () =>
   const notes = readFileSync(join(initialized(), "notes", "README.md"), "utf8");
 
   // **節として在ること。** どこかに語が出ているだけでは、読む人が辿り着けない。
-  const start = notes.indexOf("## 置いてはいけないもの");
+  const start = notes.indexOf("## What must not be put here");
   assert.ok(start >= 0, "置いてはいけないものの節が無い");
 
-  const section = notes.slice(start, notes.indexOf("## 値はどこに置く"));
+  const section = notes.slice(start, notes.indexOf("## Where values go"));
 
   // **何が駄目なのかを、具体的に挙げること。** 「資格情報」とだけ言われても、
   // 読む人は自分の持っているものがそれに当たるか判断できない。
-  const named = ["シークレット", "署名鍵", "トークン", "パスワード"].filter((k) =>
+  const named = ["secrets", "signing keys", "tokens", "password"].filter((k) =>
     section.includes(k),
   );
   assert.ok(named.length >= 2, `具体的に挙げていない（${named.join(", ") || "なし"}）`);
   assert.ok(
-    section.includes("追跡しないことと、守られていることは別"),
+    section.includes("Not being tracked and being protected are different things"),
     "追跡と保護を取り違えさせない説明が無い",
   );
   // 代わりにどこへ置くかまで書く。**置くなと言うだけでは、行き先が無い。**

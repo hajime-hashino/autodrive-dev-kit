@@ -1,10 +1,10 @@
-# ADR 索引
+# ADR index
 
-設計判断の記録。**着手したらここを読む。**
+Records of design decisions. **Read this when you start work.**
 
-| # | 判断 | 状態 | 日付 |
+| # | Decision | Status | Date |
 |---|---|---|---|
 
-- ファイル名は `NNNN-kebab-case.md`。書いたらこの表に1行足す
-- 背景・決めたこと・**却下した案と理由**・結果を書く
-- 覆すときは新しい ADR を書き、古いほうの状態を「NNNN が置き換え」にする。本文は直さない
+- File names are `NNNN-kebab-case.md`. When you write one, add a line to this table
+- Write the background, what was decided, **rejected options and why**, and the consequences
+- To overturn one, write a new ADR and set the old one's status to "superseded by NNNN". Do not edit its body
