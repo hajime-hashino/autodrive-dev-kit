@@ -542,3 +542,13 @@ test("既にそのブランチに居るなら、紐づけ先だけ置き直す",
   assert.match(output, /already in progress on this branch/, output);
   assert.equal(marker(root).work_item_id, "AUT-99");
 });
+
+// **使い方の説明が、いまの動きと合っていること**（AUT-269）。拾う・閉じると書いたまま、
+// 拾わなくなり（ADR 0008）、閉じなくなった（ADR 0007）。**説明は AI が読んで手順を
+// 決める。動かない手順が書かれていると、それを当てにする。**
+test("使い方の説明が、拾う・閉じると言わない", async () => {
+  const { output } = await run([], tempDir("autodrive-begin-usage-"), fakeTracker(), fakeGit({}));
+  assert.match(output, /does not pick them up/, output);
+  assert.match(output, /does not mark work items done/, output);
+  assert.equal(/Pick up records|Close work items/.test(output), false, output);
+});

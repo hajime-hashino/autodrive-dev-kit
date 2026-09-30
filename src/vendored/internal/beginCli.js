@@ -34,17 +34,23 @@ const USAGE = `Start work on a work item
 
   begin <work item ID> --repo <target repository> [--branch <branch name>]
 
-Does the following together. If any of 1–3 does not hold, it stops without proceeding.
+Does the following together. If any of them does not hold, it stops without proceeding.
 
   1. Get the work item, and check the target repository
-  2. Prepare the workspace (bring the default branch up to date and create a branch)
+  2. Prepare the workspace (bring the default branch up to date and create a branch).
+     If the branch already exists, return to it instead (resuming)
   3. Advance the status to started, note the target repository, and place the link for records
-  4. Pick up records that were written after the submission and left behind
-  5. Close work items still started though integrated
+
+It also reports, without touching them:
+  - records left behind in this repository and in other repositories (it does not pick them up)
+  - local changes carried over to the branch
+
+It does not mark work items done. The Tracker–Repo integration does that when the submission
+is integrated (ADR 0007).
 
 If the branch name is omitted, it is made from the work item ID.
-Credentials are read from the environment variable LINEAR_API_KEY. 4 also needs Repo credentials
-(GH_TOKEN / AUTODRIVE_CI_TOKEN). Without them, 4 is skipped. Starting still succeeds.`;
+Tracker credentials follow ports.tracker in autodrive.json (LINEAR_API_KEY for Linear,
+GH_TOKEN or AUTODRIVE_TRACKER_TOKEN for GitHub Issues).`;
 
 /** @typedef {{ (repoPath: string, args: string[]): string }} Git */
 /** 既定の git。失敗は例外にせず、呼び出し側が文言を組み立てられるようにする。 */
