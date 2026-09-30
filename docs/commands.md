@@ -98,35 +98,33 @@ Local changes are not deleted. They are carried over to the branch, and it says 
 
 **When returning to the default branch, bring it up to date first.** That is why the guidance includes `fetch`. Switching without doing so makes the integrated records and the local records disagree, and switching fails if there are uncommitted additions.
 
-**Token consumption records arrive even after the submission** (while the submission is being created, and while waiting for CI). So this is not an exception; it happens every time. If it has been brought up to date, additions are carried over to the next branch as they are. **They need not be thrown away.**
+**Records written after the submission are carried over to the next branch, not thrown away.** If the default branch has been brought up to date, additions are carried over as they are.
 
-### Starting picks up records left behind
+### Starting reports records left behind; it does not pick them up
 
-Carrying them over is not enough. **The order is fixed.**
+Records can be left behind. **The order is fixed.**
 
 1. Commit
 2. Submit
-3. Report to the human and stop → **the hook runs here and appends**
+3. Report to the human and stop → **anything written here is after the commit**
 4. Move on to the next work. The branch changes
 
-**3 always comes after 1.** So the last record is structurally never committed. Not because someone forgot (AUT-156).
+**3 always comes after 1.** So what is written at the end is structurally never in that work item's commit. Not because someone forgot (AUT-156).
 
-It is carried over so it does not disappear, but **it goes into the next work item's commit.** Counting in the reference implementation, of 55 token records, **51 went in with another work item's commit.** They were picked up only because the next work happened to be there.
-
-**Since it relies on chance, it remains if there is no next one.** At the time of measurement, all four repositories had leftovers (6 lines). Each was from the last work item done in that repository.
-
-So `begin` picks them up and commits them right after creating the branch.
+**`begin` says so when starting. It does not pick them up** ([ADR 0008](adr/0008-token-usage-off-branch.md)).
 
 ```
-Picked up records left behind and put them on this branch:
+**There are records left behind.** They are not picked up here (they would mix into another work item's submission).
   telemetry/AUT-155.jsonl
+Check which work item they belong to. If it is the one just started, they may be submitted together with
+this work's changes. If they belong to another work item, **put them on that branch.**
 ```
 
-**It touches nothing but records.** Pulling in work-in-progress changes left locally would put them into the history without asking. The commit is made by naming paths.
+It used to pick them up and commit them right after creating the branch. **That put another work item's records into the submission of the work item just started** (of 115 lines of token records, 93 went in with another work item's commit). Changes unrelated to the work mixed in and misled whoever read the diff.
 
-**It does not pick up those of other repositories.** Because a work item writes changes to only one repository. Instead, it says that they exist. They ride along the next time work starts in that repository.
+Since token consumption is now sent outside the repository (ADR 0008), what is written to `telemetry/` is limited to what the AI working on that work item writes itself, and it can commit that itself. **There is no one to pick up after.** Still, some may remain, so it says that they exist.
 
-**The form of having the hook commit is not adopted.** By the time the hook runs, that branch's submission may already be closed. Stacking on a closed branch never reaches the default branch (the same shape as AUT-38).
+**It does not touch other repositories either.** Because a work item writes changes to only one repository. It says that they exist; they ride along the next time work starts in that repository.
 
 ## Port vocabulary
 
@@ -285,7 +283,7 @@ What it shows.
 
 ## Recording token consumption
 
-Called from the runtime's hook, it reads usage from the session record and appends it to `<target repository>/telemetry/<work item ID>.jsonl`.
+Called from the runtime's hook, it reads usage from the session record and **sends it over OTLP to the configured destination** (`AUTODRIVE_OTLP_ENDPOINT`). **It is not written to the repository** ([ADR 0008](adr/0008-token-usage-off-branch.md)). Token consumption is optional (definition §6); with no destination configured, it is not recorded, and it says so.
 
 ```sh
 ./src/vendored/hooks/record-tokens   # takes the hook's input on standard input
@@ -293,15 +291,16 @@ Called from the runtime's hook, it reads usage from the session record and appen
 
 The hook is registered in `.claude/settings.json` of the using repository, not of this reference implementation. Placing it where `invariants` can read it makes it detectable when removed.
 
-The design, and why other paths were not taken, is in [ADR 0002](adr/0002-token-usage-capture.md).
+The design, and why other paths were not taken, is in [ADR 0002](adr/0002-token-usage-capture.md) and [ADR 0008](adr/0008-token-usage-off-branch.md).
 
-### The work item marker
+### Linking to work items
 
-To link usage to work items, the following are placed at the top of the using repository. Not tracked.
+Records are linked to work items **by the branch of the repository you are currently in** ([ADR 0009](adr/0009-attribute-by-branch.md)). `begin` writes the mapping. The marker is the fallback when the branch cannot be used (on the default branch, or not in the mapping). These are placed at the top of the using repository, and not tracked.
 
 ```
+.autodrive/work-items.json          the mapping from branch to work item
 .autodrive/current-work-item.json   {"work_item_id": "AUT-10", "repo": "autodrive-dev-kit"}
 .autodrive/cursors/<session ID>.json
 ```
 
-If usage occurs without a marker, `null` is written to `work_item_id` and it is kept in `telemetry/unattributed.jsonl`. **Records are not thrown away.** Erasing work begun without filing from the records would erase the violation too. `invariants` detects this.
+If a record written with the `telemetry` command cannot be linked to a work item, `null` is written to `work_item_id` and it is kept in `telemetry/unattributed.jsonl` with the reason. **Records are not thrown away.** Erasing work begun without filing from the records would erase the violation too. `invariants` detects this.
