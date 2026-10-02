@@ -73,6 +73,14 @@ autodrive-dev-kit init
 
 It asks about your setup. **The first question is your language** (日本語 / English). English is the default. Each question shows its options and a recommendation, so type a number or just press Enter. Answers are saved to `autodrive.json` and you are not asked again.
 
+**Answers can also be given as arguments**, for when there is no terminal to ask on (for example, when an agent runs it for you). What is not given is asked as usual.
+
+```sh
+autodrive-dev-kit init --language en --tracker linear --preview cloudflare-workers --sandbox devcontainer
+```
+
+`--prefix` sets the work item ID prefix, which is asked only for GitHub Issues. A value that is not one of the options stops it without placing anything.
+
 **That language setting only affects setup.** During development the AI speaks whatever language you speak.
 
 | Command | Used for |

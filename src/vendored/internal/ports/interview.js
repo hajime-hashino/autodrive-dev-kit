@@ -27,7 +27,12 @@
  * 減らすことではなかった。**
  */
 
-/** @typedef {{ ask: string, why: string, choices: ReadonlyArray<{ value: string; label: string }>, recommended: string }} Question */
+/**
+ * **`name` は引数で答えるときの名前である**（`--language` など）。ポートを聞く問いは
+ * 持たず、ポート名がそのまま名前になる。
+ *
+ * @typedef {{ name?: string, port?: string, ask: string, why: string, choices: ReadonlyArray<{ value: string; label: string }>, recommended: string, language?: "ja" | "en" }} Question
+ */
 /**
  * 問いに答える。
  *
@@ -45,6 +50,7 @@
  * 明示された選択として扱う。案が無ければ、書くまで聞き直す。
  *
  * @typedef {{
+ *   name?: string,
  *   ask: string,
  *   why: string,
  *   pattern: RegExp,

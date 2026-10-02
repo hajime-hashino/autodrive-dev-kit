@@ -18,6 +18,8 @@ autodrive-dev-kit update    # replace with a newer version. does not ask about t
 
 **They differ only in how the setup is decided; the placing steps are the same.** If a precondition is broken, it stops without placing and says which one to run.
 
+`init` / `apply` also take the answers as arguments (`--language` / `--tracker` / `--preview` / `--sandbox` / `--prefix`). **This is for callers without a terminal**, which cannot answer the questions (AUT-271). What is not given goes to the terminal as usual, and if there is none, the recommendation is kept and the output says so. A value that is not accepted stops it before anything is asked or placed. `update` does not ask, so it refuses answers instead of discarding them.
+
 ### Placing needs the templates
 
 These three read the templates (`src/templates/`) to create files. **The copy inside the project (`autodrive/`) does not include the templates** ([ADR 0004](adr/0004-vendored-kit.md)).

@@ -73,6 +73,14 @@ autodrive-dev-kit init
 
 構成について質問される。**最初に言語を聞かれる**（日本語 / English。既定は English）。選択肢と推奨が表示されるので、番号を入力するか、そのまま Enter を押す。回答は `autodrive.json` に保存され、次回以降は質問されない。
 
+**答えは引数でも渡せる。** 端末で聞けない場合（エージェントに打たせる場合など）のためである。渡さなかった問いは、いつもどおり聞かれる。
+
+```sh
+autodrive-dev-kit init --language ja --tracker linear --preview cloudflare-workers --sandbox devcontainer
+```
+
+`--prefix` は作業単位IDの接頭辞で、GitHub Issues のときだけ聞かれる。選択肢に無い値を渡すと、何も置かずに止まる。
+
 **言語の設定が効くのは、このセットアップの表示だけである。** 開発の会話は、AIが相手の言語で行う。
 
 | コマンド | 用途 |

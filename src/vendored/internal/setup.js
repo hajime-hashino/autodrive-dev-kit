@@ -103,6 +103,7 @@ export function questionsFor(language) {
  * それぞれの言語で書く。
  */
 export const LANGUAGE_QUESTION = {
+  name: "language",
   ask: `${say("ja", "ask.language")} / ${say("en", "ask.language")}`,
   why: `${say("ja", "ask.language.why")}\n  ${say("en", "ask.language.why")}`,
   choices: LANGUAGES.map((l) => ({ value: l, label: say(l, `ask.language.${l}`) })),
@@ -194,6 +195,7 @@ export function askPrefix(interviewer, language, repoName) {
     interviewer.value === undefined
       ? null
       : interviewer.value({
+          name: "prefix",
           ask: say(language, "ask.tracker.prefix"),
           why: say(language, "ask.tracker.prefix.why"),
           shape: say(language, "ask.tracker.prefix.shape"),
