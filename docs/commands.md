@@ -304,3 +304,15 @@ Records are linked to work items **by the branch of the repository you are curre
 ```
 
 If a record written with the `telemetry` command cannot be linked to a work item, `null` is written to `work_item_id` and it is kept in `telemetry/unattributed.jsonl` with the reason. **Records are not thrown away.** Erasing work begun without filing from the records would erase the violation too. `invariants` detects this.
+
+## Loading credentials for the agent's commands
+
+Called from the runtime's SessionStart hook, it writes **a line that loads the credentials file** (`.env`) to the file the runtime passes (`CLAUDE_ENV_FILE`). The runtime reads that file before each command the agent runs.
+
+```sh
+./src/vendored/hooks/load-env
+```
+
+**The rc file does not reach the agent.** `post-create.sh` adds the loader to `~/.bashrc`, but an agent started from the editor inherits the editor's environment and never reads it. Commands ran without credentials and were worked around by loading `.env` by hand each time (AUT-272).
+
+**It writes the line, not the values.** Copying them would leave the credentials in one more file. Since the line is read before each command, a `.env` created after the session started is picked up too.
