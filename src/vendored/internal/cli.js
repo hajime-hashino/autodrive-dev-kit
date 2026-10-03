@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { setup } from "./setup.js";
 
 import { terminalInterview } from "./adapters/interviewTerminal.js";
+import { argumentInterview, readAnswers } from "./adapters/interviewArguments.js";
 import { say, DEFAULT_LANGUAGE } from "./messages.js";
 
 
@@ -35,6 +36,10 @@ const USAGE = `autodrive-dev-kit: hand development to an AI and keep it running
 
   autodrive-dev-kit init                    Start new. Asks about the setup and places the foundation
   autodrive-dev-kit apply                   Add to an existing project. Infers the setup and confirms it
+
+  Answers can also be given as arguments, for when there is no terminal to ask on:
+    --language <ja|en> --tracker <...> --preview <...> --sandbox <...> --prefix <...>
+  What is not given is asked as usual.
 
 Used by the AI (humans do not need to run these)
 
@@ -98,12 +103,40 @@ export function renderSetup(mode , result) {
   return { output: lines.join("\n"), code: 0 };
 }
 
+/**
+ * @param {string[]} args 構成への答え（`--tracker linear` など）
+ */
 export function runSetup(
   mode ,
   root ,
   interviewer = terminalInterview(),
+  args = [],
 ) {
-  return renderSetup(mode, setup(mode, root, KIT_ROOT, interviewer));
+  // **入れ替えは聞かない。** 答えを受け取っても使う場所が無い。黙って捨てると、
+  // 構成を変えたつもりの人が変わっていないことに気づけない。
+  if (mode === "update" && args.length > 0) {
+    return {
+      output:
+        `update does not take answers (${args.join(" ")}). **It does not ask about the setup.**\n\n` +
+        "To change the setup, edit autodrive.json, then run update.",
+      code: 2,
+    };
+  }
+
+  const { answers, error } = readAnswers(args);
+  if (error !== null) return { output: error, code: 2 };
+
+  const asked = argumentInterview(answers, interviewer);
+  const result = setup(mode, root, KIT_ROOT, asked);
+  const rendered = renderSetup(mode, result);
+  if (rendered.code !== 0) return rendered;
+
+  // **渡したのに使われなかった答えを出す。** 出さないと、効いたように見える。
+  const unused = asked.unused();
+  if (unused.length === 0) return rendered;
+  const language = result.config?.language ?? DEFAULT_LANGUAGE;
+  const note = say(language, "note.unusedAnswers", { names: unused.map((n) => `--${n}`).join(" ") });
+  return { ...rendered, output: `${rendered.output}\n\n${note}` };
 }
 
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
@@ -117,7 +150,7 @@ if (invokedDirectly) {
   }
 
   if (MODES.has(command)) {
-    const { output, code } = runSetup(command , process.cwd());
+    const { output, code } = runSetup(command , process.cwd(), undefined, argv.slice(1));
     (code === 0 ? console.log : console.error)(output);
     process.exit(code);
   }
