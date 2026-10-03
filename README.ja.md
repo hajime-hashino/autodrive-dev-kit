@@ -153,7 +153,7 @@ my-app/
 ├── notes/
 │   └── README.md                    **人が使う置き場所。** 中身は追跡しない
 ├── .claude/
-│   └── settings.json                記録のフックの登録
+│   └── settings.json                記録のフックと、資格情報を読み込むフックの登録
 ├── .github/
 │   └── workflows/invariants.yml         判定をCIで実行する定義
 ├── docs/
@@ -187,7 +187,7 @@ my-app/
 | `.gitignore` | init | プロジェクト | 資格情報と作業状態を除外する |
 | `notes/README.md` | init | プロジェクト | **人が使う置き場所。** 考えをまとめる。中身は追跡しない |
 | `docs/adr/README.md` | init | プロジェクト | 設計判断の索引と書き方。**着手のたびにAIが読む** |
-| `.claude/settings.json` | init | プロジェクト | 記録のフックを**追記**する。既存の登録は保持される |
+| `.claude/settings.json` | init | プロジェクト | 記録のフックと、エージェントが打つコマンドに `.env` を読み込ませるフックを**追記**する。既存の登録は保持される |
 | `telemetry/<作業単位ID>.jsonl` | 着手したとき | プロジェクト | 停止、手戻り、トークン消費の記録 |
 | `test/` | 実装したとき | プロジェクト | テスト |
 | `docs/adr/NNNN-*.md` | 設計判断が生じたとき | プロジェクト | 設計判断の記録。**書くのはAI** |

@@ -246,6 +246,20 @@ test("設定が無ければ作る", () => {
   assert.ok(json.includes("record-tokens"));
 });
 
+// **場面ごとに登録する。** 資格情報の読み込みは開始時に要る（AUT-272）。
+test("指定した場面に登録し、他の場面の登録は残す", () => {
+  const before = JSON.stringify({
+    hooks: { Stop: [{ hooks: [{ type: "command", command: "autodrive/hooks/record-tokens" }] }] },
+  });
+  const { json, changed } = mergeHook(before, "autodrive/hooks/load-env", "SessionStart");
+
+  assert.equal(changed, true);
+  const hooks = JSON.parse(json).hooks;
+  assert.ok(JSON.stringify(hooks.SessionStart).includes("load-env"), json);
+  assert.ok(JSON.stringify(hooks.Stop).includes("record-tokens"), "他の場面の登録が消えている");
+  assert.equal(JSON.stringify(hooks.Stop).includes("load-env"), false, "違う場面に登録している");
+});
+
 // **読めない設定を捨てない。** 壊れているからといって上書きすると、
 // 利用側の設定が失われる。
 test("読めない設定を上書きしない", () => {
@@ -306,7 +320,7 @@ test("落ちたあと、作りかけを残さない", () => {
 test("実行権を写す", () => {
   const root = project();
   init(root, KIT);
-  for (const f of ["bin/autodrive-dev-kit", "invariants", "hooks/record-tokens"]) {
+  for (const f of ["bin/autodrive-dev-kit", "invariants", "hooks/record-tokens", "hooks/load-env"]) {
     const p = join(root, "autodrive", ...f.split("/"));
     if (!existsSync(p)) continue;
     assert.ok(statSync(p).mode & 0o111, `${f} が実行できない`);

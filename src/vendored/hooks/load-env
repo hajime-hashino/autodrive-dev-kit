@@ -1,0 +1,20 @@
+#!/bin/sh
+# Make the credentials in .env visible to the commands the agent runs. Called from the
+# runtime's SessionStart hook.
+#
+# **The agent's commands do not go through ~/.bashrc.** An agent started from an editor
+# inherits the editor's environment, which never read the rc file, so the line
+# post-create.sh adds there does not reach it (AUT-272).
+#
+# **Write the line that loads it, not the values.** Copying the values would leave the
+# credentials in one more file.
+#
+# **Guard on the file, not here.** The line is read before each command, so a .env
+# created after the session started is still picked up.
+#
+# Always ends with 0, so as not to stop the agent over this.
+[ -n "${CLAUDE_ENV_FILE:-}" ] || exit 0
+env_file="${CLAUDE_PROJECT_DIR:-$PWD}/.env"
+quoted=$(printf '%s' "$env_file" | sed "s/'/'\\\\''/g")
+printf "[ -f '%s' ] && { set -a; . '%s'; set +a; }\n" "$quoted" "$quoted" >> "$CLAUDE_ENV_FILE" || true
+exit 0

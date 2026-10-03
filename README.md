@@ -151,7 +151,7 @@ my-app/
 ├── notes/
 │   └── README.md                    **yours to use.** contents are not tracked
 ├── .claude/
-│   └── settings.json                registers the recording hook
+│   └── settings.json                registers the recording hook and the credentials loader
 ├── .github/
 │   └── workflows/invariants.yml     runs the checks in CI
 ├── docs/
@@ -185,7 +185,7 @@ These appear as the project needs them.
 | `.gitignore` | init | project | Keeps credentials and working state out |
 | `notes/README.md` | init | project | **Yours to use.** Contents are not tracked |
 | `docs/adr/README.md` | init | project | Index of design decisions and how to write them. **The AI reads it at the start of every work item** |
-| `.claude/settings.json` | init | project | **Appends** the recording hook. Existing entries are kept |
+| `.claude/settings.json` | init | project | **Appends** the recording hook and the hook that loads `.env` for the agent's commands. Existing entries are kept |
 | `telemetry/<work item id>.jsonl` | when work starts | project | Stops, rework, token spend |
 | `test/` | when you implement | project | Tests |
 | `docs/adr/NNNN-*.md` | when a design decision comes up | project | Design decisions. **Written by the AI** |

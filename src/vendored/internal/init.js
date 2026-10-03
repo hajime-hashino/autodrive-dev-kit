@@ -129,12 +129,12 @@ export function template(kitRoot , name , vars = {}) {
 }
 
 /**
- * 記録の仕掛けを登録する。
+ * 実行基盤のフックを登録する。`event` は登録する場面（既定は Stop）。
  *
  * **既にある登録を壊さない。** 設定は利用側のものであり、こちらの都合で
  * 上書きしてよいものではない。同じ登録が既にあれば何もしない。
  */
-export function mergeHook(existing , command) {
+export function mergeHook(existing , command , event = "Stop") {
   let settings = {};
   if (existing !== null && existing.trim() !== "") {
     try {
@@ -146,10 +146,10 @@ export function mergeHook(existing , command) {
   }
 
   const hooks = (settings.hooks ?? {});
-  const stop = Array.isArray(hooks.Stop) ? hooks.Stop : [];
-  if (JSON.stringify(stop).includes(command)) return { json: existing ?? "", changed: false };
+  const registered = Array.isArray(hooks[event]) ? hooks[event] : [];
+  if (JSON.stringify(registered).includes(command)) return { json: existing ?? "", changed: false };
 
-  hooks.Stop = [...stop, { hooks: [{ type: "command", command }] }];
+  hooks[event] = [...registered, { hooks: [{ type: "command", command }] }];
   settings.hooks = hooks;
   return { json: `${JSON.stringify(settings, null, 2)}\n`, changed: true };
 }
@@ -484,10 +484,16 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   for (const w of plan.writes) write(join(root, w.path), w.body);
   writeManifest(manifestPath(root, VENDOR_DIR), plan.writes, config?.ports ?? null);
 
-  // 記録の仕掛け。**利用側の設定へ併合する。**
+  // 記録の仕掛けと、資格情報の読み込み。**利用側の設定へ併合する。**
+  //
+  // **資格情報は rc だけでは届かない。** エディタから起動したエージェントのコマンドは
+  // ~/.bashrc を通らない。毎回手で .env を読み込んで回避していた（AUT-272）。
   const settingsPath = join(root, ".claude", "settings.json");
   const before = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : null;
-  const { json, changed } = mergeHook(before, `${VENDOR_DIR}/hooks/record-tokens`);
+  const tokens = mergeHook(before, `${VENDOR_DIR}/hooks/record-tokens`);
+  const env = mergeHook(tokens.changed ? tokens.json : before, `${VENDOR_DIR}/hooks/load-env`, "SessionStart");
+  const changed = tokens.changed || env.changed;
+  const json = env.changed ? env.json : tokens.json;
   if (changed) {
     write(settingsPath, json);
     placed.push({ path: ".claude/settings.json", placement: "merged" });

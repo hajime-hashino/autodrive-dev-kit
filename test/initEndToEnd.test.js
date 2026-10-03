@@ -94,6 +94,7 @@ test("置かれた設定が、置かれた autodrive-dev-kit を指している"
 
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
   assert.ok(settings.includes(`${VENDOR_DIR}/hooks/record-tokens`), settings);
+  assert.ok(JSON.stringify(JSON.parse(settings).hooks.SessionStart).includes(`${VENDOR_DIR}/hooks/load-env`), settings);
 
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
   assert.ok(rules.includes(`${VENDOR_DIR}/bin/autodrive-dev-kit`), rules);

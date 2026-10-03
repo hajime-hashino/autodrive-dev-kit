@@ -19,6 +19,9 @@ fi
 
 # Make the credentials visible from every shell in this environment.
 # Loading them by hand every time only adds steps, and if forgotten neither gh nor git works.
+#
+# **This reaches the terminals you open, not the agent.** An agent started from the editor
+# never reads the rc file. That side is covered by the hook autodrive/hooks/load-env (AUT-272).
 if [ -f "$ENV_FILE" ]; then
   LOADER="set -a; . '$ENV_FILE'; set +a"
   for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
