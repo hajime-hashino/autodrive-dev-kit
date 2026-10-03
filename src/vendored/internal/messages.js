@@ -68,6 +68,7 @@ const MESSAGES = {
       "{from} で着手中のものは、{from} の側で閉じること",
     "note.portsUnchecked":
       "前に置いたときの構成の記録が無いため、ポートが変わったかは確かめていない。次の入れ替えからは確かめる",
+    "note.unusedAnswers": "使わなかった答え: {names}（この構成では聞かない）",
     "note.leftBehind":
       "前の構成で置いたが、いまの構成では置かないもの（ポートを変えたため）。**消していない。**\n" +
       "要らなければ消すこと。**同じ場所に、このプロジェクトのものとして置いたファイルも残っている" +
@@ -178,6 +179,7 @@ const MESSAGES = {
       "Close anything still started in {from} over there",
     "note.portsUnchecked":
       "No record of the previous configuration, so port changes were not checked. The next update will check",
+    "note.unusedAnswers": "Not used: {names} (not asked with this setup)",
     "note.leftBehind":
       "Placed for the previous configuration but no longer placed (a port changed). **Not deleted.**\n" +
       "Remove them if they are no longer needed. **Files placed as the project's own may remain " +
