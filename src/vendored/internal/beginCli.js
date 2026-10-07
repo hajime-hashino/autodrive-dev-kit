@@ -48,7 +48,8 @@ It also reports, without touching them:
 It does not mark work items done. The Tracker–Repo integration does that when the submission
 is integrated (ADR 0007).
 
-If the branch name is omitted, it is made from the work item ID.
+If the branch name is omitted, it is feature/<work item ID> (feature/aut-99 for AUT-99).
+A branch started earlier under the old name (aut-99) is returned to instead.
 Tracker credentials follow ports.tracker in autodrive.json (LINEAR_API_KEY for Linear,
 GH_TOKEN or AUTODRIVE_TRACKER_TOKEN for GitHub Issues).`;
 
@@ -61,7 +62,6 @@ export const runGit = (repoPath, args) =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-/** ブランチ名。作業単位のIDを小文字にしたものを既定とする。 */
 /**
  * そのブランチが既にあるか。
  *
@@ -181,10 +181,36 @@ export function placeState(root , repoPath , repo , branch , workItemId) {
   }
 }
 
+/**
+ * ブランチ名。省略されたら `feature/<ID>` とする。
+ *
+ * **既定ブランチの直下に並べない。** 作業単位のブランチがリポジトリの直下に並ぶと、
+ * マイルストーンなどの特別なブランチと見分けにくくなる（AUT-274）。
+ *
+ * **接頭辞は固定で、設定にしない。** 変えたい場面がまだ無い。`--branch` を渡せば
+ * その名前をそのまま使う。
+ */
 export function branchNameFor(workItemId , given) {
   const trimmed = (given ?? "").trim();
   if (trimmed !== "") return trimmed;
-  return workItemId.toLowerCase();
+  return `feature/${workItemId.toLowerCase()}`;
+}
+
+/**
+ * 着手に使うブランチを選ぶ。
+ *
+ * **以前の名前（`aut-99`）で既にあれば、そちらへ戻る。** AUT-274 より前に着手した
+ * 作業単位はその名前でブランチを持っている。新しい名前で引くと見つからず、
+ * **1つの作業単位に2本のブランチができる**（AUT-206 と同じ型）。
+ *
+ * `--branch` を渡されたときは見ない。渡された名前が答えである。
+ */
+export function chooseBranch(repoPath , workItemId , given , git) {
+  const branch = branchNameFor(workItemId, given);
+  if ((given ?? "").trim() !== "") return branch;
+  if (hasBranch(repoPath, branch, git)) return branch;
+  const before = workItemId.toLowerCase();
+  return hasBranch(repoPath, before, git) ? before : branch;
 }
 
 function fail(lines) {
@@ -309,7 +335,7 @@ export async function run(
     ]);
   }
 
-  const branch = branchNameFor(item.id, values.branch);
+  const branch = chooseBranch(repoPath, item.id, values.branch, git);
 
   // 再開 ---------------------------------------------------------------------
   //

@@ -128,6 +128,17 @@ the link for records. **Stepping through them by hand, you cannot notice having 
 **Even if a convention exists, without going through the procedure there is no occasion to remember it.** Going through the entrance removes the need
 to remember.
 
+### Branch names
+
+The branch `begin` creates is `feature/<work item ID>` (`feature/aut-99` for `AUT-99`). **Work item branches are kept
+out of the top level** so they are not confused with special branches such as milestones (autodrive-dev-kit AUT-274).
+
+Passing `--branch` uses that name as it is. **It changes only the name.** The branch is still created from the default
+branch, and submissions still go to the default branch.
+
+Work items started before this have branches named `aut-99`. `begin` returns to that branch instead of creating a
+second one.
+
 ### Why not mark it done by hand
 
 Completion is done by the Tracker–Repo integration. The branch `begin` creates carries the work item ID in its

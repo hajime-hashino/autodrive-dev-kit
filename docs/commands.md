@@ -71,6 +71,8 @@ Judging whether to take something in after it stops **is needed only when it is 
 autodrive-dev-kit begin <work item ID> --repo <target repository> [--branch <branch name>]
 ```
 
+The branch is `feature/<work item ID>` unless `--branch` is given (`feature/aut-99` for `AUT-99`). Work item branches are kept out of the top level so they are not confused with special branches such as milestones (AUT-274). A work item started earlier under the old name (`aut-99`) returns to that branch.
+
 Starting needs three things: checking the work item, preparing the workspace (bringing the default branch up to date and creating a branch), and placing the link for records. **Stepping through them by hand, you cannot notice having skipped one.**
 
 In addition, **the target repository is noted on the work item itself.** It used to be written only in the local marker, so looking at the Tracker's list did not tell which repository a work item was for (AUT-114).
