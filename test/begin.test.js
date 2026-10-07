@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { branchNameFor, defaultBranchOf, placeState, run } from "../src/vendored/internal/beginCli.js";
+import { workItemOf } from "../src/vendored/internal/repoApi.js";
 import { STATE_DIR, defaultRoot, rememberBranch, resolveWorkItem } from "../src/vendored/internal/workItem.js";
 import { tempDir } from "./helpers/tmp.js";
 import { dirname, resolve } from "node:path";
@@ -76,10 +77,19 @@ const marker = (root) =>
 
 // ------------------------------------------------------------------ ブランチ名
 
-test("ブランチ名を省略すると、作業単位のIDから作る", () => {
-  assert.equal(branchNameFor("AUT-99", undefined), "aut-99");
-  assert.equal(branchNameFor("AUT-99", "  "), "aut-99");
+// **既定ブランチの直下に並べない**（AUT-274）。マイルストーンなどの特別なブランチと
+// 見分けにくくなる。
+test("ブランチ名を省略すると、feature/ の下に作業単位のIDから作る", () => {
+  assert.equal(branchNameFor("AUT-99", undefined), "feature/aut-99");
+  assert.equal(branchNameFor("AUT-99", "  "), "feature/aut-99");
   assert.equal(branchNameFor("AUT-99", "aut-99-begin"), "aut-99-begin");
+  assert.equal(branchNameFor("AUT-99", "v2/feature/aut-99"), "v2/feature/aut-99");
+});
+
+// **提出からIDを読む側が、接頭辞の付いた名前でも拾えること。** 拾えないと、
+// 統合済みの作業単位を数え損ねる。
+test("feature/ の付いたブランチ名からも、作業単位のIDを読める", () => {
+  assert.equal(workItemOf({ branch: "feature/aut-99", title: "" }), "AUT-99");
 });
 
 // ------------------------------------------------------------ 既定ブランチ
@@ -142,11 +152,11 @@ test("3つをまとめて行う。ブランチを作り、状態を進め、マ�
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
 
   assert.equal(code, 0);
-  assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b aut-99"), "ブランチを作っていない");
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b feature/aut-99"), "ブランチを作っていない");
   assert.ok(git.calls.some((a) => a[0] === "pull"), "既定ブランチを最新にしていない");
   assert.deepEqual(tracker.advanced, ["AUT-99:started:agent-playground"]);
   assert.deepEqual(marker(root), { work_item_id: "AUT-99", repo: "agent-playground" });
-  assert.ok(output.includes("aut-99"));
+  assert.ok(output.includes("feature/aut-99"));
 });
 
 test("手元に残っている変更は、消さずに知らせる", async () => {
@@ -365,7 +375,7 @@ test("着手のときに、ブランチと作業単位の対応を書き残す",
   const map = JSON.parse(
     readFileSync(join(root, ".autodrive", "work-items.json"), "utf8"),
   );
-  assert.equal(map["agent-playground/aut-99"]?.work_item_id, "AUT-99");
+  assert.equal(map["agent-playground/feature/aut-99"]?.work_item_id, "AUT-99");
 });
 
 test("前の作業単位の対応を、消さずに足す", async () => {
@@ -379,7 +389,7 @@ test("前の作業単位の対応を、消さずに足す", async () => {
   );
   // **消すと、前のブランチへ戻って書いた記録が迷子になる。** それがこの表の目的。
   assert.equal(map["agent-playground/aut-98"]?.work_item_id, "AUT-98", "前の対応が消えている");
-  assert.equal(map["agent-playground/aut-99"]?.work_item_id, "AUT-99");
+  assert.equal(map["agent-playground/feature/aut-99"]?.work_item_id, "AUT-99");
 });
 
 // ------------------------------- 作業状態は、記録を読む側と同じ場所へ置く（AUT-221）
@@ -474,7 +484,7 @@ test("同じ名前のブランチが既にあれば、作らずに戻る", async
   const tracker = fakeTracker();
   const git = fakeGit({
     "branch --show-current": "aut-50",
-    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+    "rev-parse --verify --quiet refs/heads/feature/aut-99": "feature/aut-99",
   });
 
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
@@ -489,7 +499,7 @@ test("同じ名前のブランチが既にあれば、作らずに戻る", async
     false,
     "既にあるブランチを作ろうとしている",
   );
-  assert.ok(git.calls.some((a) => a.join(" ") === "checkout aut-99"), "戻っていない");
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout feature/aut-99"), "戻っていない");
 
   // **Tracker は動かさない。** 既に着手済みである。
   assert.deepEqual(tracker.advanced, [], "着手済みのものを進めている");
@@ -503,7 +513,7 @@ test("別のブランチに居ても、再開は通る", async () => {
   const root = workspace();
   const git = fakeGit({
     "branch --show-current": "aut-50",
-    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+    "rev-parse --verify --quiet refs/heads/feature/aut-99": "feature/aut-99",
   });
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
   assert.equal(code, 0, output);
@@ -516,7 +526,7 @@ test("未コミットの変更があれば、戻さずに止める", async () =>
   const tracker = fakeTracker();
   const git = fakeGit({
     "branch --show-current": "aut-50",
-    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+    "rev-parse --verify --quiet refs/heads/feature/aut-99": "feature/aut-99",
     "status --short": " M src/app.ts",
   });
 
@@ -527,20 +537,73 @@ test("未コミットの変更があれば、戻さずに止める", async () =>
   assert.match(output, /src\/app\.ts/, "どれが残っているかを出していない");
   // **どうすればよいかまで出す**（停止の作法）。
   assert.match(output, /stash|commit/, "次にすることを出していない");
-  assert.equal(git.calls.some((a) => a.join(" ") === "checkout aut-99"), false, "戻してしまっている");
+  assert.equal(git.calls.some((a) => a.join(" ") === "checkout feature/aut-99"), false, "戻してしまっている");
 });
 
 // **いま既にそのブランチに居る場合も、黙って通さない。** 紐づけ先は置き直す。
 test("既にそのブランチに居るなら、紐づけ先だけ置き直す", async () => {
   const root = workspace();
   const git = fakeGit({
-    "branch --show-current": "aut-99",
-    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+    "branch --show-current": "feature/aut-99",
+    "rev-parse --verify --quiet refs/heads/feature/aut-99": "feature/aut-99",
   });
   const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
   assert.equal(code, 0, output);
   assert.match(output, /already in progress on this branch/, output);
   assert.equal(marker(root).work_item_id, "AUT-99");
+});
+
+// **以前の名前で着手したものは、そちらへ戻る**（AUT-274）。新しい名前で引くと
+// 見つからず、1つの作業単位に2本のブランチができる（AUT-206 と同じ型）。
+test("以前の名前のブランチしか無ければ、作らずにそちらへ戻る", async () => {
+  const root = workspace();
+  const tracker = fakeTracker();
+  const git = fakeGit({
+    "branch --show-current": "main",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, tracker, git);
+
+  assert.equal(code, 0, output);
+  assert.match(output, /Resumed/, output);
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout aut-99"), "以前のブランチへ戻っていない");
+  assert.equal(
+    git.calls.some((a) => a[0] === "checkout" && a[1] === "-b"),
+    false,
+    "2本目のブランチを作っている",
+  );
+  assert.deepEqual(tracker.advanced, [], "着手済みのものを進めている");
+});
+
+// **両方あれば新しい名前を選ぶ。** 以前の名前へ落ちるのは、新しい名前が無いときだけ。
+test("両方の名前があれば、新しい名前のほうへ戻る", async () => {
+  const root = workspace();
+  const git = fakeGit({
+    "branch --show-current": "main",
+    "rev-parse --verify --quiet refs/heads/feature/aut-99": "feature/aut-99",
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+  const { code, output } = await run(["AUT-99", "--repo", "agent-playground"], root, fakeTracker(), git);
+  assert.equal(code, 0, output);
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout feature/aut-99"), output);
+});
+
+// **--branch を渡されたら、以前の名前を探さない。** 渡された名前が答えである。
+test("--branch を渡されたら、以前の名前のブランチがあっても渡された名前で作る", async () => {
+  const root = workspace();
+  const git = fakeGit({
+    "rev-parse --verify --quiet refs/heads/aut-99": "aut-99",
+  });
+  const { code, output } = await run(
+    ["AUT-99", "--repo", "agent-playground", "--branch", "v2/feature/aut-99"],
+    root,
+    fakeTracker(),
+    git,
+  );
+  assert.equal(code, 0, output);
+  assert.ok(git.calls.some((a) => a.join(" ") === "checkout -b v2/feature/aut-99"), output);
+  assert.equal(git.calls.some((a) => a.join(" ") === "checkout aut-99"), false, "以前の名前へ戻っている");
 });
 
 // **使い方の説明が、いまの動きと合っていること**（AUT-269）。拾う・閉じると書いたまま、
