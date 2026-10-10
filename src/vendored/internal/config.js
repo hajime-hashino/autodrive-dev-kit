@@ -64,7 +64,7 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
 
 /** @typedef {"tracker" | "repo" | "runner" | "sandbox" | "preview" | "telemetry" | "flag"} PortName */
 
-/** @typedef {{ name: string, why: string, lost: string }} AppCredential */
+/** @typedef {{ name: string, why: string, lost: string, secret?: boolean }} AppCredential */
 
 /**
  * 作業単位IDの接頭辞。
@@ -160,7 +160,16 @@ function readAppCredentials(raw) {
         };
       }
     }
-    credentials.push({ name, why: why.trim(), lost: lost.trim() });
+    // **秘密でないものは、そう書ける**（AUT-275）。書かれていれば、出力に現れても
+    // 置き換えない。書かれていなければ秘密として扱う。**迷ったら隠す側に倒す。**
+    const { secret } = entry;
+    if (secret !== undefined && secret !== false) {
+      return {
+        credentials: [],
+        error: `${at}.secret in ${CONFIG_FILE} can only be false (${name}). Leave it out for a secret`,
+      };
+    }
+    credentials.push({ name, why: why.trim(), lost: lost.trim(), ...(secret === false ? { secret } : {}) });
   }
   return { credentials, error: null };
 }

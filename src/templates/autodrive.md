@@ -327,6 +327,9 @@ names and values of earlier versions are still accepted, and the command says so
 ## What to keep to
 
 - **Do not put anything into the default branch without a submission.** The checks detect it
+- **Do not pass credentials through echo, cat, env, or printenv.** To check whether one is set, use
+  `{{KIT}}/bin/autodrive-dev-kit env check <NAME>...`. It prints only set / empty / unset. If a value still appears in
+  a tool's output, a hook replaces it before it reaches you and tells the human. **Do not try to see it another way**
 - **Do not keep production credentials locally.** Only CI holds the deployment token
 - **Do not rewrite the checks in a loosening direction.** Changing the checks needs human approval
 - **Do not make changes that disable the invariants of definition §9**

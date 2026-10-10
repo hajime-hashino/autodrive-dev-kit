@@ -16,7 +16,8 @@
  *   lost: string,
  *   needs?: Array<{ permission: string, level: string, why: string, via: string }>,
  *   note?: string,
- *   ofApp?: boolean
+ *   ofApp?: boolean,
+ *   secret?: boolean
  * }} Credential
  */
 
@@ -44,16 +45,19 @@
  * **git の作者情報は、環境を作り直すたびに要る。** ホストの設定は引き継がれない環境が
  * あり、無いと commit そのものが通らない。
  */
+/** @type {Credential[]} */
 const ALWAYS = [
   {
     name: "GIT_USER_NAME",
     why: "Commit author information. Some environments do not carry over the host's git settings",
     lost: "Just decide it again",
+    secret: false,
   },
   {
     name: "GIT_USER_EMAIL",
     why: "Same as above",
     lost: "Just decide it again",
+    secret: false,
   },
 ];
 
@@ -155,6 +159,7 @@ const FOR_IMPLEMENTATION = {
       name: "AUTODRIVE_OTLP_ENDPOINT",
       why: "Where token consumption is sent. **Not a secret** (it names a destination), but handled together with authentication",
       lost: "It can be checked on the receiving side's settings screen",
+      secret: false,
       note:
         "**Token consumption is an optional recording target** (definition §6). A configuration without it also works, " +
         "and in that case token consumption is not recorded. **The other five in §6 are not affected.**",
@@ -220,9 +225,26 @@ const FOR_IMPLEMENTATION = {
       name: "CLOUDFLARE_ACCOUNT_ID",
       why: "Specifies the deployment target. **Not a secret** (it names something; it is not a credential), but handled as a pair",
       lost: "It can be checked on the dashboard",
+      secret: false,
     },
   ],
 };
+
+/**
+ * 秘密ではないと分かっている名前。
+ *
+ * **出力に現れても置き換えない**（AUT-275）。コミットの作者は `git log` のたびに、
+ * 配布先の識別子は配布のたびに出る。置き換えると、正しい出力を読めなくなり、
+ * そのたびに人へ知らせが飛ぶ。**知らせが多すぎると、本物が読み流される。**
+ *
+ * **構成に依らずに、表全体から取る。** 使っていないポートの名前でも、秘密でない
+ * ことは変わらない。
+ */
+export const NOT_SECRET = new Set(
+  [...ALWAYS, ...Object.values(FOR_IMPLEMENTATION).flat()]
+    .filter((c) => c.secret === false)
+    .map((c) => c.name),
+);
 
 /**
  * 構成から、要る資格情報を組み立てる。

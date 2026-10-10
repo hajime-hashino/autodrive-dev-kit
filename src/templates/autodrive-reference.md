@@ -355,12 +355,48 @@ Add them to `app.credentials` in `autodrive.json` and **run the update**
 }
 ```
 
+**Mark values that are not secrets** with `"secret": false` (such as an ID or a default). Unmarked values are replaced
+when they appear in a tool's output ("Secrets that appear in a tool's output are replaced").
+
 **`why` and `lost` cannot be omitted.** With names alone, the human does not know what to go and get,
 and cannot judge how serious losing it would be. Omit them and `update` stops.
 
 **If not written, it breaks silently.** As long as the value remains in `.env`, the app keeps running, so
 nobody notices it is gone. **Someone new looking at the template cannot learn that the key exists.**
 
+
+## Secrets that appear in a tool's output are replaced
+
+The credentials in `.env` are loaded into every command the agent runs. **One wrong expression prints a value.**
+This actually happened: checking whether a token was set with `echo "${v:+set}${v:-EMPTY}"` printed the token itself
+(`${v:-EMPTY}` is the value when it is set). Two API tokens had to be revoked (autodrive-dev-kit AUT-275).
+
+**Check with `env check`.** It prints only set / empty / unset, and says when a name is in `.env` but not loaded.
+
+```sh
+{{KIT}}/bin/autodrive-dev-kit env check CLOUDFLARE_API_TOKEN LLM_API_KEY
+```
+
+**If a value still appears, it is replaced before it reaches the AI.** A PostToolUse hook compares every tool's output
+with the values in `.env`, replaces matches with `[redacted: NAME]`, tells the AI and the human, and notes it in the work log
+of the work item in progress. **The value does not reach the AI and is not left in the session record,** so it does not
+need to be revoked for this.
+
+**Commands are not stopped before they run.** Matching the command text is defeated by writing it differently, and stops
+correct commands. The expression above used a variable named `v` and would not have been stopped. **The output is
+compared with the values themselves instead,** so it does not depend on how the command is written.
+
+| Replaced | Not replaced |
+|---|---|
+| Values in `.env`, in any tool's output (Bash, Read, Grep, ...) | Names known not to be secrets (commit author, account IDs). In `app.credentials`, write `"secret": false` |
+| Tokens with a shape fixed by the issuer (`ghp_`, `github_pat_`, `lin_api_`, `sk-`, `xoxb-`, `cfut_`, ...), even when not in `.env` | Values shorter than 12 characters |
+| | Values that were transformed (base64, partial, split across lines) |
+| | Secrets not in `.env` whose shape is not fixed |
+| | Output that already reached the AI before this hook was placed |
+
+**Names not marked are treated as secrets.** When in doubt it hides.
+
+If the work item could not be noted (nothing started, or the Tracker unreachable), the message to the human says so.
 
 ## Updating autodrive-dev-kit
 
