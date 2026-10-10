@@ -48,6 +48,7 @@ Used by the AI (humans do not need to run these)
   autodrive-dev-kit tracker <operation> ...     Handle work items
   autodrive-dev-kit telemetry <operation> ...   Record
   autodrive-dev-kit sandbox <operation> ...     Check the egress
+  autodrive-dev-kit env check <NAME>...         Check credentials are set, without printing them
   autodrive-dev-kit invariants [--root <path>]  Judge the state of the invariants
   autodrive-dev-kit quality [--root <path>]     Produce the quality evidence
 
@@ -59,6 +60,7 @@ const DELEGATES = {
   tracker: "trackerCli.js",
   telemetry: "telemetryCli.js",
   sandbox: "sandboxCli.js",
+  env: "envCli.js",
   invariants: "main.js",
   quality: "qualityCli.js",
 };

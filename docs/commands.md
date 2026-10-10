@@ -320,3 +320,30 @@ Called from the runtime's SessionStart hook, it writes **a line that loads the c
 **The rc file does not reach the agent.** `post-create.sh` adds the loader to `~/.bashrc`, but an agent started from the editor inherits the editor's environment and never reads it. Commands ran without credentials and were worked around by loading `.env` by hand each time (AUT-272).
 
 **It writes the line, not the values.** Copying them would leave the credentials in one more file. Since the line is read before each command, a `.env` created after the session started is picked up too.
+
+## Checking credentials without printing them
+
+```sh
+autodrive-dev-kit env check <NAME>...
+```
+
+Prints `set`, `empty`, or `unset` for each name, and never a value. Exits with 1 if any is not set. **Empty and unset
+are told apart**: a `.env` copied from `.env.example` keeps `NAME=` lines, and an empty string does not fall back to a default written with `??`. If a name is in `.env` but not in the environment, it says so (the loading is not working).
+
+**Do not check by hand.** `echo "${v:+set}${v:-EMPTY}"` prints the value itself when it is set, and that is how two API tokens ended up in a session record (AUT-275).
+
+## Replacing secrets in tool output
+
+Called from the runtime's PostToolUse hook for every tool. It compares the tool's output with the values in `.env` and with token shapes fixed by their issuers, and **replaces matches before the output reaches the agent.**
+
+```sh
+./src/vendored/hooks/redact-secrets   # takes the hook's input on standard input
+```
+
+**The replacement keeps the shape of `tool_response`.** The runtime silently ignores a replacement of a different shape (a string for Bash, whose output is `{ stdout, stderr, ... }`), and the value reaches the agent. Measured with Claude Code 2.1.241: with the same shape, the value is neither seen by the agent nor kept in the session record.
+
+**It reads `.env` itself.** `CLAUDE_ENV_FILE` applies only to SessionStart hooks.
+
+When something is replaced, it tells the agent (`additionalContext`) and the human (`systemMessage`), and notes it in the work log of the work item in progress. **The value is written nowhere.** It is not a telemetry event: a leak is none of the five records in definition §6.
+
+What it replaces and what it does not is in `autodrive-reference.md` ("Secrets that appear in a tool's output are replaced").

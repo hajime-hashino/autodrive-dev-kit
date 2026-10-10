@@ -64,7 +64,7 @@ const BY_NAME = [
  * **推測しない。** どれも発行元が形を決めており、**偽陽性がほぼ出ない。**
  * 並べてよいのは、`.env.example` に名前があるものに限る（AUT-225）。
  */
-const SECRETS = [
+export const SECRETS = [
   { re: /\bghp_[A-Za-z0-9]{36}\b/, why: "A GitHub personal access token" },
   { re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/, why: "A GitHub fine-grained token" },
   { re: /\blin_api_[A-Za-z0-9]{40,}\b/, why: "A Tracker (Linear) key" },

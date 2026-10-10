@@ -15,7 +15,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95,6 +95,11 @@ test("置かれた設定が、置かれた autodrive-dev-kit を指している"
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
   assert.ok(settings.includes(`${VENDOR_DIR}/hooks/record-tokens`), settings);
   assert.ok(JSON.stringify(JSON.parse(settings).hooks.SessionStart).includes(`${VENDOR_DIR}/hooks/load-env`), settings);
+  // **秘密が出力に出たら置き換える**（AUT-275）。登録した先に、実行できる殻があること。
+  const post = JSON.parse(settings).hooks.PostToolUse;
+  assert.ok(JSON.stringify(post).includes(`${VENDOR_DIR}/hooks/redact-secrets`), settings);
+  assert.equal(post[0].matcher, undefined, "すべてのツールに掛けていない");
+  assert.ok((statSync(join(root, VENDOR_DIR, "hooks", "redact-secrets")).mode & 0o111) !== 0, "殻に実行権が無い");
 
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
   assert.ok(rules.includes(`${VENDOR_DIR}/bin/autodrive-dev-kit`), rules);

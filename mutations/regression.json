@@ -944,5 +944,47 @@
     "from": "export const DEFAULT_LANGUAGE = \"en\";",
     "to": "export const DEFAULT_LANGUAGE = \"ja\";",
     "why": "何も選ばなかった人、構成を持たない場所に日本語が出る。定義と kit は英語が正である"
+  },
+  {
+    "name": "AUT-275 置き換えを文字列で返す",
+    "file": "src/vendored/internal/redactSecrets.js",
+    "from": "      updatedToolOutput: output,",
+    "to": "      updatedToolOutput: JSON.stringify(output),",
+    "why": "実行基盤は形の合わない置き換えを黙って捨て、値が AI に届く（実測）"
+  },
+  {
+    "name": "AUT-275 1つ目しか置き換えない",
+    "file": "src/vendored/internal/redactSecrets.js",
+    "from": "    out = out.split(s.value).join(`[redacted: ${s.name}]`);",
+    "to": "    out = out.replace(s.value, `[redacted: ${s.name}]`);",
+    "why": "同じ値が2度出ると、2つ目が AI に届く"
+  },
+  {
+    "name": "AUT-275 秘密でない名前も突き合わせる",
+    "file": "src/vendored/internal/redactSecrets.js",
+    "from": "    .filter((e) => e.value.length >= MIN_LENGTH && !notSecret.has(e.name))",
+    "to": "    .filter((e) => e.value.length >= MIN_LENGTH)",
+    "why": "git log のたびに作者が置き換わり、知らせが多すぎて本物が読み流される"
+  },
+  {
+    "name": "AUT-275 作業ログにコマンドをそのまま写す",
+    "file": "src/vendored/internal/redactSecrets.js",
+    "from": "    const clean = redactText(c, secrets, new Set());",
+    "to": "    const clean = c;",
+    "why": "値を打ち込んだコマンドだった場合、記録へ値が写る"
+  },
+  {
+    "name": "AUT-275 フックを登録しない",
+    "file": "src/vendored/internal/init.js",
+    "from": "    [\"redact-secrets\", \"PostToolUse\"],",
+    "to": "",
+    "why": "配ったつもりで、置き換えが一度も走らない"
+  },
+  {
+    "name": "AUT-275 空と未設定を分けない",
+    "file": "src/vendored/internal/envCli.js",
+    "from": "value === undefined ? \"unset\" : value === \"\" ? \"empty\" : \"set\"",
+    "to": "value === undefined || value === \"\" ? \"unset\" : \"set\"",
+    "why": ".env を写して残った空文字が、既定に落ちないことに気づけない"
   }
 ]

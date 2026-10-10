@@ -490,11 +490,23 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // ~/.bashrc を通らない。毎回手で .env を読み込んで回避していた（AUT-272）。
   const settingsPath = join(root, ".claude", "settings.json");
   const before = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : null;
-  const tokens = mergeHook(before, `${VENDOR_DIR}/hooks/record-tokens`);
-  const env = mergeHook(tokens.changed ? tokens.json : before, `${VENDOR_DIR}/hooks/load-env`, "SessionStart");
-  const changed = tokens.changed || env.changed;
-  const json = env.changed ? env.json : tokens.json;
-  if (changed) {
+
+  // **秘密が出力に出たら、AI に届く前に置き換える**（AUT-275）。資格情報を各コマンドへ
+  // 届ける以上、誤った式1つで値が出る。
+  let json = before;
+  let changed = false;
+  for (const [hook, event] of [
+    ["record-tokens", "Stop"],
+    ["load-env", "SessionStart"],
+    ["redact-secrets", "PostToolUse"],
+  ]) {
+    const merged = mergeHook(json, `${VENDOR_DIR}/hooks/${hook}`, event);
+    if (merged.changed) {
+      json = merged.json;
+      changed = true;
+    }
+  }
+  if (changed && json !== null) {
     write(settingsPath, json);
     placed.push({ path: ".claude/settings.json", placement: "merged" });
   } else {

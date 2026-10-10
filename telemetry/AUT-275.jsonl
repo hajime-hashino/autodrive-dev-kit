@@ -1,0 +1,1 @@
+{"ts":"2026-10-10T00:46:35.405Z","work_item_id":"AUT-275","model":"claude-opus-5-5","kit_version":"0.12.32","emitter":"adapter","type":"stop","stop_kind":"design-decision","stop_type":"input","detail":"利用側の依頼（秘密が出力に出る件）を4項目そのままではなく組み直す提案をし、A: PreToolUse を入れない / B: 記録は作業ログ、の2点を人に決めてもらった。推奨と理由（今回の式は依頼のパターンで止まらない）を添えた問いは機能し、1往復で推奨どおり合意。起票前の問いのため、着手後にこの作業単位へ記録する","resolved":true}
