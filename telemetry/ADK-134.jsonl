@@ -1,0 +1,1 @@
+{"ts":"2026-10-14T14:54:45.020Z","work_item_id":"ADK-134","model":"claude-opus-5-5","kit_version":"0.12.36","emitter":"adapter","type":"stop","stop_kind":"統合の承認","stop_type":"input","detail":"PR #135 の統合を人に依頼。プロジェクトに紐づけて起票できることは、この作業場の Linear にプロジェクトが無いため実物で確かめていない。困っている側のプロジェクトで確かめてもらう","resolved":false}
