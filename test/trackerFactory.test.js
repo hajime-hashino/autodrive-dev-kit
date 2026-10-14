@@ -13,7 +13,7 @@ import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { defaults, writeConfig } from "../src/vendored/internal/config.js";
-import { createTracker } from "../src/vendored/internal/ports/trackerFactory.js";
+import { createJudgingTracker, createTracker } from "../src/vendored/internal/ports/trackerFactory.js";
 import { tempDir } from "./helpers/tmp.js";
 
 /** 構成を置いた起点。 */
@@ -175,3 +175,118 @@ test("実装名を知るのは、アダプタとこの口だけ", () => {
   assert.deepEqual(offenders, [], "アダプタの外で実装を直に組み立てている");
 });
 
+
+// ------------------------------------------------------------ 判定のための照合先（AUT-277）
+
+/** 判定対象のリポジトリ。構成を置き、起点のリモートを返す。 */
+function judged(name, over, where = `o/${name}`) {
+  const root = over === undefined ? tempDir(`autodrive-judging-${name}-`) : project(over);
+  return { path: root, name, remoteSlug: () => where };
+}
+
+/**
+ * 通信を差し替える。**Linear と GitHub で、それぞれ1件ずつ返す。**
+ * GitHub はリポジトリごとに違う番号を返し、どこを読んだかを確かめられるようにする。
+ */
+async function withServices(run) {
+  const original = globalThis.fetch;
+  const asked = [];
+  globalThis.fetch = async (url, init = {}) => {
+    asked.push(String(url));
+    const json = (body) => new Response(JSON.stringify(body), { status: 200 });
+    if (String(url).includes("linear")) {
+      const { query } = JSON.parse(String(init.body));
+      if (query.includes("teams")) return json({ data: { teams: { nodes: [{ id: "t", key: "AUT" }] } } });
+      return json({
+        data: {
+          team: {
+            issues: {
+              nodes: [{ identifier: "AUT-1", title: "", url: "", state: { type: "completed" }, labels: { nodes: [] } }],
+              pageInfo: { hasNextPage: false },
+            },
+          },
+        },
+      });
+    }
+    const number = String(url).includes("/o/b/") ? 7 : 3;
+    return json([{ number, title: "", html_url: "", state: "open", labels: [] }]);
+  };
+  try {
+    return await run(asked);
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+const github = (prefix, previous) => (c) => ({
+  ...c,
+  ports: { ...c.ports, tracker: "github-issues" },
+  tracker: { prefix, ...(previous === undefined ? {} : { previous }) },
+});
+
+const keys = { LINEAR_API_KEY: "k", AUTODRIVE_CI_TOKEN: "ci" };
+
+test("判定の照合先は、リポジトリごとの構成で組み立て、束ねた一覧で照合する", async () => {
+  const repos = [judged("a", github("ADK")), judged("b", github("AGP"))];
+
+  const { tracker, error, sources } = createJudgingTracker(repos, keys);
+
+  assert.equal(error, null);
+  assert.deepEqual(sources, ["github-issues (o/a)", "github-issues (o/b)"]);
+  const ids = await withServices(async () => (await tracker.list()).map((i) => i.id));
+  assert.deepEqual(ids.sort(), ["ADK-3", "AGP-7"]);
+});
+
+// **差し替える前の記録は、以前の作業単位IDを指している。** 照合先から外すと、
+// それらがすべて「実在しない」になる。
+test("tracker.previous に書かれた実装も、照合先に加える", async () => {
+  const repos = [judged("a", github("ADK", ["linear"]))];
+
+  const { tracker, sources } = createJudgingTracker(repos, keys);
+
+  assert.deepEqual(sources, ["github-issues (o/a)", "linear"]);
+  const ids = await withServices(async () => (await tracker.list()).map((i) => i.id));
+  assert.deepEqual(ids.sort(), ["ADK-3", "AUT-1"]);
+});
+
+test("同じ実装を指すリポジトリが複数あっても、linear は一度だけ読む", async () => {
+  const repos = [judged("a"), judged("b"), judged("c", github("ADK", ["linear"]))];
+
+  const { tracker, sources } = createJudgingTracker(repos, keys);
+
+  assert.deepEqual(sources, ["linear", "github-issues (o/c)"]);
+  await withServices(async (asked) => {
+    const items = await tracker.list();
+    assert.equal(items.filter((i) => i.id === "AUT-1").length, 1);
+    assert.ok(asked.length > 0);
+  });
+});
+
+// **判定する側に書ける鍵を持たせない**（定義§9）。
+test("GitHub Issues は読むだけの鍵で読む。書ける鍵しか無ければ組み立てない", () => {
+  const repos = [judged("a", github("ADK"))];
+
+  const { tracker, error } = createJudgingTracker(repos, { GH_TOKEN: "w", AUTODRIVE_TRACKER_TOKEN: "w" });
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /AUTODRIVE_CI_TOKEN/);
+});
+
+// **欠けた照合先は、実在する作業単位を実在しないと言う。**
+test("組み立てられない照合先が1つでもあれば、全体を組み立てない", () => {
+  const repos = [judged("a", github("ADK", ["linear"]))];
+
+  const { tracker, error } = createJudgingTracker(repos, { AUTODRIVE_CI_TOKEN: "ci" });
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /LINEAR_API_KEY/);
+});
+
+test("tracker.previous に知らない実装が書かれていれば、構成の誤りとして止まる", () => {
+  const repos = [judged("a", github("ADK", ["jira"]))];
+
+  const { tracker, error } = createJudgingTracker(repos, keys);
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /tracker\.previous/);
+});

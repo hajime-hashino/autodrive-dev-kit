@@ -47,6 +47,7 @@ export function slugAt(root) {
 }
 
 /** @typedef {import("./tracker.js").TrackerPort} TrackerPort */
+/** @typedef {import("./tracker.js").TrackerReader} TrackerReader */
 
 /**
  * 組み立てる。**組み立てられない理由は、そのまま返す。**
@@ -122,5 +123,105 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
     tracker: null,
     error: `Unknown Tracker implementation: ${implementation} (ports.tracker in autodrive.json)`,
     implementation,
+  };
+}
+
+/**
+ * 判定のために、記録を照合する先をすべて組み立てる（AUT-277）。
+ *
+ * ## なぜ起点の1つでは足りないか
+ *
+ * 作業単位は、変更を書き込むリポジトリごとに置かれうる。GitHub Issues なら
+ * そのリポジトリの Issues にある。**起点の Tracker だけで照合すると、他の
+ * リポジトリの作業単位を指す記録が、すべて「実在しない」になる。**
+ *
+ * 実装を差し替えた場合も同じである。それまでの記録は以前の作業単位IDを指して
+ * いる。**`tracker.previous` に書かれた実装も、照合先に加える。**
+ *
+ * ## 照合は、束ねた一覧で行う
+ *
+ * 作業単位IDは接頭辞で分かれており、実装をまたいで重ならない。**どの記録を
+ * どこで照合するかを振り分ける必要が無い。**
+ *
+ * ## 鍵は読むだけのものを使う
+ *
+ * GitHub Issues は `AUTODRIVE_CI_TOKEN` で読む。**判定する側に書ける鍵を
+ * 持たせない**（定義§9）。CI もこの鍵で判定を打っている。
+ *
+ * **組み立てられないものが1つでもあれば、組み立てない。** 欠けた照合先は、
+ * 実在する作業単位を実在しないと言う。
+ *
+ * @param {Array<{ path: string, name: string, remoteSlug: () => string | null }>} repos
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {{ tracker: TrackerReader | null, error: string | null, sources: string[] }}
+ */
+export function createJudgingTracker(repos, env = process.env) {
+  /** @type {Map<string, () => { tracker: TrackerReader | null, error: string | null }>} */
+  const sources = new Map();
+
+  for (const repo of repos) {
+    const { config, error } = readConfig(repo.path);
+    if (error !== null) return { tracker: null, error: `${repo.name}: ${error}`, sources: [] };
+    // 構成が無ければ linear とみなす（`createTracker` と同じ）。
+    const current = config?.ports.tracker ?? "linear";
+    for (const implementation of [current, ...(config?.tracker.previous ?? [])]) {
+      if (implementation === "linear") {
+        sources.set("linear", () => {
+          const token = env.LINEAR_API_KEY;
+          if (token === undefined || token === "") {
+            return { tracker: null, error: "No Tracker credentials (LINEAR_API_KEY not set)" };
+          }
+          return { tracker: new LinearTracker(token, env.AUTODRIVE_TRACKER_TEAM), error: null };
+        });
+        continue;
+      }
+      if (implementation === "github-issues") {
+        const where = repo.remoteSlug();
+        const prefix = config?.tracker.prefix ?? null;
+        sources.set(`github-issues (${where ?? repo.name})`, () => {
+          if (where === null) {
+            return { tracker: null, error: `${repo.name}: cannot read where work items are kept (the origin remote must point at GitHub)` };
+          }
+          if (prefix === null) {
+            return { tracker: null, error: `${repo.name}: autodrive.json has no tracker.prefix` };
+          }
+          const token = env.AUTODRIVE_CI_TOKEN;
+          if (token === undefined || token === "") {
+            return {
+              tracker: null,
+              error:
+                "No credentials to read GitHub Issues for the checks (AUTODRIVE_CI_TOKEN not set). " +
+                "**It needs Issues: Read.** A key that can write is not used for checking",
+            };
+          }
+          return { tracker: new GithubIssuesTracker(token, where, prefix), error: null };
+        });
+        continue;
+      }
+      return {
+        tracker: null,
+        error: `${repo.name}: unknown Tracker implementation: ${implementation}`,
+        sources: [],
+      };
+    }
+  }
+
+  const built = [];
+  for (const build of sources.values()) {
+    const { tracker, error } = build();
+    if (tracker === null) return { tracker: null, error, sources: [] };
+    built.push(tracker);
+  }
+
+  return {
+    tracker: {
+      async list() {
+        const items = [];
+        for (const t of built) items.push(...(await t.list()));
+        return items;
+      },
+    },
+    error: null,
+    sources: [...sources.keys()],
   };
 }

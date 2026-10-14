@@ -214,6 +214,22 @@ const FOR_IMPLEMENTATION = {
         },
       ],
     },
+    // **判定も Issues を読む**（AUT-277）。記録が指す作業単位が実在するかを
+    // 照合するためである。**読むのは判定の鍵で行う。** 書ける鍵で読むと、判定する
+    // 側が判定対象を書き換えられる。
+    {
+      name: "AUTODRIVE_CI_TOKEN",
+      why: "The checks match records against work items",
+      lost: "Reissue it",
+      needs: [
+        {
+          permission: "Issues",
+          level: "Read",
+          why: "Matching records against work items",
+          via: "GET /repos/{repo}/issues",
+        },
+      ],
+    },
   ],
   "cloudflare-workers": [
     {
@@ -264,9 +280,12 @@ export function credentialsFor(config) {
   /** @type {Map<string, Credential>} */
   const byName = new Map(out.map((c) => [c.name, c]));
 
-  for (const port of Object.keys(config.ports)) {
+  // **差し替える前の Tracker も、判定の照合に使う**（AUT-277）。載せないと、
+  // テンプレートの書き直しでその資格情報が消え、判定が黙って落ちる。
+  const implementations = [...Object.values(config.ports), ...(config.tracker?.previous ?? [])];
+  for (const implementation of implementations) {
     // 使わないポート（`none`）は表に無いため、何も足さない。
-    for (const c of FOR_IMPLEMENTATION[config.ports[port]] ?? []) {
+    for (const c of FOR_IMPLEMENTATION[implementation] ?? []) {
       const already = byName.get(c.name);
       if (already === undefined) {
         const fresh = { ...c };

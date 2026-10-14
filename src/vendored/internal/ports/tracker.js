@@ -65,6 +65,14 @@ export function isRevisable(state) {
  * }} TrackerPort
  */
 
+/**
+ * 一覧を読むだけの口。**判定が使う。**
+ *
+ * 判定は作業単位を書き換えない。照合先を束ねたもの（AUT-277）も、この形で渡す。
+ *
+ * @typedef {{ list: () => Promise<WorkItemView[]> }} TrackerReader
+ */
+
 export function isWorkItemState(value) {
   return (STATES).includes(value);
 }

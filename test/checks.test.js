@@ -315,6 +315,26 @@ test("Tracker の資格情報が無ければ判定不能として失敗する", 
   assert.ok(r.observations.some((o) => o.includes("A state that cannot be judged")));
 });
 
+// **組み立てられなかった理由で、人がやることが違う**（AUT-277）。
+test("Tracker を組み立てられなかった理由を、そのまま出す", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], tracker: null, trackerError: "AUTODRIVE_CI_TOKEN not set" }),
+  );
+  assert.equal(r.state, UNSUBSTITUTED);
+  assert.ok(r.observations.some((o) => o.includes("AUTODRIVE_CI_TOKEN not set")), r.observations.join("\n"));
+});
+
+// **照合先が欠けていても、件数だけでは気づけない。**
+test("どこと照合したかを出す", async () => {
+  const r = await check("telemetry_recorded").run(
+    input({ events: [event()], trackerSources: ["linear", "github-issues (o/a)"] }),
+  );
+  assert.ok(
+    r.observations.some((o) => o.includes("matched against: linear, github-issues (o/a)")),
+    r.observations.join("\n"),
+  );
+});
+
 test("Tracker が読めなければ判定不能として失敗する", async () => {
   const tracker = fakeTrackerFor();
   tracker.list = async () => { throw new Error("接続できない"); };
