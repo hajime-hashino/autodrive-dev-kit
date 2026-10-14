@@ -64,10 +64,19 @@ export class LinearTracker {
            #token;
            #teamKey;
   #teamId = null;
+           #project;
+  /** @type {string | null | undefined} 解決した ID。未解決なら undefined */
+  #projectId = undefined;
 
-  constructor(token , teamKey) {
+  /**
+   * @param {string} token
+   * @param {string | undefined} teamKey
+   * @param {string | undefined} project 起票する作業単位を紐づけるプロジェクト（名前・slug・ID）
+   */
+  constructor(token , teamKey, project = undefined) {
     this.#token = token;
     this.#teamKey = teamKey;
+    this.#project = project;
   }
 
   async #call(query , variables = {}) {
@@ -106,6 +115,38 @@ export class LinearTracker {
     }
     this.#teamId = found.id;
     return found.id;
+  }
+
+  /**
+   * 紐づけるプロジェクトの解決（ADK-134）。指定が無ければ null。
+   *
+   * **名前・slug・ID のどれでも引ける。** 人が画面で見るのは名前であり、名前は
+   * 変えられる。変わらないものを書きたい人は slug か ID を書く。
+   *
+   * **見つからなければ、黙って外さずに止まる。** プロジェクト無しで起票すると、
+   * 紐づかない作業単位が増え続け、書いた人からは効いているように見える。
+   * **同じ名前が複数あっても止まる。** どちらへ入れるかを推測しない。
+   */
+  async #projectIdOf() {
+    if (this.#projectId !== undefined) return this.#projectId;
+    if (this.#project === undefined) return (this.#projectId = null);
+    const teamId = await this.#team();
+    const data = await this.#call(
+      "query($id:String!){ team(id:$id){ projects(first:250){ nodes { id name slugId } } } }",
+      { id: teamId },
+    );
+    const projects = data.team.projects.nodes;
+    const wanted = this.#project;
+    const found = projects.filter((p) => p.id === wanted || p.slugId === wanted || p.name === wanted);
+    if (found.length !== 1) {
+      const names = projects.map((p) => `${p.name} (${p.slugId})`).join(", ") || "none";
+      throw new Error(
+        found.length === 0
+          ? `The project in tracker.project was not found: ${wanted} (candidates: ${names})`
+          : `Several projects match tracker.project: ${wanted}. **Write the slug or ID instead** (candidates: ${names})`,
+      );
+    }
+    return (this.#projectId = found[0].id);
   }
 
   /**
@@ -181,11 +222,20 @@ export class LinearTracker {
 
   async create(input) {
     const teamId = await this.#team();
-    const data = await this.#call(
-      `mutation($t:String!,$d:String!,$team:String!){
+    const projectId = await this.#projectIdOf();
+    // **指定が無ければ、問い合わせの形を変えない。** これまでの起票と同じものを送る。
+    const data =
+      projectId === null
+        ? await this.#call(
+            `mutation($t:String!,$d:String!,$team:String!){
          issueCreate(input:{title:$t, description:$d, teamId:$team}){ issue { ${ISSUE_FIELDS} } } }`,
-      { t: input.title, d: input.body, team: teamId },
-    );
+            { t: input.title, d: input.body, team: teamId },
+          )
+        : await this.#call(
+            `mutation($t:String!,$d:String!,$team:String!,$p:String!){
+         issueCreate(input:{title:$t, description:$d, teamId:$team, projectId:$p}){ issue { ${ISSUE_FIELDS} } } }`,
+            { t: input.title, d: input.body, team: teamId, p: projectId },
+          );
     return toView(data.issueCreate.issue);
   }
 

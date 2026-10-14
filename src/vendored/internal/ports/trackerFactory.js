@@ -66,7 +66,10 @@ export function slugAt(root) {
  * @returns {{ tracker: TrackerPort | null, error: string | null, implementation: string }}
  */
 export function createTracker(root, env = process.env, slug = () => slugAt(root), override = null) {
-  const { config } = readConfig(root);
+  const { config, error: unreadable } = readConfig(root);
+  // **壊れた構成を「構成が無い」とみなさない**（ADK-134）。みなすと linear で組み立てて
+  // 進み、書いたはずの指定（紐づけるプロジェクトなど）が黙って効かなくなる。
+  if (unreadable !== null) return { tracker: null, error: unreadable, implementation: override ?? "linear" };
   // **構成が無ければ linear とみなす。** `init` を打っていない作業場があり、
   // そこはこれまで linear で動いてきた。既定を変えると黙って止まる。
   //
@@ -79,8 +82,20 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
       return { tracker: null, error: "No Tracker credentials (LINEAR_API_KEY not set)", implementation };
     }
     return {
-      tracker: new LinearTracker(token, env.AUTODRIVE_TRACKER_TEAM),
+      tracker: new LinearTracker(token, env.AUTODRIVE_TRACKER_TEAM, config?.tracker.project),
       error: null,
+      implementation,
+    };
+  }
+
+  // **紐づける先を、黙って捨てない**（ADK-134）。書いたのに効かないと、起票した作業単位が
+  // どこにも紐づかないまま増え、書いた人からは効いているように見える。
+  if (config?.tracker.project !== undefined) {
+    return {
+      tracker: null,
+      error:
+        `tracker.project in autodrive.json is used only by linear (this Tracker is ${implementation}). ` +
+        "**Remove it**, or file work items with the means the implementation itself has",
       implementation,
     };
   }

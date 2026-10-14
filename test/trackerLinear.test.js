@@ -165,3 +165,78 @@ test("読み切れなければ、欠けた一覧を返さずに落ちる", async
     stub.restore();
   }
 });
+
+// ------------------------------------------------------------ プロジェクト（ADK-134）
+
+const PROJECTS = [
+  { id: "p1", name: "認証", slugId: "auth-1a2b" },
+  { id: "p2", name: "決済", slugId: "pay-3c4d" },
+  { id: "p3", name: "決済", slugId: "pay-old-5e6f" },
+];
+
+/** チーム・プロジェクト・起票に答える実装側。 */
+function respondToCreate(projects = PROJECTS) {
+  return (body) => {
+    if (body.query.includes("teams {")) return { teams: { nodes: [{ id: "t", key: "AUT" }] } };
+    if (body.query.includes("projects(")) return { team: { projects: { nodes: projects } } };
+    return { issueCreate: { issue: ISSUE } };
+  };
+}
+
+const created = (sent) => sent.find((b) => b.query.includes("issueCreate"));
+
+for (const [given, why] of [
+  ["認証", "名前"],
+  ["auth-1a2b", "slug"],
+  ["p1", "ID"],
+]) {
+  test(`指定されたプロジェクトに紐づけて起票する（${why}で引く）`, async () => {
+    const stub = stubFetch(respondToCreate());
+    try {
+      await new LinearTracker("t", "AUT", given).create({ title: "題", body: "本文" });
+    } finally {
+      stub.restore();
+    }
+    assert.equal(created(stub.sent)?.variables.p, "p1");
+    assert.match(created(stub.sent)?.query ?? "", /projectId:\$p/);
+  });
+}
+
+// **これまでの起票と同じものを送る。** 指定しない人の動きを変えない。
+test("プロジェクトの指定が無ければ、プロジェクトを引かず、紐づけずに起票する", async () => {
+  const stub = stubFetch(respondToCreate());
+  try {
+    await new LinearTracker("t", "AUT").create({ title: "題", body: "本文" });
+  } finally {
+    stub.restore();
+  }
+  assert.equal(stub.sent.some((b) => b.query.includes("projects(")), false);
+  assert.doesNotMatch(created(stub.sent)?.query ?? "", /projectId/);
+});
+
+// **黙って外すと、紐づかない作業単位が増え続け、効いているように見える。**
+test("プロジェクトが見つからなければ、起票せずに候補を示して止まる", async () => {
+  const stub = stubFetch(respondToCreate());
+  try {
+    await assert.rejects(
+      new LinearTracker("t", "AUT", "存在しない").create({ title: "題", body: "本文" }),
+      /存在しない.*認証 \(auth-1a2b\)/,
+    );
+  } finally {
+    stub.restore();
+  }
+  assert.equal(created(stub.sent), undefined);
+});
+
+test("同じ名前のプロジェクトが複数あれば、推測せずに止まる", async () => {
+  const stub = stubFetch(respondToCreate());
+  try {
+    await assert.rejects(
+      new LinearTracker("t", "AUT", "決済").create({ title: "題", body: "本文" }),
+      /Several projects.*slug or ID/,
+    );
+  } finally {
+    stub.restore();
+  }
+  assert.equal(created(stub.sent), undefined);
+});
