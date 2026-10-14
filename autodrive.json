@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "ports": {
+    "tracker": "github-issues",
+    "sandbox": "none"
+  },
+  "tracker": {
+    "prefix": "ADK",
+    "previous": ["linear"]
+  }
+}
