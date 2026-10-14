@@ -1000,5 +1000,19 @@
     "from": "    if (owner !== undefined) return at(owner.repo);",
     "to": "    if (false) return at(owner.repo);",
     "why": "作業場の起点の Issues を探し、別のリポジトリの作業単位が見つからない"
+  },
+  {
+    "name": "ADK-134 linear 以外で tracker.project を黙って無視する",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "  if (config?.tracker.project !== undefined) {",
+    "to": "  if (false) {",
+    "why": "書いたのに効かず、紐づかない作業単位が増える。書いた人からは効いているように見える"
+  },
+  {
+    "name": "ADK-134 プロジェクトが見つからなければ、外して起票する",
+    "file": "src/vendored/internal/adapters/trackerLinear.js",
+    "from": "    if (found.length !== 1) {",
+    "to": "    if (found.length === 0) return (this.#projectId = null);\n    if (found.length !== 1) {",
+    "why": "紐づかない作業単位が増え続け、書いた人からは効いているように見える"
   }
 ]

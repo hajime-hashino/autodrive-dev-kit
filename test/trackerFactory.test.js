@@ -405,3 +405,47 @@ test("ID も --repo も無ければ、起点の構成で組み立てる", async 
 
   assert.deepEqual(await askedBy(tracker, "ADW-3"), ["repos/o/work/issues/3"]);
 });
+
+// ------------------------------------------------------------ プロジェクト（ADK-134）
+
+// **書いたのに効かないと、書いた人からは効いているように見える。**
+test("linear 以外で tracker.project が書かれていれば、組み立てずに止まる", () => {
+  const root = project((c) => ({ ...asGithub(c), tracker: { prefix: "AIEP", project: "認証" } }));
+
+  const { tracker, error } = createTracker(root, { GH_TOKEN: "w" }, slug);
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /tracker\.project.*linear/);
+});
+
+test("tracker.project が名前でなければ、構成の誤りとして止まる", () => {
+  const root = project((c) => ({ ...c, tracker: { prefix: null, project: "" } }));
+
+  const { tracker } = createTracker(root, { LINEAR_API_KEY: "k" }, slug);
+
+  assert.equal(tracker, null);
+});
+
+test("linear で tracker.project が書かれていれば、起票をそのプロジェクトへ紐づける", async () => {
+  const root = project((c) => ({ ...c, tracker: { prefix: null, project: "認証" } }));
+  const { tracker } = createTracker(root, { LINEAR_API_KEY: "k" }, slug);
+
+  const original = globalThis.fetch;
+  const sent = [];
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(String(init.body));
+    sent.push(body);
+    const data = body.query.includes("teams {")
+      ? { teams: { nodes: [{ id: "t", key: "AUT" }] } }
+      : body.query.includes("projects(")
+        ? { team: { projects: { nodes: [{ id: "p1", name: "認証", slugId: "auth" }] } } }
+        : { issueCreate: { issue: { identifier: "AUT-1", title: "", url: "", state: { type: "backlog" }, labels: { nodes: [] } } } };
+    return new Response(JSON.stringify({ data }), { status: 200 });
+  };
+  try {
+    await tracker.create({ title: "題", body: "本文" });
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal(sent.find((b) => b.query.includes("issueCreate"))?.variables.p, "p1");
+});

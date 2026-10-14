@@ -195,6 +195,16 @@ What `github-issues` lacks is **filled in by the adapter.** Details, and why, ar
 "tracker": { "prefix": "ADK", "previous": ["linear"] }
 ```
 
+### Filing under a Linear project
+
+Write the project in `tracker.project` (its name, slug, or ID). **Every work item filed from that repository goes under it.**
+
+```json
+"tracker": { "prefix": null, "project": "Payments" }
+```
+
+If the project is not found, or several share the name, filing stops and lists the candidates; it does not file without the project. It is read only with `linear`. **With another Tracker, it stops instead of ignoring it.** Why this is a setting and not an option on `file-work-item` is in ADR 0014.
+
 ### Which Tracker an operation goes to
 
 In a working directory that holds several repositories, each repository can keep its work items in a different place. **`begin` and `tracker` pick the Tracker from the operation's target, not from the starting directory** (AUT-278).

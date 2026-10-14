@@ -102,7 +102,7 @@ export function suggestPrefix(repoName) {
  *   version: 1,
  *   language: "ja" | "en",
  *   ports: Record<PortName, string>,
- *   tracker: { prefix: string | null, previous?: string[] },
+ *   tracker: { prefix: string | null, previous?: string[], project?: string },
  *   app: {
  *     screen: "yes" | "no" | "unknown",
  *     credentials: AppCredential[],
@@ -371,6 +371,20 @@ export function readConfig(root) {
   }
   const previous = rawPrevious ?? [];
 
+  // **起票する作業単位を紐づける先**（ADK-134）。リポジトリごとに決まり、作業単位ごとには
+  // 変えないため、ポートの語彙ではなくここに置く（ADR 0014）。**解釈するのはアダプタだけ**で、
+  // ここでは形しか見ない。
+  const rawProject = raw.tracker?.project;
+  if (rawProject !== undefined && (typeof rawProject !== "string" || rawProject.trim() === "")) {
+    return {
+      config: null,
+      error:
+        `tracker.project in ${CONFIG_FILE} is not a name (${JSON.stringify(rawProject)}). ` +
+        "**Write the name, slug, or ID of the project to file work items under**",
+    };
+  }
+  const project = typeof rawProject === "string" ? rawProject.trim() : null;
+
   const app = readAppCredentials(raw.app?.credentials);
   if (app.error !== null) return { config: null, error: app.error };
 
@@ -387,7 +401,11 @@ export function readConfig(root) {
       language,
       ports,
       // **無ければ書かない。** 差し替えたことの無い構成に、空の項目を増やさない。
-      tracker: { prefix, ...(previous.length > 0 ? { previous } : {}) },
+      tracker: {
+        prefix,
+        ...(previous.length > 0 ? { previous } : {}),
+        ...(project !== null ? { project } : {}),
+      },
       app: {
         screen,
         credentials: app.credentials,
