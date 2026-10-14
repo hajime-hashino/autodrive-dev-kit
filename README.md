@@ -330,4 +330,6 @@ CI needs two secrets: `AUTODRIVE_CI_TOKEN` and the Tracker credential.
 | `linear` | `LINEAR_API_KEY` |
 | `github-issues` | `GH_TOKEN` (add `Issues: Read and write`; set `AUTODRIVE_TRACKER_TOKEN` only if you want a separate one) |
 
+With `github-issues`, the checks read Issues with `AUTODRIVE_CI_TOKEN`, so add `Issues: Read` to it. It is not `GH_TOKEN`: **the side that checks is not given a key that can write.**
+
 With `github-issues`, `autodrive.json` needs `tracker.prefix` — the 2-4 characters that lead each work item ID, as in `AIEP-123` (ADR 0013). **`init` asks for it**, suggesting one derived from the repository name; press Enter to take the suggestion.

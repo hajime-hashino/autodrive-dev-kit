@@ -557,8 +557,8 @@
   {
     "name": "AUT-207 起点を渡さず、登録先からだけ探す",
     "file": "src/vendored/internal/main.js",
-    "from": "scope, root: resolve(values.root) };",
-    "to": "scope };",
+    "from": "    scope,\n    root: resolve(values.root),\n",
+    "to": "    scope,\n",
     "why": "${CLAUDE_PROJECT_DIR} が解決できず、実在するフックを無いと言う"
   },
   {
@@ -986,5 +986,12 @@
     "from": "value === undefined ? \"unset\" : value === \"\" ? \"empty\" : \"set\"",
     "to": "value === undefined || value === \"\" ? \"unset\" : \"set\"",
     "why": ".env を写して残った空文字が、既定に落ちないことに気づけない"
+  },
+  {
+    "name": "AUT-277 差し替える前の Tracker を照合先に加えない",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "[current, ...(config?.tracker.previous ?? [])]",
+    "to": "[current]",
+    "why": "差し替える前の作業単位を指す記録が、すべて「実在しない」になり判定が落ちる"
   }
 ]

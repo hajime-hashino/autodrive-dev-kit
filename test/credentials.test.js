@@ -361,9 +361,22 @@ test("判定用の鍵は、いまも別である", () => {
 
   const ci = credentialsFor(usingGithubIssues()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
   assert.ok(ci?.note?.includes("Do not share GH_TOKEN"), ci?.note);
-  // **Issues の権限は、こちらへ付かない。** 読むだけの鍵である。
-  const permissions = (ci?.needs ?? []).map((n) => n.permission);
-  assert.equal(permissions.includes("Issues"), false, permissions.join(", "));
+  // **書ける権限は、こちらへ付かない。** 読むだけの鍵である。
+  //
+  // 以前は「Issues の権限が付かない」で確かめていた。判定が記録を作業単位と
+  // 照合するため、**Issues を読む権限は要る**ようになった（AUT-277）。守りたいのは
+  // 権限の名前ではなく、書けないことである。
+  const levels = (ci?.needs ?? []).map((n) => `${n.permission}: ${n.level}`);
+  assert.ok(levels.includes("Issues: Read"), levels.join(", "));
+  assert.equal(levels.some((l) => l.endsWith("write")), false, levels.join(", "));
+});
+
+// **差し替える前の Tracker も、判定の照合に使う**（AUT-277）。資格情報が
+// テンプレートから消えると、判定が黙って落ちる。
+test("tracker.previous の資格情報も載せる", () => {
+  const config = usingGithubIssues();
+  const names = credentialsFor({ ...config, tracker: { ...config.tracker, previous: ["linear"] } }).map((c) => c.name);
+  assert.ok(names.includes("LINEAR_API_KEY"), names.join(", "));
 });
 
 // **Linear を使う構成は、変わらないこと。**

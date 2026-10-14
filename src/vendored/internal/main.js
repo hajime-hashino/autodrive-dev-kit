@@ -14,7 +14,7 @@ import { CHECKS, hookRegistered } from "./checks.js";
 
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
 import { createRepoApi } from "./repoApi.js";
-import { createTracker } from "./ports/trackerFactory.js";
+import { createJudgingTracker } from "./ports/trackerFactory.js";
 import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
 import { describe as describeTracked, forbidden } from "./tracked.js";
@@ -170,12 +170,24 @@ export async function run(argv) {
 
   const { events, broken } = loadEvents(repos);
   const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
-  // **構成に書かれた実装で組み立てる。** 組み立てられなければ null のまま進み、
-  // 判定はその旨を観測として出す（判定できないことを、通過にしない）。
-  const { tracker } = createTracker(values.root);
+  // **リポジトリごとの構成で組み立てる。** 起点の1つだけで照合すると、他の
+  // リポジトリの作業単位と、差し替える前の作業単位を指す記録が「実在しない」に
+  // なる（AUT-277）。組み立てられなければ null のまま進み、判定はその理由を
+  // 観測として出す（判定できないことを、通過にしない）。
+  const judging = createJudgingTracker(repos);
   // **起点も渡す。** 登録されたフックの指す先を、起点からも探すため（AUT-207）。
   /** @type {import("./checks.js").CheckInput} */
-  const input = { repos, events, broken, api, tracker, scope, root: resolve(values.root) };
+  const input = {
+    repos,
+    events,
+    broken,
+    api,
+    tracker: judging.tracker,
+    trackerError: judging.error,
+    trackerSources: judging.sources,
+    scope,
+    root: resolve(values.root),
+  };
 
   if (values.enact !== undefined) return enact(values.enact, values.root, repos);
   if (values.substitute !== undefined) {

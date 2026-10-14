@@ -189,6 +189,12 @@ Decided by `ports.tracker` in `autodrive.json`. **Callers do not know implementa
 
 What `github-issues` lacks is **filled in by the adapter.** Details, and why, are in ADR 0013.
 
+**When switching implementations, write the earlier one in `tracker.previous`.** Records already written point at the earlier work item IDs, and `invariants` matches them against it. It is used only for matching; nothing is filed there.
+
+```json
+"tracker": { "prefix": "ADK", "previous": ["linear"] }
+```
+
 **For both, moving to done is left to the integration.** On GitHub, writing `Closes #<number>` in the body of the submission closes it on integration. **A prefixed ID does not close it** (GitHub reads the number).
 
 ## `invariants`

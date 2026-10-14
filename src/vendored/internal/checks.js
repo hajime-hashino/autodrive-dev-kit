@@ -26,7 +26,7 @@ import {
 
 /** @typedef {import("./repos.js").Repo} Repo */
 /** @typedef {import("./repoApi.js").RepoApi} RepoApi */
-/** @typedef {import("./ports/tracker.js").TrackerPort} TrackerPort */
+/** @typedef {import("./ports/tracker.js").TrackerReader} TrackerReader */
 // **他のファイルにある型は、引いてこないと使えない。** 引かずに名前だけ書いても
 // 解決されず、**書いた型が効いていない状態になる**（型検査を入れて判明。AUT-226）。
 /** @typedef {import("./telemetry.js").TelemetryEvent} TelemetryEvent */
@@ -37,7 +37,7 @@ import {
  * **`root` は、登録された仕掛けの指す先を解決するために要る**（AUT-207）。
  * 既定値だけを置いて型に書かないと、`null` 型として起き、呼び出し側が落ちる。
  *
- * @typedef {{ repos: Repo[], events: TelemetryEvent[], broken: string[], api: RepoApi, tracker: TrackerPort | null, scope: Scope, root?: string | null }} CheckInput
+ * @typedef {{ repos: Repo[], events: TelemetryEvent[], broken: string[], api: RepoApi, tracker: TrackerReader | null, trackerError?: string | null, trackerSources?: string[], scope: Scope, root?: string | null }} CheckInput
  */
 function resultFor(key) {
   const invariant = INVARIANTS.find((i) => i.key === key);
@@ -322,7 +322,17 @@ function hasValue(event, attr) {
 }
 
 /** @param {CheckInput} input */
-const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope, tracker, api, root = null }) => {
+const checkTelemetryRecorded = async ({
+  repos,
+  events: allEvents,
+  broken,
+  scope,
+  tracker,
+  trackerError = null,
+  trackerSources = [],
+  api,
+  root = null,
+}) => {
   const r = resultFor("telemetry_recorded");
 
   if (allEvents.length === 0) {
@@ -426,10 +436,16 @@ const checkTelemetryRecorded = async ({ repos, events: allEvents, broken, scope,
 
   if (scope === "cross") {
     if (tracker === null) {
-      r.observe("No Tracker credentials, so records cannot be matched to work items (LINEAR_API_KEY not set)");
+      // **組み立てられなかった理由を、そのまま出す。** 資格情報が無いのか、構成が
+      // 欠けているのかで、人がやることが違う。
+      r.observe(
+        `Records cannot be matched to work items: ${trackerError ?? "No Tracker credentials (LINEAR_API_KEY not set)"}`,
+      );
       r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
       return r.conclude(UNSUBSTITUTED);
     }
+    // **どこと照合したかを出す。** 照合先が欠けていても、件数だけでは気づけない。
+    if (trackerSources.length > 0) r.observe(`Records are matched against: ${trackerSources.join(", ")}`);
     try {
       if (!(await crossCheckTracker(r, allEvents, tracker, repos, api))) {
         return r.conclude(UNSUBSTITUTED);

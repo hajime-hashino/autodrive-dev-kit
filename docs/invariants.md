@@ -224,6 +224,15 @@ What can be judged reliably is the reverse direction: **whether the work items r
 
 The last is not made a failure because this information alone cannot tell whether there was no work or the records went to another work item. Treating what cannot be told apart as a failure dilutes what failure means.
 
+**Records are matched against the Tracker of every repository judged, not only the starting one** (AUT-277). With `github-issues`, work items live in the Issues of each repository, so matching against the starting repository alone would say that every record for another repository points at nothing. Implementations listed in `tracker.previous` in `autodrive.json` are added too: records written before switching point at the earlier work item IDs.
+
+| What is matched against | Credential used |
+|---|---|
+| `linear` (once, however many repositories use it) | `LINEAR_API_KEY` |
+| `github-issues`, for each repository | `AUTODRIVE_CI_TOKEN` (`Issues: Read`). **A key that can write is not used for checking** |
+
+**If any of them cannot be assembled, nothing is matched** and the judgment is `UNSUBSTITUTED` with the reason. A list with a source missing says that existing work items do not exist. The sources matched against are printed as an observation.
+
 ### Also looking at the state of work items themselves (`cross` only)
 
 **The harness no longer has a mechanism to complete work items.** The Tracker–Repo integration moves them (ADR 0007). **So a place is needed to notice when it is not working.** What you ride on stops silently when it stops.

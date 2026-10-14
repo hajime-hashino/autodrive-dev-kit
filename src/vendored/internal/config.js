@@ -102,7 +102,7 @@ export function suggestPrefix(repoName) {
  *   version: 1,
  *   language: "ja" | "en",
  *   ports: Record<PortName, string>,
- *   tracker: { prefix: string | null },
+ *   tracker: { prefix: string | null, previous?: string[] },
  *   app: {
  *     screen: "yes" | "no" | "unknown",
  *     credentials: AppCredential[],
@@ -351,6 +351,26 @@ export function readConfig(root) {
   }
   const prefix = typeof rawPrefix === "string" ? rawPrefix : null;
 
+  // **以前の実装は、照合にだけ使う**（AUT-277）。実装を差し替えても、それまでの
+  // 記録は以前の作業単位IDを指している。照合先から消えると、判定はそれらを
+  // 「実在しない作業単位を指す記録」として失敗にする。
+  //
+  // **知らない名前は止める。** 書いたのに照合されないと、判定が落ちた理由が
+  // 結びつかない。
+  const rawPrevious = raw.tracker?.previous;
+  if (
+    rawPrevious !== undefined &&
+    (!Array.isArray(rawPrevious) || rawPrevious.some((p) => !PORT_CHOICES.tracker.includes(p)))
+  ) {
+    return {
+      config: null,
+      error:
+        `tracker.previous in ${CONFIG_FILE} is not a list of Tracker implementations (${JSON.stringify(rawPrevious)}). ` +
+        `**Write the implementations used before switching**, from: ${PORT_CHOICES.tracker.join(", ")}`,
+    };
+  }
+  const previous = rawPrevious ?? [];
+
   const app = readAppCredentials(raw.app?.credentials);
   if (app.error !== null) return { config: null, error: app.error };
 
@@ -366,7 +386,8 @@ export function readConfig(root) {
       version: 1,
       language,
       ports,
-      tracker: { prefix },
+      // **無ければ書かない。** 差し替えたことの無い構成に、空の項目を増やさない。
+      tracker: { prefix, ...(previous.length > 0 ? { previous } : {}) },
       app: {
         screen,
         credentials: app.credentials,
