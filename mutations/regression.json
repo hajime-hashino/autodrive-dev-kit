@@ -663,8 +663,8 @@
   {
     "name": "AUT-234 構成を読まず、linear で組み立てる",
     "file": "src/vendored/internal/ports/trackerFactory.js",
-    "from": "  const implementation = config?.ports.tracker ?? \"linear\";",
-    "to": "  const implementation = \"linear\";",
+    "from": "  const implementation = override ?? config?.ports.tracker ?? \"linear\";",
+    "to": "  const implementation = override ?? \"linear\";",
     "why": "ports.tracker が読まれない状態に戻る。選んだつもりで選べていない"
   },
   {
@@ -993,5 +993,12 @@
     "from": "[current, ...(config?.tracker.previous ?? [])]",
     "to": "[current]",
     "why": "差し替える前の作業単位を指す記録が、すべて「実在しない」になり判定が落ちる"
+  },
+  {
+    "name": "AUT-278 作業単位IDの接頭辞で、対象リポジトリの Tracker を選ばない",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "    if (owner !== undefined) return at(owner.repo);",
+    "to": "    if (false) return at(owner.repo);",
+    "why": "作業場の起点の Issues を探し、別のリポジトリの作業単位が見つからない"
   }
 ]

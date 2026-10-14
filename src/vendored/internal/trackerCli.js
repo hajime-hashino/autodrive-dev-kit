@@ -11,7 +11,7 @@ import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createTracker } from "./ports/trackerFactory.js";
+import { createTrackerAt } from "./ports/trackerFactory.js";
 import { REVISABLE_STATES, isRevisable, isWorkItemState } from "./ports/tracker.js";
 
 import { STATE_DIR, defaultRoot, resolveWorkItem } from "./workItem.js";
@@ -19,7 +19,7 @@ import { STATE_DIR, defaultRoot, resolveWorkItem } from "./workItem.js";
 const USAGE = `Handle work items
 
   tracker get-work-item [<ID>]
-  tracker file-work-item --title <title> --body <body>
+  tracker file-work-item --title <title> --body <body> [--repo <where to file it>]
   tracker advance-status <ID> --to <state> [--repo <target repository>]
   tracker append-to-work-log [<ID>] --text <text>   Without an ID, to the work item currently started
   tracker edit-work-item-body <ID> --body <body>
@@ -29,8 +29,12 @@ const USAGE = `Handle work items
   work starts are made with append-to-work-log.
   --repo is required when advancing to started. It is where records are written.
 
-Credentials are read from the environment variable LINEAR_API_KEY. If there are several targets,
-specify one with AUTODRIVE_TRACKER_TEAM.
+Which Tracker is used follows autodrive.json. With a work item ID, the repository whose
+tracker.prefix matches it decides; an ID that matches none is taken as a Linear one. Without
+an ID, --repo decides (otherwise the starting directory).
+
+Credentials: LINEAR_API_KEY for Linear (AUTODRIVE_TRACKER_TEAM if there are several targets),
+GH_TOKEN or AUTODRIVE_TRACKER_TOKEN for GitHub Issues.
 
 The Japanese names of earlier versions (作業単位を起票する, 作業ログを追記する, ...) are still accepted.`;
 
@@ -206,12 +210,45 @@ async function dispatch(
   return { output: `Advanced ${item.id} to ${target}${note}`, code: 0 };
 }
 
+/**
+ * 操作の対象を、組み立てる前に読む（AUT-278）。
+ *
+ * **作業ログは ID を省ける。** そのときは書く先と同じ解決の仕方で引く。引いた
+ * ID とは別の Tracker に書くと、書いた先と記録がずれる。
+ *
+ * 読めない引数は、ここでは咎めない。実行の側が使い方を出す。
+ *
+ * @returns {{ id: string | null, repo: string | null }}
+ */
+export function targetOf(argv, root) {
+  const given = argv[0] ?? "";
+  const operation = OPERATIONS[given] ?? OPERATIONS[RENAMED[given] ?? ""];
+  try {
+    const { values, positionals } = parseArgs({
+      args: argv.slice(1),
+      options: {
+        title: { type: "string" },
+        body: { type: "string" },
+        to: { type: "string" },
+        repo: { type: "string" },
+        text: { type: "string" },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    const id = positionals[0] ?? (operation === "note" ? resolveWorkItem(root).item?.workItemId : undefined);
+    return { id: id ?? null, repo: values.repo ?? null };
+  } catch {
+    return { id: null, repo: null };
+  }
+}
+
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
   const root = defaultRoot();
   const argv = process.argv.slice(2);
-  // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
-  const { tracker, error } = createTracker(root);
+  // **対象の作業単位を持つ Tracker で組み立てる**（AUT-278）。実装名をここに書かない（定義§16）。
+  const { tracker, error } = createTrackerAt(root, targetOf(argv, root));
   if (tracker === null && OPERATIONS[argv[0] ?? ""] !== undefined) {
     console.error(error ?? "Cannot build the Tracker");
     process.exit(2);

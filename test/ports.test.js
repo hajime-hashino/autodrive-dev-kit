@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { run as telemetryRun } from "../src/vendored/internal/telemetryCli.js";
-import { run as trackerRun } from "../src/vendored/internal/trackerCli.js";
+import { run as trackerRun, targetOf as trackerTargetOf } from "../src/vendored/internal/trackerCli.js";
+import { targetOf as beginTargetOf } from "../src/vendored/internal/beginCli.js";
 import { tempDir } from "./helpers/tmp.js";
 
 
@@ -410,4 +411,43 @@ test("使い方に、本文を直す操作と着手前の制限が出る", async
 
   assert.match(output, /edit-work-item-body/);
   assert.match(output, /before work starts/, output);
+});
+
+// ------------------------------------------------------------ 操作の対象を読む（AUT-278）
+
+test("tracker：ID のある操作は、その ID を対象にする", () => {
+  assert.deepEqual(trackerTargetOf(["advance-status", "ADK-3", "--to", "done"], tempDir("autodrive-target-")), {
+    id: "ADK-3",
+    repo: null,
+  });
+});
+
+test("tracker：起票は --repo を対象にする", () => {
+  assert.deepEqual(
+    trackerTargetOf(["file-work-item", "--title", "t", "--body", "b", "--repo", "kit"], tempDir("autodrive-target-")),
+    { id: null, repo: "kit" },
+  );
+});
+
+// **書く先と同じ解決の仕方で引く。** 別の Tracker に書くと、記録とずれる。
+test("tracker：ID を省いた作業ログは、着手中の作業単位を対象にする", () => {
+  const root = tempDir("autodrive-target-");
+  mkdirSync(join(root, "kit"), { recursive: true });
+  mkdirSync(join(root, ".autodrive"), { recursive: true });
+  writeFileSync(
+    join(root, ".autodrive", "current-work-item.json"),
+    JSON.stringify({ work_item_id: "ADK-9", repo: "kit" }),
+    "utf8",
+  );
+
+  assert.deepEqual(trackerTargetOf(["append-to-work-log", "--text", "x"], root), { id: "ADK-9", repo: null });
+});
+
+test("begin：作業単位IDと対象リポジトリを読む", () => {
+  assert.deepEqual(beginTargetOf(["ADK-3", "--repo", "kit"]), { id: "ADK-3", repo: "kit" });
+});
+
+test("読めない引数は咎めず、対象無しとして返す（使い方は実行の側が出す）", () => {
+  assert.deepEqual(beginTargetOf(["--nope"]), { id: null, repo: null });
+  assert.deepEqual(trackerTargetOf(["get-work-item", "--nope"], tempDir("autodrive-target-")), { id: null, repo: null });
 });
