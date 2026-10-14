@@ -195,6 +195,18 @@ What `github-issues` lacks is **filled in by the adapter.** Details, and why, ar
 "tracker": { "prefix": "ADK", "previous": ["linear"] }
 ```
 
+### Which Tracker an operation goes to
+
+In a working directory that holds several repositories, each repository can keep its work items in a different place. **`begin` and `tracker` pick the Tracker from the operation's target, not from the starting directory** (AUT-278).
+
+| What the operation has | Tracker used |
+|---|---|
+| A work item ID | The repository whose `tracker.prefix` matches it. **An ID that matches none is taken as a Linear one** (used if any repository uses or used `linear`) |
+| No ID, but `--repo` (filing) | That repository's |
+| Neither | The starting directory's |
+
+`append-to-work-log` without an ID resolves the work item the same way records do, then follows the first row. **If none of these can decide, it stops and says so**; it does not fall back to the starting directory and then report "not found."
+
 **For both, moving to done is left to the integration.** On GitHub, writing `Closes #<number>` in the body of the submission closes it on integration. **A prefixed ID does not close it** (GitHub reads the number).
 
 ## `invariants`

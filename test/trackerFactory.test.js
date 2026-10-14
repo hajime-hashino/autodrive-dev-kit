@@ -9,11 +9,12 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { defaults, writeConfig } from "../src/vendored/internal/config.js";
-import { createJudgingTracker, createTracker } from "../src/vendored/internal/ports/trackerFactory.js";
+import { createJudgingTracker, createTracker, createTrackerAt } from "../src/vendored/internal/ports/trackerFactory.js";
 import { tempDir } from "./helpers/tmp.js";
 
 /** 構成を置いた起点。 */
@@ -289,4 +290,118 @@ test("tracker.previous に知らない実装が書かれていれば、構成の
 
   assert.equal(tracker, null);
   assert.match(error ?? "", /tracker\.previous/);
+});
+
+// ------------------------------------------------------------ 操作の対象から組み立てる（AUT-278）
+
+/**
+ * 複数のリポジトリを並べた作業場。**起点は作業場そのものであり、対象ではない。**
+ * 各リポジトリは origin を持つ（GitHub Issues の置き場所を読むため）。
+ */
+function workspace({ root = (c) => c, children = {} } = {}) {
+  const base = tempDir("autodrive-workspace-");
+  const init = (path, name, over) => {
+    mkdirSync(path, { recursive: true });
+    execFileSync("git", ["init", "-q", path]);
+    execFileSync("git", ["-C", path, "remote", "add", "origin", `git@github.com:o/${name}.git`]);
+    if (over !== null) writeConfig(path, over(defaults()));
+  };
+  init(base, "work", root);
+  for (const [name, over] of Object.entries(children)) init(join(base, name), name, over);
+  return base;
+}
+
+/** どこへ問い合わせたかを返す。 */
+async function askedBy(tracker, id) {
+  const original = globalThis.fetch;
+  const asked = [];
+  globalThis.fetch = async (url, init = {}) => {
+    asked.push(String(url).includes("linear") ? "linear" : String(url).replace("https://api.github.com/", ""));
+    if (String(url).includes("linear")) {
+      return new Response(JSON.stringify({ data: { issue: null } }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ number: 3, title: "", html_url: "", state: "open", labels: [] }), {
+      status: 200,
+    });
+  };
+  try {
+    await tracker.get(id);
+    return asked;
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+const both = { LINEAR_API_KEY: "k", GH_TOKEN: "w" };
+
+test("作業単位IDの接頭辞が一致するリポジトリの Tracker で組み立てる", async () => {
+  const root = workspace({ root: null, children: { kit: github("ADK"), play: github("AGP") } });
+
+  const { tracker, error } = createTrackerAt(root, { id: "AGP-3" }, both);
+
+  assert.equal(error, null);
+  assert.deepEqual(await askedBy(tracker, "AGP-3"), ["repos/o/play/issues/3"]);
+});
+
+// **起点の構成で組み立てると、起点の Issues を探して見つからない。** これが直したこと。
+test("起点が GitHub Issues でも、別のリポジトリの作業単位はそのリポジトリで探す", async () => {
+  const root = workspace({ root: github("ADW"), children: { kit: github("ADK") } });
+
+  const { tracker } = createTrackerAt(root, { id: "ADK-3" }, both);
+
+  assert.deepEqual(await askedBy(tracker, "ADK-3"), ["repos/o/kit/issues/3"]);
+});
+
+test("接頭辞に一致しない ID は、起点が linear ならそのまま linear で扱う", () => {
+  const root = workspace({ root: null, children: { kit: github("ADK") } });
+
+  const { implementation, error } = createTrackerAt(root, { id: "AUT-5" }, both);
+
+  assert.equal(error, null);
+  assert.equal(implementation, "linear");
+});
+
+// **差し替える前の作業単位を閉じる道を残す。**
+test("起点が切り替わっていても、linear を使っていた構成があれば linear で扱う", () => {
+  const root = workspace({ root: github("ADW", ["linear"]) });
+
+  const { implementation, error } = createTrackerAt(root, { id: "AUT-5" }, both);
+
+  assert.equal(error, null);
+  assert.equal(implementation, "linear");
+});
+
+test("どのリポジトリの作業単位か決められなければ、起点に倒さず止まる", () => {
+  const root = workspace({ root: github("ADW"), children: { kit: github("ADK") } });
+
+  const { tracker, error } = createTrackerAt(root, { id: "AUT-5" }, both);
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /AUT-5/);
+  assert.match(error ?? "", /ADW, ADK|ADK, ADW/);
+});
+
+test("ID が無ければ、--repo のリポジトリへ起票する", async () => {
+  const root = workspace({ root: github("ADW"), children: { kit: github("ADK") } });
+
+  const { tracker } = createTrackerAt(root, { repo: "kit" }, both);
+
+  assert.deepEqual(await askedBy(tracker, "ADK-3"), ["repos/o/kit/issues/3"]);
+});
+
+test("--repo が作業場に無ければ、そう言って止まる", () => {
+  const root = workspace();
+
+  const { tracker, error } = createTrackerAt(root, { repo: "nowhere" }, both);
+
+  assert.equal(tracker, null);
+  assert.match(error ?? "", /nowhere/);
+});
+
+test("ID も --repo も無ければ、起点の構成で組み立てる", async () => {
+  const root = workspace({ root: github("ADW"), children: { kit: github("ADK") } });
+
+  const { tracker } = createTrackerAt(root, {}, both);
+
+  assert.deepEqual(await askedBy(tracker, "ADW-3"), ["repos/o/work/issues/3"]);
 });

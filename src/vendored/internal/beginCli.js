@@ -24,7 +24,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { createTracker } from "./ports/trackerFactory.js";
+import { createTrackerAt } from "./ports/trackerFactory.js";
 import { discoverRepos } from "./repos.js";
 import { describeOthers, detect, strandedFiles } from "./strandedTelemetry.js";
 import { defaultRoot, rememberBranch } from "./workItem.js";
@@ -50,6 +50,8 @@ is integrated (ADR 0007).
 
 If the branch name is omitted, it is feature/<work item ID> (feature/aut-99 for AUT-99).
 A branch started earlier under the old name (aut-99) is returned to instead.
+Which Tracker is used is decided by the work item ID: the repository whose tracker.prefix
+in autodrive.json matches it. An ID that matches none is taken as a Linear one.
 Tracker credentials follow ports.tracker in autodrive.json (LINEAR_API_KEY for Linear,
 GH_TOKEN or AUTODRIVE_TRACKER_TOKEN for GitHub Issues).`;
 
@@ -449,12 +451,32 @@ export async function run(
   };
 }
 
+/**
+ * 着手する作業単位と対象リポジトリを、組み立てる前に読む（AUT-278）。
+ * 読めない引数は、ここでは咎めない。`run` が使い方を出す。
+ *
+ * @returns {{ id: string | null, repo: string | null }}
+ */
+export function targetOf(argv) {
+  try {
+    const { values, positionals } = parseArgs({
+      args: argv,
+      options: { repo: { type: "string" }, branch: { type: "string" } },
+      allowPositionals: true,
+      strict: true,
+    });
+    return { id: positionals[0] ?? null, repo: values.repo ?? null };
+  } catch {
+    return { id: null, repo: null };
+  }
+}
+
 const invokedDirectly = process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1]);
 if (invokedDirectly) {
   const root = defaultRoot();
   const argv = process.argv.slice(2);
-  // **構成に書かれた実装で組み立てる。** 実装名をここに書かない（定義§16）。
-  const { tracker, error } = createTracker(root);
+  // **対象の作業単位を持つ Tracker で組み立てる**（AUT-278）。実装名をここに書かない（定義§16）。
+  const { tracker, error } = createTrackerAt(root, targetOf(argv));
   if (tracker === null && argv.length > 0) {
     console.error(error ?? "Cannot build the Tracker");
     process.exit(2);
