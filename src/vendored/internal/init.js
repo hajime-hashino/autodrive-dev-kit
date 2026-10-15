@@ -116,6 +116,59 @@ function seeded(root , path , body , out) {
 }
 
 /**
+ * 無視する対象の一覧に、要る行を足す（ADK-136）。
+ *
+ * ## なぜ播種では足りないか
+ *
+ * `.gitignore` は、ほとんどのリポジトリに既にある。播種（あれば触らない）にすると、
+ * **既にあるリポジトリには1行も届かない。** 資格情報（`.env`）、着手中の印
+ * （`.autodrive/`）、コアダンプ（`core`）が追跡されうるまま残る。`update` も
+ * 播種には触らないので、後から直らない。
+ *
+ * ## 足し方
+ *
+ * - テンプレートのうち、コメントと空行を除いた行を「要る行」とする
+ * - **既にある行には触れない。** 無い行だけを、末尾に足す
+ * - **打ち消し（`!` で始まる行）は、打ち消す対象より後ろにないと効かない。** 行を
+ *   足すときは、テンプレートでその後ろにある打ち消しも、既にあっても末尾に置き直す。
+ *   置き直さないと、`!.env.example` だけがある所へ `.env.*` を足したとき、
+ *   `.env.example` まで無視される
+ *
+ * 書き方が違うだけで同じ意味の行（`/.autodrive/` など）は、別の行として足す。
+ * 意味を解釈して省くより、重なっても害の無い側に倒す。
+ *
+ * @param {string} existing
+ * @param {string} body テンプレート
+ * @returns {{ text: string, added: string[] }}
+ */
+export function mergeIgnore(existing, body) {
+  const required = body
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l !== "" && !l.startsWith("#"));
+  const present = new Set(existing.split("\n").map((l) => l.trim()));
+
+  const added = [];
+  let adding = false;
+  for (const line of required) {
+    if (!present.has(line)) {
+      added.push(line);
+      adding = true;
+    } else if (adding && line.startsWith("!")) {
+      added.push(line);
+    }
+  }
+  if (added.length === 0) return { text: existing, added };
+
+  const head = existing === "" || existing.endsWith("\n") ? existing : `${existing}\n`;
+  const text =
+    `${head}\n` +
+    "# Needed by autodrive-dev-kit (added by apply / update). Lines already here were left as they were.\n" +
+    `${added.join("\n")}\n`;
+  return { text, added };
+}
+
+/**
  * テンプレートを読む。`{{KIT}}` は複製先に置き換える。
  *
  * **テンプレートをコードの中に文字列で持たない。** ファイルにしておくと、アプリの種別や
@@ -525,7 +578,15 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   // **品質で守ることは、会話ではなくファイルに残す。** 立ち上げで決めても、
   // 置き場が無ければ次の作業単位では読めない（AUT-210）。
   seeded(root, "docs/quality.md", template(kitRoot, "quality.md"), placed);
-  seeded(root, ".gitignore", template(kitRoot, "gitignore"), placed);
+  // **既にあれば、要る行だけを足す**（ADK-136）。播種では、既にあるリポジトリに届かない。
+  const ignorePath = join(root, ".gitignore");
+  if (existsSync(ignorePath)) {
+    const { text, added } = mergeIgnore(readFileSync(ignorePath, "utf8"), template(kitRoot, "gitignore"));
+    if (added.length > 0) write(ignorePath, text);
+    placed.push({ path: ".gitignore", placement: added.length > 0 ? "merged" : "skipped" });
+  } else {
+    seeded(root, ".gitignore", template(kitRoot, "gitignore"), placed);
+  }
   // **README だけ置く。** 中身は追跡しないが、置き場所と、置いてはいけないものは
   // クローンした先にも残る必要がある。
   seeded(root, "notes/README.md", template(kitRoot, "notes/README.md"), placed);

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { init, mergeHook, vendor } from "../src/vendored/internal/init.js";
+import { mergeIgnore, init, mergeHook, vendor } from "../src/vendored/internal/init.js";
 import { delegateFor } from "../src/vendored/internal/cli.js";
 import { defaults } from "../src/vendored/internal/config.js";
 import { tempDir } from "./helpers/tmp.js";
@@ -400,4 +400,45 @@ test("付ける文書を決める手順が、what-why.md の節を指してい�
   assert.ok(whatWhy.includes("Turn into HTML before release"), "HTML にするかの欄が無い");
   // 前の版の形で決めたプロジェクトも、聞き直しの対象になる。
   assert.ok(rules.includes("does not point to `docs/guides/`"), "前の版の形で決めたところを拾っていない");
+});
+
+// ------------------------------------------------------------ 既にある .gitignore（ADK-136）
+
+const IGNORE = `# 説明
+.env
+.env.*
+!.env.example
+
+.autodrive/
+core
+`;
+
+test("既にある .gitignore には、無い行だけを末尾に足す。既にある行には触れない", () => {
+  const existing = "node_modules/\n.env\n";
+  const { text, added } = mergeIgnore(existing, IGNORE);
+
+  assert.deepEqual(added, [".env.*", "!.env.example", ".autodrive/", "core"]);
+  assert.ok(text.startsWith(existing), text);
+  assert.equal(text.split("\n").filter((l) => l === ".env").length, 1, text);
+});
+
+test("要る行が揃っていれば、何も変えない", () => {
+  const existing = ".env\n.env.*\n!.env.example\n.autodrive/\ncore\n";
+  assert.deepEqual(mergeIgnore(existing, IGNORE), { text: existing, added: [] });
+});
+
+// **打ち消しは、打ち消す対象より後ろにないと効かない。**
+test("行を足すときは、その後ろの打ち消しも末尾に置き直す", () => {
+  const { text } = mergeIgnore("!.env.example\n", IGNORE);
+  const lines = text.split("\n");
+
+  assert.ok(lines.lastIndexOf("!.env.example") > lines.indexOf(".env.*"), text);
+});
+
+// **足した行は、空行で分けて置く。** 既にある行と見分けられるようにする。
+test("末尾に改行が無くても、既にある行と足した行の間を空行で分ける", () => {
+  for (const existing of ["dist", "dist\n"]) {
+    const { text } = mergeIgnore(existing, IGNORE);
+    assert.ok(text.startsWith("dist\n\n# Needed by autodrive-dev-kit"), JSON.stringify(text));
+  }
 });

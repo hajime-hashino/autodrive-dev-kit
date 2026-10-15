@@ -1014,5 +1014,19 @@
     "from": "    if (found.length !== 1) {",
     "to": "    if (found.length === 0) return (this.#projectId = null);\n    if (found.length !== 1) {",
     "why": "紐づかない作業単位が増え続け、書いた人からは効いているように見える"
+  },
+  {
+    "name": "ADK-136 既にある .gitignore に、要る行を足さない",
+    "file": "src/vendored/internal/init.js",
+    "from": "  if (existsSync(ignorePath)) {",
+    "to": "  if (false) {",
+    "why": "既にあるリポジトリでは .env・.autodrive/・core が追跡されうるまま残る"
+  },
+  {
+    "name": "ADK-136 行を足すとき、後ろの打ち消しを置き直さない",
+    "file": "src/vendored/internal/init.js",
+    "from": "    } else if (adding && line.startsWith(\"!\")) {",
+    "to": "    } else if (false) {",
+    "why": ".env.* を末尾に足すと、それより前の !.env.example が効かなくなり、テンプレートまで無視される"
   }
 ]
