@@ -358,6 +358,13 @@ Add them to `app.credentials` in `autodrive.json` and **run the update**
 **Mark values that are not secrets** with `"secret": false` (such as an ID or a default). Unmarked values are replaced
 when they appear in a tool's output ("Secrets that appear in a tool's output are replaced").
 
+**A value that is not a secret can have a default** in `.env.example`, with `"default"`. It needs `"secret": false`:
+`.env.example` is tracked, so a secret's value would be shared.
+
+```json
+{ "name": "EXAMPLE_REGION", "why": "...", "lost": "...", "secret": false, "default": "default" }
+```
+
 **`why` and `lost` cannot be omitted.** With names alone, the human does not know what to go and get,
 and cannot judge how serious losing it would be. Omit them and `update` stops.
 

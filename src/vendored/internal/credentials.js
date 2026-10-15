@@ -17,7 +17,8 @@
  *   needs?: Array<{ permission: string, level: string, why: string, via: string }>,
  *   note?: string,
  *   ofApp?: boolean,
- *   secret?: boolean
+ *   secret?: boolean,
+ *   default?: string
  * }} Credential
  */
 
@@ -367,7 +368,8 @@ export function envExample(config) {
     // Repo と Tracker の両方が求める構成）。先頭の行にしか `#` を付けないと、残りが
     // 値の行として読まれ、写して作った `.env` が壊れる（#115）。
     if (c.note !== undefined) lines.push(...c.note.split("\n").map((l) => `# ${l.trim()}`), "#");
-    lines.push(`# If lost: ${c.lost}`, `${c.name}=`);
+    // **既定値は、アプリ自身のもので秘密でないものだけが持つ**（ADK-137。`readConfig` が確かめる）。
+    lines.push(`# If lost: ${c.lost}`, `${c.name}=${c.default ?? ""}`);
   }
   return `${lines.join("\n")}\n`;
 }

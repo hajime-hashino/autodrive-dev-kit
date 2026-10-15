@@ -6,13 +6,13 @@
  */
 
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { credentialsFor, envExample } from "../src/vendored/internal/credentials.js";
-import { NONE, PORT_CHOICES, PORT_NAMES, defaults } from "../src/vendored/internal/config.js";
+import { readConfig, NONE, PORT_CHOICES, PORT_NAMES, defaults } from "../src/vendored/internal/config.js";
 import { setup } from "../src/vendored/internal/setup.js";
 import { useRecommended } from "../src/vendored/internal/ports/interview.js";
 import { tempDir } from "./helpers/tmp.js";
@@ -403,4 +403,42 @@ test("どの構成でも、テンプレートの行はコメント・空行・�
       .filter((l) => l.trim() !== "" && !l.startsWith("#") && !/^[A-Z][A-Z0-9_]*=$/.test(l));
     assert.deepEqual(bad, [], JSON.stringify(ports));
   }
+});
+
+// ------------------------------------------------------------ アプリの資格情報の既定値（ADK-137）
+
+/** 構成を書き、読み直す。 */
+function readWith(credentials) {
+  const root = tempDir("autodrive-credentials-default-");
+  writeFileSync(
+    join(root, "autodrive.json"),
+    JSON.stringify({ version: 1, ports: {}, app: { credentials } }),
+    "utf8",
+  );
+  return readConfig(root);
+}
+
+test("秘密でないアプリの資格情報は、既定値を .env.example に書ける", () => {
+  const { config, error } = readWith([
+    { name: "EXAMPLE_REGION", why: "w", lost: "l", secret: false, default: "default" },
+    { name: "EXAMPLE_API_KEY", why: "w", lost: "l" },
+  ]);
+  assert.equal(error, null);
+
+  const lines = envExample(config).split("\n");
+  assert.ok(lines.includes("EXAMPLE_REGION=default"), lines.join("\n"));
+  assert.ok(lines.includes("EXAMPLE_API_KEY="), lines.join("\n"));
+});
+
+// **`.env.example` は追跡される。** 秘密の値を置くと、そのまま共有される。
+test("秘密のものに既定値は書けない", () => {
+  const { config, error } = readWith([{ name: "EXAMPLE_API_KEY", why: "w", lost: "l", default: "sk-123" }]);
+  assert.equal(config, null);
+  assert.match(error ?? "", /secret.*false/);
+});
+
+// **改行を含むと、写して作った .env で次の行が値の行として読まれる**（#115）。
+test("既定値は1行に限る", () => {
+  const { config } = readWith([{ name: "X", why: "w", lost: "l", secret: false, default: "a\nB=c" }]);
+  assert.equal(config, null);
 });

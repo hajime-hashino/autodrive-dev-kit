@@ -64,7 +64,7 @@ export const PORT_NAMES = Object.keys(PORT_CHOICES);
 
 /** @typedef {"tracker" | "repo" | "runner" | "sandbox" | "preview" | "telemetry" | "flag"} PortName */
 
-/** @typedef {{ name: string, why: string, lost: string, secret?: boolean }} AppCredential */
+/** @typedef {{ name: string, why: string, lost: string, secret?: boolean, default?: string }} AppCredential */
 
 /**
  * 作業単位IDの接頭辞。
@@ -169,7 +169,30 @@ function readAppCredentials(raw) {
         error: `${at}.secret in ${CONFIG_FILE} can only be false (${name}). Leave it out for a secret`,
       };
     }
-    credentials.push({ name, why: why.trim(), lost: lost.trim(), ...(secret === false ? { secret } : {}) });
+    // **秘密でないものだけ、既定値を書ける**（ADK-137）。`.env.example` は追跡される
+    // ファイルであり、秘密の値を置くと、そのまま共有される。**1行に収まるものに限る。**
+    // 改行を含むと、写して作った `.env` で次の行が値の行として読まれる（#115）。
+    const value = entry.default;
+    if (value !== undefined) {
+      if (secret !== false) {
+        return {
+          credentials: [],
+          error:
+            `${at}.default in ${CONFIG_FILE} needs "secret": false (${name}). ` +
+            "**.env.example is tracked, so a secret's value would be shared**",
+        };
+      }
+      if (typeof value !== "string" || /[\r\n]/.test(value)) {
+        return { credentials: [], error: `${at}.default in ${CONFIG_FILE} is not a one-line string (${name})` };
+      }
+    }
+    credentials.push({
+      name,
+      why: why.trim(),
+      lost: lost.trim(),
+      ...(secret === false ? { secret } : {}),
+      ...(value !== undefined ? { default: value } : {}),
+    });
   }
   return { credentials, error: null };
 }

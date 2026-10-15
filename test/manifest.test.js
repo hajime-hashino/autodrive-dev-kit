@@ -113,7 +113,8 @@ test("指紋が無ければ止めない。ただし確かめていないこと�
   const { edited, unchecked } = findEdits(root, plan("f.txt", "新しい\n"), null);
 
   assert.deepEqual(edited, []);
-  assert.deepEqual(unchecked, ["f.txt"]);
+  // **消える行は出せる**（ADK-137）。出さないと、差分を見るまで何が消えたか分からない。
+  assert.deepEqual(unchecked, [{ path: "f.txt", lost: ["手で変えた"] }]);
 });
 
 // ------------------------------------------------------------ 出す内容
@@ -134,9 +135,42 @@ test("長い場合は打ち切り、打ち切ったことを言う", () => {
 });
 
 test("確かめられなかったことは、上書きしたと併せて言う", () => {
-  const text = describeUnchecked(["a", "b"]);
+  const text = describeUnchecked([
+    { path: "a", lost: [] },
+    { path: "b", lost: [] },
+  ]);
   assert.ok(text.includes("(2)"));
   assert.ok(text.includes("Overwrote them"), "上書きしたことを言っていない");
+});
+
+// **ファイル名だけでは、差分を見るまで何が消えたか分からない**（ADK-137）。
+test("上書きで消えた行を出す", () => {
+  const text = describeUnchecked([{ path: "a.txt", lost: ["消えた行"] }]);
+  assert.ok(text.includes("消えた行"), text);
+});
+
+// **初めて入れる場合、そのファイルはプロジェクト自身のものである。**
+test("初めて入れる場合は、参照実装が置いたものではないと言う", () => {
+  const first = describeUnchecked([{ path: "a", lost: [] }], { adopting: true });
+  assert.ok(first.includes("this project's own files"), first);
+  assert.equal(first.includes("before this mechanism existed"), false, first);
+
+  const later = describeUnchecked([{ path: "a", lost: [] }]);
+  assert.ok(later.includes("before this mechanism existed"), later);
+});
+
+test(".env.example で消えた名前は、app.credentials に移せば残ると案内する", () => {
+  const text = describeUnchecked([
+    { path: ".env.example", lost: ["# アプリの鍵", "EXAMPLE_API_KEY=", "EXAMPLE_REGION=default"] },
+  ]);
+  assert.ok(text.includes("EXAMPLE_API_KEY, EXAMPLE_REGION"), text);
+  assert.ok(text.includes("app.credentials"), text);
+  assert.ok(text.includes('"default"'), text);
+});
+
+test("読めなかったファイルは、何が消えたか分からないと言う", () => {
+  const text = describeUnchecked([{ path: "a", lost: null }]);
+  assert.ok(text.includes("what was lost is unknown"), text);
 });
 
 // ------------------------------------------------------------ 通しで

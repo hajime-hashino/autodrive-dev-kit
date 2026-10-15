@@ -529,6 +529,10 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
     return { placed: [], todo: [], notes: [], version: null, code: 1, message: describeEdits(edited) };
   }
 
+  // **初めて入れるかを、入れ替える前に見ておく**（ADK-137）。既にあった管理下の
+  // ファイルが、参照実装の置いたものかプロジェクト自身のものかで、言うことが違う。
+  const adopting = !existsSync(join(root, VENDOR_DIR));
+
   // autodrive-dev-kit ------------------------------------------------------------------
   const version = vendor(root, kitRoot);
   placed.push({ path: `${VENDOR_DIR}/`, placement: "managed" });
@@ -664,7 +668,7 @@ export function init(root , kitRoot , config = null, inside = insideSandbox()) {
   todo.push(t("todo.start"));
 
   // **確かめられなかったことは黙らない。** 黙ると、確かめた顔になる。
-  const notes = unchecked.length > 0 ? [describeUnchecked(unchecked)] : [];
+  const notes = unchecked.length > 0 ? [describeUnchecked(unchecked, { adopting })] : [];
 
   // **置かなくなったものを、黙って残さない。** ポートを変えると、前の構成で置いた
   // ものが管理下から外れる（sandbox を devcontainer から外すと `.devcontainer/` が
