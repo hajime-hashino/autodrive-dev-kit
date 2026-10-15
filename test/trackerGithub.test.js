@@ -170,6 +170,7 @@ test("読み切れなければ、欠けた一覧を返さずに落ちる", async
 
 test("完了へ進めると、完了として閉じる", async () => {
   const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
     { payload: issue({ labels: [{ name: "state:started" }] }) }, // ラベルの読み出し
     { payload: {} }, // ラベルの削除
     { payload: issue({ state: "closed", state_reason: "completed" }) }, // 閉じる
@@ -190,6 +191,7 @@ test("完了へ進めると、完了として閉じる", async () => {
 
 test("取りやめへ進めると、やらないと決めた理由で閉じる", async () => {
   const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
     { payload: issue() },
     { payload: issue({ state: "closed", state_reason: "not_planned" }) },
     { payload: issue({ state: "closed", state_reason: "not_planned" }) },
@@ -204,6 +206,7 @@ test("取りやめへ進めると、やらないと決めた理由で閉じる",
 // **締め直しの経路を残す。** 閉じたものへ着手できないと、戻せなくなる。
 test("閉じた作業単位へ着手すると、開け直す", async () => {
   const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
     { payload: issue({ state: "closed", state_reason: "completed" }) }, // 開け直し
     { payload: issue() }, // ラベルの読み出し
     { payload: {} }, // ラベルの追加
@@ -219,6 +222,7 @@ test("閉じた作業単位へ着手すると、開け直す", async () => {
 // **ラベルを先に付ける。** 後にすると、状態だけ進んでラベルの無い作業単位が残る。
 test("着手のとき、対象リポジトリを状態より先に記す", async () => {
   const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
     { payload: issue() },
     { payload: {} },
     { payload: issue({ labels: [{ name: "repo:aiep-app" }] }) },
@@ -242,6 +246,7 @@ test("着手のとき、対象リポジトリを状態より先に記す", async
 // **間違ったラベルは、ラベルが無いより悪い。** 付け替えられること。
 test("対象リポジトリを付け替えると、古いものを消す", async () => {
   const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
     { payload: issue({ labels: [{ name: "repo:old" }] }) },
     { payload: {} },
     { payload: {} },
@@ -294,24 +299,31 @@ test("応答が読めなくても、失敗として返す", async () => {
 
 // **書き換えるだけ。状態は見ない。** 着手前に限る規則は呼び出し側が持つ。
 test("本文を書き換える要求を送る", async () => {
-  const { sent, fetchStub } = serving([{ payload: issue({ body: "直した本文" }) }]);
+  const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
+    { payload: issue({ body: "直した本文" }) },
+  ]);
 
   const view = await withFetch(fetchStub, () => tracker().revise("AIEP-123", "直した本文"));
 
-  assert.equal(sent[0].method, "PATCH");
-  assert.match(sent[0].url, /repos\/o\/r\/issues\/123$/);
-  assert.deepEqual(sent[0].body, { body: "直した本文" }, JSON.stringify(sent[0].body));
+  const patch = sent.find((x) => x.method === "PATCH");
+  assert.match(patch?.url ?? "", /repos\/o\/r\/issues\/123$/);
+  assert.deepEqual(patch?.body, { body: "直した本文" }, JSON.stringify(patch?.body));
   assert.equal(view.body, "直した本文");
 });
 
 // **状態は触らない。**
 test("本文を直すとき、開閉を触らない", async () => {
-  const { sent, fetchStub } = serving([{ payload: issue() }]);
+  const { sent, fetchStub } = serving([
+    { payload: issue() }, // Issue であることの確認（ADK-133）
+    { payload: issue() },
+  ]);
 
   await withFetch(fetchStub, () => tracker().revise("AIEP-123", "x"));
 
-  assert.equal(sent[0].body.state, undefined, JSON.stringify(sent[0].body));
-  assert.equal(sent[0].body.state_reason, undefined);
+  const patch = sent.find((x) => x.method === "PATCH");
+  assert.equal(patch?.body.state, undefined, JSON.stringify(patch?.body));
+  assert.equal(patch?.body.state_reason, undefined);
 });
 
 // **別の接頭辞の作業単位IDは、ここでも受け取らない。**
@@ -324,3 +336,33 @@ test("別の接頭辞では、本文を直さない", async () => {
   );
   assert.deepEqual(sent, [], "要求を送っている");
 });
+
+// --------------------------------------------------- 提出は作業単位ではない（ADK-133）
+
+const pull = (over = {}) => issue({ pull_request: { url: "https://api.github.com/repos/o/r/pulls/123" }, ...over });
+
+// **GitHub は Issue と提出で番号を共有する。** 提出の番号を渡されても、作業単位として読まない。
+test("提出の番号を引いても、作業単位として返さない", async () => {
+  const { fetchStub } = serving([{ payload: pull({ state: "closed" }) }]);
+
+  assert.equal(await withFetch(fetchStub, () => tracker().get("AIEP-123")), null);
+});
+
+// **提出を閉じたり、ラベルを付けたりしない。**
+for (const [what, run] of [
+  ["状態を進める", (t) => t.advance("AIEP-123", "done")],
+  ["対象リポジトリを記す", (t) => t.mark("AIEP-123", "r")],
+  ["本文を直す", (t) => t.revise("AIEP-123", "x")],
+  ["作業ログを書く", (t) => t.note("AIEP-123", "x")],
+]) {
+  test(`提出の番号では、${what}前に止まり、何も書かない`, async () => {
+    const { sent, fetchStub } = serving([{ payload: pull() }]);
+
+    await assert.rejects(withFetch(fetchStub, () => run(tracker())), /not found as a work item.*pull request/);
+    assert.deepEqual(
+      sent.filter((x) => x.method !== "GET").map((x) => [x.method, x.url]),
+      [],
+      "提出へ書き込んでいる",
+    );
+  });
+}
