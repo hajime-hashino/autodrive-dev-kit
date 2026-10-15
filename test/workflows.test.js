@@ -29,6 +29,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const KIT = new URL("..", import.meta.url).pathname;
 
@@ -104,7 +105,75 @@ test("判定の対象そのものが読めていること", () => {
 // **判定は依存を1つも使わない。** 参照実装は依存ゼロであり、node さえあれば走る。
 test("配る判定のワークフローが、パッケージ管理のキャッシュを試みない", () => {
   const body = readFileSync(join(KIT, "src", "templates", "invariants.yml"), "utf8");
-  assert.match(body, /package-manager-cache:\s*false/, "止めていない。lock ファイルのある先で落ちる");
+  // **すべてのジョブで止める。** ジョブが増えたとき、1つだけ止めていれば通る形にしない（ADK-143）。
+  const setups = body.match(/uses: actions\/setup-node@/g) ?? [];
+  const stopped = body.match(/package-manager-cache:\s*false/g) ?? [];
+  assert.ok(setups.length > 0, "setup-node が無い");
+  assert.equal(stopped.length, setups.length, "止めていないジョブがある。lock ファイルのある先で落ちる");
   // **止めた理由まで置く。** 消してよいものに見えると、次に消される。
   assert.match(body, /use no dependencies at all/, "なぜ止めているのかが無い");
+});
+
+// ------------------------------------------------------------ 横断の判定（ADK-143）
+
+/** 配るテンプレートの、横断のジョブの部分。 */
+function crossJob() {
+  const body = readFileSync(join(KIT, "src", "templates", "invariants.yml"), "utf8");
+  const start = body.indexOf("\n  cross:\n");
+  assert.ok(start >= 0, "横断のジョブが無い");
+  return body.slice(start);
+}
+
+// **信頼できる判定は、AI が触れない層で打つ**（定義§9）。
+test("配る CI が、横断の判定を打つ", () => {
+  assert.match(crossJob(), /invariants --root \. --scope cross/);
+});
+
+// **統合後の状態を見るものであり、PR で打つと AI の書いたコードが鍵付きで走る。**
+test("横断の判定は、PR では打たない", () => {
+  assert.match(crossJob(), /if: github\.event_name != 'pull_request'/);
+});
+
+// **CI の鍵は、そのジョブに要る分に絞る。**
+test("GitHub App のトークンには、読む権限だけを求める", () => {
+  const job = crossJob();
+  assert.match(job, /actions\/create-github-app-token@v3/);
+  assert.match(job, /client-id: \$\{\{ vars\.AUTODRIVE_APP_CLIENT_ID \}\}/);
+  const permissions = job.split("\n").filter((l) => /^\s*permission-/.test(l));
+  assert.ok(permissions.length > 0, "求める権限を絞っていない（書かなければ App の全権限になる）");
+  for (const line of permissions) assert.match(line, /:\s*read\s*$/, `読む以外の権限を求めている: ${line.trim()}`);
+});
+
+/** 判定を打つ段のスクリプトを取り出す。 */
+function crossScript() {
+  const job = crossJob();
+  const block = job.slice(job.indexOf("run: |") + "run: |".length).split("\n");
+  const lines = [];
+  for (const line of block.slice(1)) {
+    if (line.trim() !== "" && !line.startsWith("          ")) break;
+    lines.push(line.slice(10));
+  }
+  return lines.join("\n");
+}
+
+// **判定できないことを、通過にしない。** 鍵が無いまま緑になると、判定したと読まれる。
+test("判定の鍵が無ければ、設定の仕方を出して落ちる", () => {
+  const script = crossScript().replaceAll("{{KIT}}/invariants", "echo 判定した");
+  const run = (token) => {
+    try {
+      return { code: 0, out: execFileSync("bash", ["-c", script], { encoding: "utf8", env: { ...process.env, AUTODRIVE_CI_TOKEN: token } }) };
+    } catch (e) {
+      return { code: e.status, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
+    }
+  };
+
+  const without = run("");
+  assert.equal(without.code, 1, without.out);
+  assert.match(without.out, /AUTODRIVE_APP_CLIENT_ID/);
+  assert.match(without.out, /AUTODRIVE_CI_TOKEN/);
+  assert.doesNotMatch(without.out, /判定した/);
+
+  const withKey = run("t");
+  assert.equal(withKey.code, 0, withKey.out);
+  assert.match(withKey.out, /判定した/);
 });
