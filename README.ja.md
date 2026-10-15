@@ -81,7 +81,7 @@ autodrive-dev-kit init --language ja --tracker linear --preview cloudflare-worke
 
 `--prefix` は作業単位IDの接頭辞で、GitHub Issues のときだけ聞かれる。選択肢に無い値を渡すと、何も置かずに止まる。
 
-**言語の設定が効くのは、このセットアップの表示だけである。** 開発の会話は、AIが相手の言語で行う。
+**言語の設定が効くのは、コマンドが出す表示だけである。** `init`・`apply`・`update` の出力と、`invariants` の報告の見出しである。**置くファイルは、設定にかかわらず英語のままである**（`.env.example`・`.gitignore`・`docs/autodrive.md` など）。開発の会話は、AIが相手の言語で行う。
 
 | コマンド | 用途 |
 |---|---|
