@@ -177,7 +177,7 @@ test("実際に止まった権限が、含まれている", () => {
 // Checks は、autodrive-dev-kit が一度も呼ばない口の権限である。人が GitHub の一覧で探して
 // 見つからず、そこで止まった。**求める理由が無い権限は、書いた側の思い込みである。**
 test("使わない口の権限は、並べない", () => {
-  for (const name of ["GH_TOKEN", "AUTODRIVE_CI_TOKEN"]) {
+  for (const name of ["GH_TOKEN"]) {
     const token = credentialsFor(defaults()).find((c) => c.name === name);
     const listed = token.needs.map((n) => n.permission);
     assert.equal(listed.includes("Checks"), false, `${name}: 叩かない口の権限を求めている`);
@@ -203,7 +203,8 @@ test("判定が呼ぶ API に要る権限を、求めている", async () => {
   const { readFileSync } = await import("node:fs");
   const api = readFileSync(join(KIT, "src", "vendored", "internal", "repoApi.js"), "utf8");
 
-  const token = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
+  // **手元の判定は GH_TOKEN で読む**（ADK-144）。
+  const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
   const has = (p) => token.needs.some((n) => n.permission === p);
 
   // 統合されたかを読むなら Pull requests が要る。
@@ -219,7 +220,11 @@ test("判定が呼ぶ API に要る権限を、求めている", async () => {
 test("置き場所の作成を求めていない理由が、テンプレートに出る", () => {
   const token = credentialsFor(defaults()).find((c) => c.name === "GH_TOKEN");
   assert.ok(token.note !== undefined, "理由が書かれていない");
-  assert.ok(envExample(defaults()).includes(token.note), "理由がテンプレートに出ていない");
+  // **注記は行ごとにコメントとして出る**（#115）。行ごとに確かめる。
+  const text = envExample(defaults());
+  for (const line of token.note.split("\n")) {
+    assert.ok(text.includes(`# ${line.trim()}`), `理由がテンプレートに出ていない: ${line}`);
+  }
 });
 
 // **使わないポートの権限を並べない。** 要らないものを人に付けさせない。
@@ -287,21 +292,19 @@ test("autodrive-dev-kit の資格情報と同じ名前は、二重に出さな�
   assert.equal(names.filter((n) => n === "GH_TOKEN").length, 1, "同じ名前が2行出る");
 });
 
-// 2つの鍵が並んでいる理由を、テンプレートが持っていること。
+// **判定の鍵を .env に置かせない**（ADK-144）。手元で鍵を分けても守れるものが無い。
+// エージェントは判定のコードも書き換えられ、書ける鍵も持っている。以前は分けていた
+// （AUT-139）。
 //
-// **書いていないと、片方で兼ねたくなる。** 同じ GitHub の鍵が2つ並び、なぜ分けて
-// あるかがどこにも無かったため、実際に使い分けを問われた（AUT-139）。
-//
-// 兼ねると、**判定する側が判定対象を書き換えられる。** これは名前の問題ではなく、
-// 定義§9の「AIがこれらを無効化できないこと」を誰が見るかの問題である。
-test("読取専用の鍵に、書ける鍵で兼ねない理由が書いてある", () => {
-  const ci = credentialsFor(defaults()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
-  assert.notEqual(ci.note, undefined, "**兼ねない理由が無い。** 無いと片方で兼ねたくなる");
-  assert.match(ci.note, /GH_TOKEN/, "どちらと兼ねてはいけないのかが書いていない");
-  assert.match(ci.note, /checks/, "分けている理由（判定する側が書き換えられる）が書いていない");
-
-  const text = envExample(defaults());
-  assert.ok(text.includes(ci.note), "テンプレートに載っていない。人が読む場所に無ければ届かない");
+// **ただし、鍵が1つ減った理由と、CI での置き方には辿り着けること。** 書いていないと、
+// 前のテンプレートを知る人は消えたと思い、知らない人は CI に置くことを知らない。
+test("判定の鍵を .env.example に載せず、CI に置くよう案内する", () => {
+  for (const config of [defaults(), usingGithubIssues()]) {
+    const text = envExample(config);
+    assert.equal(/^AUTODRIVE_CI_TOKEN=/m.test(text), false, text);
+    assert.match(text, /checks you can trust run in CI/, "CI で判定することが書いていない");
+    assert.match(text, /In CI/, "置き方の在りかが書いていない");
+  }
 });
 
 // ---------------------------------------------- 同じ鍵を2つ並べない（AUT-235）
@@ -352,23 +355,6 @@ test("合流した鍵は、両方の用途を書いている", () => {
   assert.ok(token?.why.includes("work items"), token?.why);
   // **分けたい人への案内も残ること。**
   assert.ok(token?.note?.includes("AUTODRIVE_TRACKER_TOKEN"), token?.note);
-});
-
-// **判定用の分離は、変えない。** 兼ねると判定する側が判定対象を書き換えられる（定義§9）。
-test("判定用の鍵は、いまも別である", () => {
-  const names = credentialsFor(usingGithubIssues()).map((c) => c.name);
-  assert.ok(names.includes("AUTODRIVE_CI_TOKEN"), names.join(", "));
-
-  const ci = credentialsFor(usingGithubIssues()).find((c) => c.name === "AUTODRIVE_CI_TOKEN");
-  assert.ok(ci?.note?.includes("Do not share GH_TOKEN"), ci?.note);
-  // **書ける権限は、こちらへ付かない。** 読むだけの鍵である。
-  //
-  // 以前は「Issues の権限が付かない」で確かめていた。判定が記録を作業単位と
-  // 照合するため、**Issues を読む権限は要る**ようになった（AUT-277）。守りたいのは
-  // 権限の名前ではなく、書けないことである。
-  const levels = (ci?.needs ?? []).map((n) => `${n.permission}: ${n.level}`);
-  assert.ok(levels.includes("Issues: Read"), levels.join(", "));
-  assert.equal(levels.some((l) => l.endsWith("write")), false, levels.join(", "));
 });
 
 // **差し替える前の Tracker も、判定の照合に使う**（AUT-277）。資格情報が

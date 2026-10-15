@@ -263,14 +263,41 @@ test("同じ実装を指すリポジトリが複数あっても、linear は一�
   });
 });
 
-// **判定する側に書ける鍵を持たせない**（定義§9）。
-test("GitHub Issues は読むだけの鍵で読む。書ける鍵しか無ければ組み立てない", () => {
+/** GitHub Issues を読むときに、どの鍵を送ったか。 */
+async function keyUsed(tracker) {
+  const original = globalThis.fetch;
+  let sent = null;
+  globalThis.fetch = async (_url, init = {}) => {
+    sent = init.headers?.Authorization ?? null;
+    return new Response(JSON.stringify([]), { status: 200 });
+  };
+  try {
+    await tracker.list();
+    return sent;
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+// **CI では読むだけの鍵、手元ではエージェントの鍵で読む**（ADK-144）。手元で鍵を
+// 分けても守れるものが無い。信頼できる判定は CI で打つ（ADK-143）。
+test("GitHub Issues は、CI の鍵があればそれで、無ければエージェントの鍵で読む", async () => {
   const repos = [judged("a", github("ADK"))];
 
-  const { tracker, error } = createJudgingTracker(repos, { GH_TOKEN: "w", AUTODRIVE_TRACKER_TOKEN: "w" });
+  const inCi = createJudgingTracker(repos, { AUTODRIVE_CI_TOKEN: "ci", GH_TOKEN: "w" });
+  assert.equal(await keyUsed(inCi.tracker), "Bearer ci");
+
+  const byHand = createJudgingTracker(repos, { GH_TOKEN: "w" });
+  assert.equal(await keyUsed(byHand.tracker), "Bearer w");
+});
+
+test("GitHub Issues を読む鍵が1つも無ければ、組み立てずに名前を言う", () => {
+  const repos = [judged("a", github("ADK"))];
+
+  const { tracker, error } = createJudgingTracker(repos, {});
 
   assert.equal(tracker, null);
-  assert.match(error ?? "", /AUTODRIVE_CI_TOKEN/);
+  assert.match(error ?? "", /AUTODRIVE_CI_TOKEN.*GH_TOKEN/);
 });
 
 // **欠けた照合先は、実在する作業単位を実在しないと言う。**

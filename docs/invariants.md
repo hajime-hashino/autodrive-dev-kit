@@ -229,7 +229,7 @@ The last is not made a failure because this information alone cannot tell whethe
 | What is matched against | Credential used |
 |---|---|
 | `linear` (once, however many repositories use it) | `LINEAR_API_KEY` |
-| `github-issues`, for each repository | `AUTODRIVE_CI_TOKEN` (`Issues: Read`). **A key that can write is not used for checking** |
+| `github-issues`, for each repository | In CI, `AUTODRIVE_CI_TOKEN` (`Issues: Read`). By hand, the agent's key (`AUTODRIVE_TRACKER_TOKEN` or `GH_TOKEN`). ADR 0015 |
 
 **If any of them cannot be assembled, nothing is matched** and the judgment is `UNSUBSTITUTED` with the reason. A list with a source missing says that existing work items do not exist. The sources matched against are printed as an observation.
 

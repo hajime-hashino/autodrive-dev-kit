@@ -234,7 +234,7 @@ autodrive-dev-kit invariants --root . --format json
 
 The full criteria are in [invariants.md](invariants.md).
 
-Judging the invariant "The AI cannot disable any of these" reads the Repo API, so the environment variable `AUTODRIVE_CI_TOKEN` is needed. Without it, it fails as unjudgeable (definition §9, "a state in which it cannot be judged whether something is active is itself treated as a failure").
+Judging the invariant "The AI cannot disable any of these" reads the Repo API, so a key is needed: `AUTODRIVE_CI_TOKEN` in CI, or the agent's `GH_TOKEN` when run by hand (ADR 0015). Without either, it fails as unjudgeable (definition §9, "a state in which it cannot be judged whether something is active is itself treated as a failure").
 
 ```sh
 set -a; . /path/to/work/.env; set +a

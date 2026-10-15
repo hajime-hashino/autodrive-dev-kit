@@ -104,9 +104,8 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
     // **無ければ `GH_TOKEN` を使う。** どちらもエージェントが自分の作業のために
     // 持つ書ける鍵であり、同じ対象を指す。**分けても守れるものが増えない**（AUT-235）。
     //
-    // **`AUTODRIVE_CI_TOKEN` は兼ねない。** あちらは判定が使う読むだけの鍵であり、
-    // 兼ねると判定する側が判定対象を書き換えられる（定義§9）。**その関係は、
-    // ここには無い。**
+    // **`AUTODRIVE_CI_TOKEN` は使わない。** CI に置く読むだけの鍵であり、ここでは
+    // 書くことが要る。
     //
     // **`AUTODRIVE_TRACKER_TOKEN` を読むのはやめない。** 絞りたい人は分けられる。
     const token = env.AUTODRIVE_TRACKER_TOKEN || env.GH_TOKEN;
@@ -165,10 +164,11 @@ export function createTracker(root, env = process.env, slug = () => slugAt(root)
  * 作業単位IDは接頭辞で分かれており、実装をまたいで重ならない。**どの記録を
  * どこで照合するかを振り分ける必要が無い。**
  *
- * ## 鍵は読むだけのものを使う
+ * ## 鍵は、CI では読むだけのもの、手元ではエージェントのもの
  *
- * GitHub Issues は `AUTODRIVE_CI_TOKEN` で読む。**判定する側に書ける鍵を
- * 持たせない**（定義§9）。CI もこの鍵で判定を打っている。
+ * GitHub Issues は、CI では読むだけの `AUTODRIVE_CI_TOKEN` で、手元ではエージェントの
+ * 鍵で読む（ADK-144）。手元で鍵を分けても守れるものが無い。エージェントは判定の
+ * コードも書き換えられ、書ける鍵も持っている。**信頼できる判定は CI で打つ**（ADK-143）。
  *
  * **組み立てられないものが1つでもあれば、組み立てない。** 欠けた照合先は、
  * 実在する作業単位を実在しないと言う。
@@ -207,13 +207,13 @@ export function createJudgingTracker(repos, env = process.env) {
           if (prefix === null) {
             return { tracker: null, error: `${repo.name}: autodrive.json has no tracker.prefix` };
           }
-          const token = env.AUTODRIVE_CI_TOKEN;
+          const token = env.AUTODRIVE_CI_TOKEN || env.AUTODRIVE_TRACKER_TOKEN || env.GH_TOKEN;
           if (token === undefined || token === "") {
             return {
               tracker: null,
               error:
-                "No credentials to read GitHub Issues for the checks (AUTODRIVE_CI_TOKEN not set). " +
-                "**It needs Issues: Read.** A key that can write is not used for checking",
+                "No credentials to read GitHub Issues for the checks " +
+                "(none of AUTODRIVE_CI_TOKEN, AUTODRIVE_TRACKER_TOKEN, GH_TOKEN is set). **It needs Issues: Read**",
             };
           }
           return { tracker: new GithubIssuesTracker(token, where, prefix), error: null };

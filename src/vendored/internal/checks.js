@@ -794,7 +794,7 @@ const checkAiCannotDisable = async ({ repos, events, api }) => {
   const r = resultFor("ai_cannot_disable");
 
   if (!api.available) {
-    r.observe("No Repo API token, so protection settings cannot be read (AUTODRIVE_CI_TOKEN not set)");
+    r.observe("No Repo API token, so protection settings cannot be read (neither AUTODRIVE_CI_TOKEN nor GH_TOKEN is set)");
     r.observe("A state that cannot be judged is itself treated as a failure (definition §9)");
     return r.conclude(UNSUBSTITUTED);
   }
