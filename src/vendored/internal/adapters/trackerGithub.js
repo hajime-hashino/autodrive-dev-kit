@@ -68,6 +68,11 @@ export const idOf = (prefix, number) => `${prefix}-${number}`;
  * **黙って数字だけを拾わない。** 別のリポジトリの識別子を渡されたとき、番号が
  * 合っていれば通ってしまう。**通ると、関係の無い Issue を進めることになる。**
  */
+/** 提出の番号を渡されたときの言い方。**「見つからない」を含める**（着手の側が拾う）。 */
+export function notAWorkItem(id, number) {
+  return `${id} is not found as a work item: #${number} is a pull request (pull requests share numbers with issues)`;
+}
+
 export function numberOf(prefix, id) {
   const m = new RegExp(`^${prefix}-(\\d+)$`).exec(String(id ?? "").trim());
   if (m === null) {
@@ -157,9 +162,26 @@ export class GithubIssuesTracker {
     };
   }
 
+  /**
+   * 作業単位の番号を、Issue であることを確かめてから返す（ADK-133）。
+   *
+   * **GitHub は Issue と提出（PR）で番号を共有する。** Issues API はどちらも返すため、
+   * 番号だけで扱うと、提出を作業単位として読み、**ラベルを付け、閉じてしまう。**
+   * 書き込む前に確かめる。
+   */
+  async #issueNumber(id) {
+    const number = numberOf(this.#prefix, id);
+    const raw = await this.#call("GET", `repos/${this.#slug}/issues/${number}`);
+    if (raw?.pull_request !== undefined) throw new Error(notAWorkItem(id, number));
+    return number;
+  }
+
   async get(id) {
     if (id !== undefined) {
       const raw = await this.#call("GET", `repos/${this.#slug}/issues/${numberOf(this.#prefix, id)}`);
+      // **提出は作業単位ではない**（ADK-133）。見つからないとして返し、着手の側の
+      // 「起票してから」の案内に乗せる。
+      if (raw?.pull_request !== undefined) return null;
       return this.#toView(raw);
     }
     // 次に着手する対象。未着手のうち最も古いものとする（Linear と同じ）。
@@ -223,7 +245,7 @@ export class GithubIssuesTracker {
    * **着手前に限る規則は、ここでは見ない**（`trackerCli.js` が持つ）。
    */
   async revise(id, body) {
-    const raw = await this.#call("PATCH", `repos/${this.#slug}/issues/${numberOf(this.#prefix, id)}`, {
+    const raw = await this.#call("PATCH", `repos/${this.#slug}/issues/${await this.#issueNumber(id)}`, {
       body,
     });
     return this.#toView(raw);
@@ -253,7 +275,7 @@ export class GithubIssuesTracker {
   }
 
   async mark(id, repo) {
-    const number = numberOf(this.#prefix, id);
+    const number = await this.#issueNumber(id);
     await this.#setMark(number, REPO_MARK, repo);
     return this.get(id);
   }
@@ -268,7 +290,7 @@ export class GithubIssuesTracker {
    * @param {string} [repo]
    */
   async advance(id, to, repo = undefined) {
-    const number = numberOf(this.#prefix, id);
+    const number = await this.#issueNumber(id);
     if (repo !== undefined && repo !== "") await this.#setMark(number, REPO_MARK, repo);
 
     if (to === "done" || to === "canceled") {
@@ -289,7 +311,7 @@ export class GithubIssuesTracker {
   }
 
   async note(id, text) {
-    await this.#call("POST", `repos/${this.#slug}/issues/${numberOf(this.#prefix, id)}/comments`, {
+    await this.#call("POST", `repos/${this.#slug}/issues/${await this.#issueNumber(id)}/comments`, {
       body: text,
     });
   }

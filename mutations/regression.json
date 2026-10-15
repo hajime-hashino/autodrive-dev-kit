@@ -1042,5 +1042,19 @@
     "from": "      if (secret !== false) {",
     "to": "      if (false) {",
     "why": ".env.example は追跡されるため、秘密の値がそのまま共有される"
+  },
+  {
+    "name": "ADK-133 提出の番号を、作業単位として返す",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "      if (raw?.pull_request !== undefined) return null;",
+    "to": "      if (false) return null;",
+    "why": "PR が完了済みの作業単位として見え、着手に進められる"
+  },
+  {
+    "name": "ADK-133 書き込む前に、Issue であることを確かめない",
+    "file": "src/vendored/internal/adapters/trackerGithub.js",
+    "from": "    if (raw?.pull_request !== undefined) throw new Error(notAWorkItem(id, number));",
+    "to": "    if (false) throw new Error(notAWorkItem(id, number));",
+    "why": "提出の番号で状態を進めると、PR にラベルを付け、閉じてしまう"
   }
 ]
