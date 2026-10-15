@@ -275,6 +275,32 @@ The record is written through the adapter. The property that writing it by hand 
 
 **Being substituted is not itself a failure.** What is a failure is having no substitution record, and not being able to judge.
 
+### In CI
+
+The placed `.github/workflows/invariants.yml` has two jobs.
+
+| Job | When | What it needs |
+|---|---|---|
+| `self` | Pull requests, pushes to `main`, daily, by hand | Nothing |
+| `cross` | Pushes to `main`, daily, by hand. **Not on pull requests** | A key that can only read the Repo |
+
+**The checks you can trust are the ones in CI**, a layer the AI cannot touch (definition §9). Running `invariants` by hand during work is a check, not a ground: the agent can rewrite the code that judges, and holds a key that can write anyway.
+
+`cross` is not run on pull requests. What it looks at is the state after integration (whether the outer loop has gone around, whether protection is in effect), so a pull request has little to judge, and it would run code the AI wrote with the key attached.
+
+The key for `cross` is one of these (Settings → Secrets and variables → Actions):
+
+| Form | What to set |
+|---|---|
+| GitHub App | Variable `AUTODRIVE_APP_CLIENT_ID` and secret `AUTODRIVE_APP_PRIVATE_KEY`. A token lasting one hour is made in the job, asking only for `Pull requests: Read` and `Issues: Read`. **The App needs both permissions**, or making the token fails |
+| Token | Secret `AUTODRIVE_CI_TOKEN`, with `Pull requests: Read` (and `Issues: Read` with `github-issues`) |
+
+The App is for organizations that do not allow personal access tokens (#143). **The key is kept to reading** because a key in CI should be no stronger than the job needs.
+
+With `linear`, `cross` also needs the secret `LINEAR_API_KEY` to match records with work items. **Narrow it to reading** if Linear lets you; the checks only read.
+
+**Without a key, `cross` fails** and says how to set one up. Not being able to judge is not passing.
+
 ### It can be run from outside the agent
 
 `invariants` is an executable file, and does not take the form of existing only as a slash command. That form could not prevent the accident of operating on without it ever being connected to the agent. For running it from CI, see [.github/workflows/invariants.yml](../.github/workflows/invariants.yml).

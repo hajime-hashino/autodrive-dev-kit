@@ -1,11 +1,19 @@
 name: invariants
 
-# Only checks within the scope of this repository. Invariants that hold only
-# across repositories are looked at by the scheduled run on the autodrive-dev-kit side.
+# Two jobs.
+#
+#   self   Checks complete within this repository. Needs no credentials.
+#   cross  Checks that need the Repo API (whether the outer loop has gone around,
+#          whether protection is in effect, matching records with work items).
+#
+# **The checks you can trust are the ones run here**, in a layer the AI cannot touch
+# (definition §9). Running `invariants` by hand during work is a check, not a ground.
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 21 * * *"
   workflow_dispatch:
 
 jobs:
@@ -33,3 +41,51 @@ jobs:
 
       - name: Run the checks
         run: {{KIT}}/invariants --root . --scope self
+
+  cross:
+    # **Not on pull requests.** What it looks at is the state after integration, so a
+    # pull request has little to judge. And it would run code the AI wrote with the
+    # key attached.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.18"
+          package-manager-cache: false
+
+      # **A key that can only read.** Keys in CI are kept to what the job needs; this
+      # one only reads the Repo. With a GitHub App (variable AUTODRIVE_APP_CLIENT_ID,
+      # secret AUTODRIVE_APP_PRIVATE_KEY), a token lasting one hour is made here, asking
+      # only for read permissions. Without it, the secret AUTODRIVE_CI_TOKEN is used.
+      - name: Make a read-only token from the GitHub App
+        id: app
+        if: vars.AUTODRIVE_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.AUTODRIVE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AUTODRIVE_APP_PRIVATE_KEY }}
+          permission-pull-requests: read
+          permission-issues: read
+
+      - name: Run the checks across repositories
+        env:
+          AUTODRIVE_CI_TOKEN: ${{ steps.app.outputs.token || secrets.AUTODRIVE_CI_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          # **Not being able to judge does not pass.** Without a key, stop and say how
+          # to set one up, instead of going green without having judged.
+          if [ -z "$AUTODRIVE_CI_TOKEN" ]; then
+            echo "::error::No key to read the Repo, so the checks across repositories cannot be judged."
+            echo "Set one of these in the repository settings (Settings → Secrets and variables → Actions):"
+            echo "  - GitHub App: variable AUTODRIVE_APP_CLIENT_ID and secret AUTODRIVE_APP_PRIVATE_KEY"
+            echo "    (the App needs Pull requests: Read and Issues: Read; both are requested)"
+            echo "  - Or a token that can only read: secret AUTODRIVE_CI_TOKEN"
+            exit 1
+          fi
+          {{KIT}}/invariants --root . --scope cross

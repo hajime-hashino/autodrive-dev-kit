@@ -1056,5 +1056,19 @@
     "from": "    if (raw?.pull_request !== undefined) throw new Error(notAWorkItem(id, number));",
     "to": "    if (false) throw new Error(notAWorkItem(id, number));",
     "why": "提出の番号で状態を進めると、PR にラベルを付け、閉じてしまう"
+  },
+  {
+    "name": "ADK-143 横断の判定を PR でも打つ",
+    "file": "src/templates/invariants.yml",
+    "from": "    if: github.event_name != 'pull_request'\n",
+    "to": "",
+    "why": "AI の書いた PR のコードが、読むだけとはいえ鍵付きで走る"
+  },
+  {
+    "name": "ADK-143 判定の鍵が無くても、横断の判定を通す",
+    "file": "src/templates/invariants.yml",
+    "from": "            exit 1\n",
+    "to": "            exit 0\n",
+    "why": "判定していないのに緑になり、判定したと読まれる"
   }
 ]
