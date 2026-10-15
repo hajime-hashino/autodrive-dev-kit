@@ -148,7 +148,7 @@ export function readPlacedPorts(path) {
  * @param {Array<{ path: string, body: string }>} writes これから置くもの
  * @param {Record<string, string> | null} manifest 前に置いたときの指紋
  * @param {Record<string, string[]> | null} [placedLines] 前に置いたときの、行の指紋
- * @returns {{ edited: Array<{ path: string, lost: string[], exact: boolean }>, unchecked: string[] }}
+ * @returns {{ edited: Array<{ path: string, lost: string[], exact: boolean }>, unchecked: Unchecked[] }}
  */
 export function findEdits(root, writes, manifest, placedLines = null) {
   const edited = [];
@@ -163,7 +163,7 @@ export function findEdits(root, writes, manifest, placedLines = null) {
     try {
       current = readFileSync(full, "utf8");
     } catch {
-      unchecked.push(w.path);
+      unchecked.push({ path: w.path, lost: null });
       continue;
     }
 
@@ -173,7 +173,9 @@ export function findEdits(root, writes, manifest, placedLines = null) {
     const known = manifest?.[w.path];
     if (known === undefined) {
       // **指紋が無い。** 手で変えたのか、前のバージョンの中身なのかを区別できない。
-      unchecked.push(w.path);
+      // **それでも、消える行は出せる**（ADK-137）。出さないと、差分を見るまで
+      // 何が消えたか分からない。
+      unchecked.push({ path: w.path, lost: linesLost(current, w.body) });
       continue;
     }
     // 指紋どおりなら、変わったのは参照実装の側である。上書きしてよい。
@@ -253,15 +255,64 @@ export function describeEdits(edited, limit = 8) {
   return lines.join("\n");
 }
 
-/** 確かめられなかったものを報告する。**黙ると、確かめた顔になる。** */
-export function describeUnchecked(unchecked) {
-  return [
-    `Could not confirm whether these were changed by hand (${unchecked.length}). **Overwrote them.**`,
-    ...unchecked.map((p) => `  ${p}`),
-    "",
-    "There is no fingerprint from when they were placed, because they were placed before this mechanism existed.",
-    "**From next time, it can be confirmed.**",
-  ].join("\n");
+/** @typedef {{ path: string, lost: string[] | null }} Unchecked */
+
+/** `.env.example` の行から、変数の名前を取り出す。 */
+const VARIABLE = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/;
+
+/**
+ * 確かめられなかったものを報告する。**黙ると、確かめた顔になる。**
+ *
+ * **消えた行を出す**（ADK-137）。ファイル名だけでは、差分を見るまで何が消えたか
+ * 分からない。
+ *
+ * **理由を取り違えない。** 初めて入れる場合、そのファイルは参照実装が置いたものでは
+ * なく、プロジェクト自身のものである。「この仕組みより前に置かれた」と言うのは
+ * 事実と違う。
+ *
+ * **`.env.example` で消えた名前は、残し方まで出す。** 構成の `app.credentials` に
+ * 書けば、入れ替えても残る。
+ *
+ * @param {Unchecked[]} unchecked
+ * @param {{ adopting?: boolean, limit?: number }} [options] adopting：初めて入れる
+ */
+export function describeUnchecked(unchecked, { adopting = false, limit = 8 } = {}) {
+  const lines = [
+    adopting
+      ? `These already existed, and autodrive-dev-kit replaces them with its own (${unchecked.length}). **Overwrote them.**`
+      : `Could not confirm whether these were changed by hand (${unchecked.length}). **Overwrote them.**`,
+  ];
+  const kept = [];
+  for (const { path, lost } of unchecked) {
+    lines.push(`  ${path}`);
+    if (lost === null) {
+      lines.push("      (could not read it, so what was lost is unknown)");
+      continue;
+    }
+    if (lost.length > 0) lines.push("      Lines no longer there:");
+    for (const l of lost.slice(0, limit)) lines.push(`        ${l}`);
+    if (lost.length > limit) lines.push(`        … ${lost.length - limit} more lines`);
+    if (path === ".env.example") {
+      for (const l of lost) {
+        const m = VARIABLE.exec(l);
+        if (m !== null) kept.push({ name: m[1], value: m[2] });
+      }
+    }
+  }
+  lines.push("");
+  lines.push(
+    adopting
+      ? "They were this project's own files, not ones autodrive-dev-kit placed. If they were committed, the previous contents are in git."
+      : "There is no fingerprint from when they were placed, because they were placed before this mechanism existed.\n**From next time, it can be confirmed.**",
+  );
+  if (kept.length > 0) {
+    lines.push(
+      "",
+      `**To keep ${kept.map((k) => k.name).join(", ")} in .env.example**, write them in app.credentials in autodrive.json and run \`update\`.`,
+      "A value that is not a secret can be kept as \"default\" (with \"secret\": false).",
+    );
+  }
+  return lines.join("\n");
 }
 
 export function manifestPath(root, vendorDir) {

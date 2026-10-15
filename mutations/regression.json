@@ -1028,5 +1028,19 @@
     "from": "    } else if (adding && line.startsWith(\"!\")) {",
     "to": "    } else if (false) {",
     "why": ".env.* を末尾に足すと、それより前の !.env.example が効かなくなり、テンプレートまで無視される"
+  },
+  {
+    "name": "ADK-137 指紋の無いファイルを上書きしても、消えた行を出さない",
+    "file": "src/vendored/internal/manifest.js",
+    "from": "      unchecked.push({ path: w.path, lost: linesLost(current, w.body) });",
+    "to": "      unchecked.push({ path: w.path, lost: [] });",
+    "why": "差分を見るまで、アプリの資格情報などが消えたことに気づけない"
+  },
+  {
+    "name": "ADK-137 秘密の資格情報にも既定値を許す",
+    "file": "src/vendored/internal/config.js",
+    "from": "      if (secret !== false) {",
+    "to": "      if (false) {",
+    "why": ".env.example は追跡されるため、秘密の値がそのまま共有される"
   }
 ]
