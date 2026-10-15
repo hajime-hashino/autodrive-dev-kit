@@ -22,6 +22,20 @@
  * }} RepoApi
  */
 
+/**
+ * 判定が Repo を読む鍵（ADK-144、ADR 0015）。
+ *
+ * **CI では読むだけの鍵、手元ではエージェントの鍵で読む。** 手元で鍵を分けても
+ * 守れるものが無い。エージェントは判定のコードも書き換えられ、書ける鍵も持っている。
+ * **信頼できる判定は、AI が触れない CI で打つ。**
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {string | undefined}
+ */
+export function judgingToken(env) {
+  return env.AUTODRIVE_CI_TOKEN || env.GH_TOKEN || undefined;
+}
+
 export function createRepoApi(token) {
   const get = async (path) => {
     if (!token) return { status: 0, body: { message: "no token" } };

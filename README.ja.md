@@ -336,6 +336,6 @@ CI には2つのシークレットが要る。`AUTODRIVE_CI_TOKEN` と、Tracker
 | `linear` | `LINEAR_API_KEY` |
 | `github-issues` | `GH_TOKEN`（`Issues: Read and write` を足す。別に持ちたい場合は `AUTODRIVE_TRACKER_TOKEN`） |
 
-`github-issues` を選ぶ場合、判定は Issues を `AUTODRIVE_CI_TOKEN` で読む。そちらに `Issues: Read` を足す。**`GH_TOKEN` ではない。** 判定する側に書ける鍵を渡さない。
+`github-issues` を選ぶ場合、CI の判定は Issues を `AUTODRIVE_CI_TOKEN` で読む。そちらに `Issues: Read` を足す。**CI の鍵は読むだけに絞る。** 手元の判定は、エージェントの `GH_TOKEN` で読む（ADR 0015）。
 
 `github-issues` を選ぶ場合、`autodrive.json` に `tracker.prefix` が要る。作業単位IDの頭に付く2〜4文字で、`AIEP-123` のようになる（ADR 0013）。**`init` が聞く。** リポジトリ名から作った案が出るので、そのままでよければ Enter。

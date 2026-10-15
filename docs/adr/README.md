@@ -20,6 +20,7 @@ If you want to overturn a decision, read the relevant ADR before proposing. Prop
 | [0012](0012-sandbox-is-declared-not-built.md) | The sandbox is something the project declares. The reference implementation knows the contents only of devcontainer, and its checks are limited to that | Accepted | 2026-09-23 |
 | [0013](0013-work-item-id-and-state-on-github-issues.md) | How work item IDs and state are held on GitHub Issues. IDs carry a prefix; state is distinguished by labels while open | Accepted | 2026-09-23 |
 | [0014](0014-where-implementation-specific-extensions-go.md) | Where implementation-specific extensions go. Port operations, configuration the adapter reads, or the implementation's own tools | Accepted | 2026-10-14 |
+| [0015](0015-trusted-checks-run-in-ci.md) | The checks you can trust run in CI. By hand, they use the agent's key | Accepted | 2026-10-15 |
 
 ## How to write
 

@@ -98,11 +98,11 @@
     "why": "名前が実態と違うと、読んだ人が「CI に書き込み用の鍵がある」と受け取る"
   },
   {
-    "name": "AUT-139 鍵を分けている理由を書かない",
+    "name": "ADK-144 判定の鍵を CI に置くことを、雛形で案内しない",
     "file": "src/vendored/internal/credentials.js",
-    "from": "      note:\n        \"**Do not share GH_TOKEN for this.**",
-    "to": "      unusedNote:\n        \"**Do not share GH_TOKEN for this.**",
-    "why": "理由が雛形に出ないと、同じ GitHub の鍵を片方で兼ねたくなる"
+    "from": "\"The checks run by hand also read the Repo with this token. **The checks you can trust run in CI**, \" +",
+    "to": "\"\" +",
+    "why": "判定の鍵が .env.example から消えた理由も、CI に置くことも、人に届かない"
   },
   {
     "name": "AUT-143 起点を絶対パスへ直さずに比べる",
@@ -1070,5 +1070,19 @@
     "from": "            exit 1\n",
     "to": "            exit 0\n",
     "why": "判定していないのに緑になり、判定したと読まれる"
+  },
+  {
+    "name": "ADK-144 手元の判定で、エージェントの鍵を使わない",
+    "file": "src/vendored/internal/repoApi.js",
+    "from": "  return env.AUTODRIVE_CI_TOKEN || env.GH_TOKEN || undefined;",
+    "to": "  return env.AUTODRIVE_CI_TOKEN || undefined;",
+    "why": "判定の鍵を .env に置かなくなったため、手元で横断の判定を打てなくなる"
+  },
+  {
+    "name": "ADK-144 手元の照合で、エージェントの鍵を使わない",
+    "file": "src/vendored/internal/ports/trackerFactory.js",
+    "from": "const token = env.AUTODRIVE_CI_TOKEN || env.AUTODRIVE_TRACKER_TOKEN || env.GH_TOKEN;",
+    "to": "const token = env.AUTODRIVE_CI_TOKEN;",
+    "why": "手元で GitHub Issues の作業単位と記録を照合できなくなる"
   }
 ]

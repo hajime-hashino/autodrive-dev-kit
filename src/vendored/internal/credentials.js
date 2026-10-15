@@ -122,33 +122,19 @@ const FOR_IMPLEMENTATION = {
       note:
         "Creating the place (repository) itself cannot be done with these permissions. " +
         "Creating it needs admin permission over all repositories, so **it is deliberately not requested.** " +
-        "A human creates the place, and this token is narrowed to it.",
+        "A human creates the place, and this token is narrowed to it.\n" +
+        // **鍵が1つ減った理由と、CI での置き方に辿り着けるようにする**（ADK-144）。
+        "The checks run by hand also read the Repo with this token. **The checks you can trust run in CI**, " +
+        "with a key that can only read (AUTODRIVE_CI_TOKEN or a GitHub App; see \"In CI\" in docs/commands.md).",
     },
-    {
-      name: "AUTODRIVE_CI_TOKEN",
-      why: "The checks read the Repo. Without it, \"has the outer loop started\" cannot be judged",
-      lost: "Reissue it",
-      // **なぜ GH_TOKEN で兼ねないかを書く。** 2つ並んでいる理由が書いていないと、
-      // 「同じ GitHub なのになぜ2つ要るのか」が分からず、片方で兼ねたくなる。
-      // 実際に、使い分けを問われている（AUT-139）。
-      //
-      // 兼ねると、**判定する側が判定対象を書き換えられる。** 定義§9の「AIがこれらを
-      // 無効化できないこと」を見るのが`invariants` であり、その分離が消える。
-      note:
-        "**Do not share GH_TOKEN for this.** This one is used for the checks and needs only read access. " +
-        "Hand over a key that can write, and **the side that checks can rewrite what it checks.** " +
-        "Only this one is registered in CI; no key for writing is placed in CI.",
-      // **保護設定の読取に Administration は要らない。** GitHub が要求するのは
-      // Metadata: Read であり、これは選ばなくても必ず付く（AUT-110 で実測）。
-      needs: [
-        {
-          permission: "Pull requests",
-          level: "Read",
-          why: "Reading whether it was integrated",
-          via: "GET /repos/{repo}/commits/{sha}/pulls",
-        },
-      ],
-    },
+    // **判定の鍵（`AUTODRIVE_CI_TOKEN`）は、ここに載せない**（ADK-144）。
+    //
+    // 以前は「判定する側が判定対象を書き換えられないよう、読むだけの鍵を分ける」として
+    // `.env` にも置かせていた（AUT-139）。**手元では守りになっていなかった。** エージェントは
+    // 判定のコードも書き換えられ、`GH_TOKEN` も持っている。手元の判定は `GH_TOKEN` で打つ。
+    //
+    // **信頼できる判定は CI で打つ**（ADK-143）。読むだけの鍵は、CI の secret として置く
+    // （CI の鍵は、ジョブに要る分に絞る）。置き方は `docs/commands.md` の「In CI」にある。
   ],
   // **トークン消費の送り先。** OTLP で話すため、受け側の名前はここに出さない。
   // 宛先と認証は値で渡る（定義§16「実装名を知るのはアダプタだけ」）。
@@ -193,9 +179,6 @@ const FOR_IMPLEMENTATION = {
   // （AUT-235）。どちらもエージェントが自分の作業のために持つものであり、
   // **分けても守れるものが増えない。**
   //
-  // `AUTODRIVE_CI_TOKEN` を分けている理由（判定する側が判定対象を書き換えられる）
-  // は、ここには当てはまらない。
-  //
   // 名前が同じものは `needs` が合流する（`credentialsFor`）。Repo に GitHub を
   // 使っていない構成でも、この1件だけで成立する。
   "github-issues": [
@@ -215,22 +198,8 @@ const FOR_IMPLEMENTATION = {
         },
       ],
     },
-    // **判定も Issues を読む**（AUT-277）。記録が指す作業単位が実在するかを
-    // 照合するためである。**読むのは判定の鍵で行う。** 書ける鍵で読むと、判定する
-    // 側が判定対象を書き換えられる。
-    {
-      name: "AUTODRIVE_CI_TOKEN",
-      why: "The checks match records against work items",
-      lost: "Reissue it",
-      needs: [
-        {
-          permission: "Issues",
-          level: "Read",
-          why: "Matching records against work items",
-          via: "GET /repos/{repo}/issues",
-        },
-      ],
-    },
+    // **判定も Issues を読む**（AUT-277）。手元では `GH_TOKEN` で読むので、ここに
+    // 足すものは無い（ADK-144）。
   ],
   "cloudflare-workers": [
     {

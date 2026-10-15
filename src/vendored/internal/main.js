@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 import { CHECKS, hookRegistered } from "./checks.js";
 
 import { JsonlTelemetry } from "./adapters/telemetryJsonl.js";
-import { createRepoApi } from "./repoApi.js";
+import { createRepoApi, judgingToken } from "./repoApi.js";
 import { createJudgingTracker } from "./ports/trackerFactory.js";
 import { discoverRepos } from "./repos.js";
 import { readConfig } from "./config.js";
@@ -169,7 +169,7 @@ export async function run(argv) {
   }
 
   const { events, broken } = loadEvents(repos);
-  const api = createRepoApi(process.env.AUTODRIVE_CI_TOKEN);
+  const api = createRepoApi(judgingToken(process.env));
   // **リポジトリごとの構成で組み立てる。** 起点の1つだけで照合すると、他の
   // リポジトリの作業単位と、差し替える前の作業単位を指す記録が「実在しない」に
   // なる（AUT-277）。組み立てられなければ null のまま進み、判定はその理由を
