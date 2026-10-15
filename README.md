@@ -182,7 +182,7 @@ These appear as the project needs them.
 | `docs/what-why.md` | init | project | What you are building, and why |
 | `docs/quality.md` | init | project | What quality you protect, and what you deliberately leave unwatched |
 | `CLAUDE.md` | init | project | Project-specific rules |
-| `.gitignore` | init | project | Keeps credentials and working state out |
+| `.gitignore` | init | project | Keeps credentials and working state out. **If one already exists, only the missing lines are appended** (`apply` and `update` too). Existing lines are kept |
 | `notes/README.md` | init | project | **Yours to use.** Contents are not tracked |
 | `docs/adr/README.md` | init | project | Index of design decisions and how to write them. **The AI reads it at the start of every work item** |
 | `.claude/settings.json` | init | project | **Appends** the recording hook, the hook that loads `.env` for the agent's commands, and the hook that replaces secrets in tool output. Existing entries are kept |

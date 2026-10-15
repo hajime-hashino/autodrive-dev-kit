@@ -454,3 +454,28 @@ test("動かした変更を履歴に書けば、通る", () => {
     `履歴を書いても通らない:\n${out.slice(out.indexOf("Delegation changes"), out.indexOf("Delegation changes") + 400)}`,
   );
 });
+
+// ------------------------------------------------------------ 既にある .gitignore（ADK-136）
+
+// **ほとんどのリポジトリには、既に .gitignore がある。** 播種にすると1行も届かず、
+// 資格情報・着手中の印・コアダンプが追跡されうるまま残っていた。
+test("既に .gitignore があっても、git が資格情報と作業状態を無視するようになる", () => {
+  const root = tempDir("autodrive-e2e-ignore-");
+  const git = (...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  git("init", "-q");
+  writeFileSync(join(root, ".gitignore"), "node_modules/\n!.env.example\n", "utf8");
+
+  execFileSync(join(KIT, "src", "vendored", "bin", "autodrive-dev-kit"), ["init"], {
+    cwd: root,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const ignore = readFileSync(join(root, ".gitignore"), "utf8");
+  assert.ok(ignore.startsWith("node_modules/\n"), "既にある行が保たれていない");
+  for (const path of [".env", ".env.local", ".autodrive/current-work-item.json", "core", "notes/memo.md"]) {
+    assert.equal(git("check-ignore", "--no-index", path).trim(), path, `${path} が無視されない`);
+  }
+  // **打ち消しが効いていること。** テンプレートは追跡する。
+  assert.throws(() => git("check-ignore", "--no-index", ".env.example"), ".env.example まで無視されている");
+  assert.throws(() => git("check-ignore", "--no-index", "notes/README.md"), "notes/README.md まで無視されている");
+});
