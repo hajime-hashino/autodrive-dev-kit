@@ -81,7 +81,7 @@ autodrive-dev-kit init --language en --tracker linear --preview cloudflare-worke
 
 `--prefix` sets the work item ID prefix, which is asked only for GitHub Issues. A value that is not one of the options stops it without placing anything.
 
-**That language setting only affects setup.** During development the AI speaks whatever language you speak.
+**That language setting only affects what the commands print**: the output of `init` / `apply` / `update`, and the headings of the `invariants` report. **The files it places stay in English** (`.env.example`, `.gitignore`, `docs/autodrive.md`, and the rest), whatever the setting. During development the AI speaks whatever language you speak.
 
 | Command | Used for |
 |---|---|

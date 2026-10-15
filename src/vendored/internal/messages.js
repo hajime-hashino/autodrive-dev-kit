@@ -96,7 +96,7 @@ const MESSAGES = {
     "ask.sandbox.none": "隔離しない",
     "ask.language": "セットアップの案内を、どの言語で出しますか？",
     "ask.language.why":
-      "**開発の会話は、あなたの言語で行われます。** ここで選ぶのは、設定のときに出る文だけです。",
+      "**開発の会話は、あなたの言語で行われます。** ここで選ぶのは、コマンドが出す文だけです。置くファイル（.env.example など）は英語のままです。",
     "ask.language.ja": "日本語",
     "ask.language.en": "English",
 
@@ -206,7 +206,7 @@ const MESSAGES = {
     "ask.sandbox.none": "No",
     "ask.language": "Which language should the setup use?",
     "ask.language.why":
-      "**The development conversation happens in your language.** This only sets the text shown during setup.",
+      "**The development conversation happens in your language.** This only sets the text the commands print. The files placed (.env.example and others) stay in English.",
     "ask.language.ja": "日本語",
     "ask.language.en": "English",
 

@@ -259,7 +259,8 @@ function readAppDestinations(raw) {
 export function defaults() {
   return {
     version: 1,
-    // **セットアップの表示だけに効く。** 開発の会話はAIが相手の言語で行う。
+    // **コマンドが出す表示だけに効く**（セットアップの出力と、`invariants` の報告の見出し）。
+    // **置くファイルは英語のまま**（ADK-138。人の判断）。開発の会話はAIが相手の言語で行う。
     language: DEFAULT_LANGUAGE,
     ports: {
       tracker: "linear",
