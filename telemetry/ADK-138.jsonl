@@ -1,0 +1,1 @@
+{"ts":"2026-10-15T07:52:52.683Z","work_item_id":"ADK-138","model":"claude-opus-5-5","kit_version":"0.12.40","emitter":"adapter","type":"stop","stop_kind":"統合の承認","stop_type":"input","detail":"ADK-136/137/133/138 の PR 4件（#139→#140→#141→#142）の統合を人に依頼。どれも 0.12.36 から版を上げており、順に統合して後のものを載せ直す必要がある","resolved":false}
