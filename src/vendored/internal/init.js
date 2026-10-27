@@ -182,12 +182,19 @@ export function template(kitRoot , name , vars = {}) {
 }
 
 /**
- * 実行基盤のフックを登録する。`event` は登録する場面（既定は Stop）。
+ * 実行基盤のフックを登録する。`path` はプロジェクトの直下からの場所、`event` は
+ * 登録する場面（既定は Stop）。
+ *
+ * **プロジェクトの場所を起点に書く。** フックはその時点のディレクトリで打たれる。
+ * 相対パスで登録していたため、エージェントが `cd` したままのあいだ見つからず、
+ * 秘密の置き換えが黙って止まっていた（ADK-147）。
  *
  * **既にある登録を壊さない。** 設定は利用側のものであり、こちらの都合で
- * 上書きしてよいものではない。同じ登録が既にあれば何もしない。
+ * 上書きしてよいものではない。同じ登録が既にあれば何もしない。**ただし、以前に
+ * こちらが相対パスで登録したものは置き換える。** 足すだけでは古い登録が残り、
+ * 移動した先でエラーを出し続ける。
  */
-export function mergeHook(existing , command , event = "Stop") {
+export function mergeHook(existing , path , event = "Stop") {
   let settings = {};
   if (existing !== null && existing.trim() !== "") {
     try {
@@ -200,11 +207,35 @@ export function mergeHook(existing , command , event = "Stop") {
 
   const hooks = (settings.hooks ?? {});
   const registered = Array.isArray(hooks[event]) ? hooks[event] : [];
-  if (JSON.stringify(registered).includes(command)) return { json: existing ?? "", changed: false };
+  const command = `"$CLAUDE_PROJECT_DIR"/${path}`;
 
-  hooks[event] = [...registered, { hooks: [{ type: "command", command }] }];
+  const hooksOf = (entry) => (Array.isArray(entry?.hooks) ? entry.hooks : []);
+  const ours = (hook) => typeof hook?.command === "string" && projectPath(hook.command) === path;
+  const relative = (hook) => ours(hook) && (hook.command === path || hook.command === `./${path}`);
+  const all = registered.flatMap(hooksOf);
+  const present = all.some((h) => ours(h) && !relative(h));
+  const stale = all.filter(relative);
+  if (present && stale.length === 0) return { json: existing ?? "", changed: false };
+
+  if (stale.length > 0) {
+    // 1つは書き換え、残り（既に新しい形があれば全部）は外す。外して空になった組は残さない。
+    if (!present) stale[0].command = command;
+    for (const entry of registered) if (Array.isArray(entry?.hooks)) entry.hooks = entry.hooks.filter((h) => !relative(h));
+    hooks[event] = registered.filter((entry) => !Array.isArray(entry?.hooks) || entry.hooks.length > 0);
+  } else {
+    hooks[event] = [...registered, { hooks: [{ type: "command", command }] }];
+  }
   settings.hooks = hooks;
   return { json: `${JSON.stringify(settings, null, 2)}\n`, changed: true };
+}
+
+/**
+ * 登録された命令から、プロジェクトの直下からの場所を取り出す。
+ *
+ * **起点の書き方は1つではない。** 引用符の有無、`${...}` の有無のどれも実在しうる。
+ */
+export function projectPath(command ) {
+  return command.replace(/^"?\$\{?CLAUDE_PROJECT_DIR\}?"?\//, "").replace(/^\.\//, "");
 }
 
 /**

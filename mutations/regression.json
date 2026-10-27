@@ -1070,5 +1070,19 @@
     "from": "            exit 1\n",
     "to": "            exit 0\n",
     "why": "判定していないのに緑になり、判定したと読まれる"
+  },
+  {
+    "name": "ADK-147 フックを相対パスで登録する",
+    "file": "src/vendored/internal/init.js",
+    "from": "  const command = `\"$CLAUDE_PROJECT_DIR\"/${path}`;\n",
+    "to": "  const command = path;\n",
+    "why": "cd したままのあいだフックが見つからず、秘密の置き換えが黙って止まる"
+  },
+  {
+    "name": "ADK-147 相対パスの登録を置き換えず、足すだけにする",
+    "file": "src/vendored/internal/init.js",
+    "from": "    if (!present) stale[0].command = command;\n",
+    "to": "",
+    "why": "古い相対パスの登録が残り、移動した先でエラーを出し続ける"
   }
 ]
