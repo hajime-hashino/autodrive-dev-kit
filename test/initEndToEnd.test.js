@@ -100,6 +100,18 @@ test("置かれた設定が、置かれた autodrive-dev-kit を指している"
   assert.ok(JSON.stringify(post).includes(`${VENDOR_DIR}/hooks/redact-secrets`), settings);
   assert.equal(post[0].matcher, undefined, "すべてのツールに掛けていない");
   assert.ok((statSync(join(root, VENDOR_DIR, "hooks", "redact-secrets")).mode & 0o111) !== 0, "殻に実行権が無い");
+  // **`cd` した先からも見つかること**（ADK-147）。実行基盤と同じく殻に渡して打つ。
+  // 見つからなければ殻は 127 で終わる。フック自身は常に 0 で終わる。
+  const nested = join(root, "docs");
+  for (const event of ["Stop", "SessionStart", "PostToolUse"]) {
+    const command = JSON.parse(settings).hooks[event][0].hooks[0].command;
+    execFileSync("sh", ["-c", command], {
+      cwd: nested,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: root, CLAUDE_ENV_FILE: "" },
+      input: "{}",
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+  }
 
   const rules = readFileSync(join(root, "docs", "autodrive.md"), "utf8");
   assert.ok(rules.includes(`${VENDOR_DIR}/bin/autodrive-dev-kit`), rules);

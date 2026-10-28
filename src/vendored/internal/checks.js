@@ -16,6 +16,7 @@ import { EMITTERS, REQUIRED_EVENT_ATTRS, firstSubstitutionDetail, isUnattributed
 import { boundaryFor, eventsAfter } from "./enactment.js";
 import { movedAreas, parseAreas } from "./boundaries.js";
 import { directCommitCandidates, localDefaultBranch } from "./directCommits.js";
+import { projectPath } from "./init.js";
 import {
   defaultBranchOf,
   hasMergedSubmission,
@@ -91,7 +92,7 @@ export function hookState(repos, root = null) {
     if (found === undefined) continue;
 
     const bases = [root, repo.path].filter((b) => typeof b === "string" && b !== "");
-    const resolved = found.replace("${CLAUDE_PROJECT_DIR}/", "").replace("${CLAUDE_PROJECT_DIR}", "");
+    const resolved = projectPath(found);
     const exists = bases.some((b) => existsSync(resolve(b, resolved)));
     return { registeredIn: repo.name, command: found, missing: exists ? null : resolved };
   }

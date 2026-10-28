@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -234,10 +235,76 @@ test("他の仕掛けを消さずに足す", () => {
 });
 
 test("同じ登録が既にあれば、二重に足さない", () => {
+  // **起点の書き方は1つではない。** 利用側が自分で書いた形も、同じ登録として扱う。
+  for (const command of [
+    '"$CLAUDE_PROJECT_DIR"/autodrive/hooks/record-tokens',
+    "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens",
+    "$CLAUDE_PROJECT_DIR/autodrive/hooks/record-tokens",
+  ]) {
+    const before = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command }] }] } });
+    assert.equal(mergeHook(before, "autodrive/hooks/record-tokens").changed, false, command);
+  }
+});
+
+// **いまのディレクトリに依らず見つかること**（ADK-147）。相対パスでは、
+// エージェントが `cd` したままのあいだ見つからず、秘密の置き換えが黙って止まった。
+test("プロジェクトの場所を起点にして登録する", () => {
+  const { json } = mergeHook(null, "autodrive/hooks/redact-secrets", "PostToolUse");
+  const command = JSON.parse(json).hooks.PostToolUse[0].hooks[0].command;
+  assert.equal(command, '"$CLAUDE_PROJECT_DIR"/autodrive/hooks/redact-secrets');
+});
+
+// **足すだけでは古い登録が残る。** 移動した先でエラーを出し続ける。
+test("以前に相対パスで登録したものは、置き換える", () => {
+  for (const old of ["autodrive/hooks/record-tokens", "./autodrive/hooks/record-tokens"]) {
+    const before = JSON.stringify({
+      hooks: { Stop: [{ hooks: [{ type: "command", command: old, timeout: 30 }] }] },
+    });
+    const { json, changed } = mergeHook(before, "autodrive/hooks/record-tokens");
+
+    assert.equal(changed, true, old);
+    const stop = JSON.parse(json).hooks.Stop;
+    assert.equal(stop.length, 1, `二重になっている: ${json}`);
+    assert.equal(stop[0].hooks[0].command, '"$CLAUDE_PROJECT_DIR"/autodrive/hooks/record-tokens');
+    assert.equal(stop[0].hooks[0].timeout, 30, "他の項目が消えている");
+  }
+});
+
+test("新しい形が既にあれば、古い相対パスだけを外す", () => {
   const before = JSON.stringify({
-    hooks: { Stop: [{ hooks: [{ type: "command", command: "autodrive/hooks/record-tokens" }] }] },
+    hooks: {
+      Stop: [
+        { hooks: [{ type: "command", command: "autodrive/hooks/record-tokens" }] },
+        { hooks: [{ type: "command", command: "自前の仕掛け" }, { type: "command", command: "autodrive/hooks/record-tokens" }] },
+        { hooks: [{ type: "command", command: "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens" }] },
+      ],
+    },
   });
-  assert.equal(mergeHook(before, "autodrive/hooks/record-tokens").changed, false);
+  const { json, changed } = mergeHook(before, "autodrive/hooks/record-tokens");
+
+  assert.equal(changed, true);
+  assert.deepEqual(JSON.parse(json).hooks.Stop, [
+    { hooks: [{ type: "command", command: "自前の仕掛け" }] },
+    { hooks: [{ type: "command", command: "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens" }] },
+  ]);
+});
+
+// **書き方が正しくても、殻が解釈できなければ動かない。** 実行基盤と同じく
+// 殻に渡して、別のディレクトリから、空白と引用符を含む場所で確かめる。
+test("登録した命令は、別のディレクトリからでも、空白を含む場所でも動く", () => {
+  const project = join(tempDir("autodrive-hookpath-"), "it's here");
+  mkdirSync(join(project, "autodrive", "hooks"), { recursive: true });
+  mkdirSync(join(project, "elsewhere"), { recursive: true });
+  writeFileSync(join(project, "autodrive", "hooks", "redact-secrets"), "#!/bin/sh\necho ran\n", { mode: 0o755 });
+
+  const { json } = mergeHook(null, "autodrive/hooks/redact-secrets", "PostToolUse");
+  const command = JSON.parse(json).hooks.PostToolUse[0].hooks[0].command;
+  const out = execFileSync("sh", ["-c", command], {
+    cwd: join(project, "elsewhere"),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+    encoding: "utf8",
+  });
+  assert.equal(out.trim(), "ran");
 });
 
 test("設定が無ければ作る", () => {

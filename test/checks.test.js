@@ -900,17 +900,19 @@ test("起点を表す変数を、解決して確かめる", () => {
   mkdirSync(join(path, ".claude"), { recursive: true });
   mkdirSync(join(path, "autodrive", "hooks"), { recursive: true });
   writeFileSync(join(path, "autodrive", "hooks", "record-tokens"), "#!/bin/sh\n", "utf8");
-  writeFileSync(
-    join(path, ".claude", "settings.json"),
-    JSON.stringify({
-      hooks: {
-        Stop: [{ hooks: [{ type: "command", command: "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens" }] }],
-      },
-    }),
-    "utf8",
-  );
-  const state = hookState([{ ...fakeRepo("r"), path }], path);
-  assert.equal(state.missing, null, `解決できていない: ${state.missing}`);
+  // init が書く形（ADK-147）と、利用側が書きうる形の両方。
+  for (const command of [
+    '"$CLAUDE_PROJECT_DIR"/autodrive/hooks/record-tokens',
+    "${CLAUDE_PROJECT_DIR}/autodrive/hooks/record-tokens",
+  ]) {
+    writeFileSync(
+      join(path, ".claude", "settings.json"),
+      JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command }] }] } }),
+      "utf8",
+    );
+    const state = hookState([{ ...fakeRepo("r"), path }], path);
+    assert.equal(state.missing, null, `解決できていない: ${command} → ${state.missing}`);
+  }
 });
 
 /** テレメトリの判定。**添字で選ばない。** 並びが変わると別の判定を試してしまう。 */
